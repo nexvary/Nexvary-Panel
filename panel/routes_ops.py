@@ -5,10 +5,10 @@ import secrets
 import sqlite3
 import time
 
-from flask import flash, jsonify, redirect, request, url_for
+from flask import flash, jsonify, redirect, request, session, url_for
 
 from .config import DOMAIN_RE, ROLES, USER_RE
-from .core import agent_call, audit, can_manage_domain, db, password_hash, role_required
+from .core import agent_call, audit, can_manage_domain, db, notify, password_hash, role_required
 
 
 def register_ops_routes(app):
@@ -21,6 +21,8 @@ def register_ops_routes(app):
             return redirect(url_for("home") + "#services")
         result = agent_call({"action": "service-restart", "name": name}, timeout=35)
         audit("service-restart", name + (" ok" if result.get("ok") else " failed"))
+        notify("ok" if result.get("ok") else "critical", f"Service {name} " + ("restarted" if result.get("ok") else "restart failed"),
+               str(result.get("error", ""))[-300:], "service")
         flash("تمت إعادة تشغيل الخدمة." if result.get("ok") else "فشل تشغيل الخدمة: " + str(result.get("error", ""))[-150:],
               "ok" if result.get("ok") else "error")
         return redirect(url_for("home") + "#services")
@@ -30,6 +32,18 @@ def register_ops_routes(app):
     def doctor():
         result = agent_call({"action": "doctor"}, timeout=45)
         audit("doctor-run", "ok" if result.get("ok") else "failed")
+        if result.get("ok"):
+            report = result.get("checks") or {}
+            failed = [c for c in report.get("checks", []) if not c.get("ok")]
+            critical = [c for c in failed if c.get("severity") == "critical"]
+            if critical:
+                detail = "; ".join(f"{c.get('name')}: {c.get('detail')}" for c in critical)[:700]
+                notify("critical", f"Doctor found {len(critical)} critical issue(s)", detail, "doctor", owner=session.get("user", "admin"))
+            elif failed:
+                detail = "; ".join(f"{c.get('name')}: {c.get('detail')}" for c in failed)[:700]
+                notify("warning", f"Doctor found {len(failed)} warning(s)", detail, "doctor", owner=session.get("user", "admin"))
+        else:
+            notify("critical", "NEXVARY Doctor failed to run", str(result.get("error", ""))[-500:], "doctor", owner=session.get("user", "admin"))
         return jsonify(result)
 
     @app.get("/sites/logs")
@@ -55,6 +69,8 @@ def register_ops_routes(app):
             return redirect(url_for("home") + "#docker")
         result = agent_call({"action": "docker-control", "container": container, "desired": desired}, timeout=35)
         audit("docker-control", f"{container} {desired}")
+        if not result.get("ok"):
+            notify("critical", f"Docker {desired} failed", container, "docker")
         flash("تم تنفيذ أمر Docker." if result.get("ok") else "فشل أمر Docker: " + str(result.get("error", ""))[-160:],
               "ok" if result.get("ok") else "error")
         return redirect(url_for("home") + "#docker")
@@ -74,6 +90,7 @@ def register_ops_routes(app):
                 conn.execute("INSERT INTO users(username,role,salt,password_hash,enabled,created_at) VALUES(?,?,?,?,1,?)",
                              (username, role, salt, password_hash(password, salt), int(time.time())))
             audit("user-create", f"{username} {role}")
+            notify("info", "Panel user created", f"{username} · {role}", "access")
             flash("تم إنشاء مستخدم اللوحة.", "ok")
         except sqlite3.IntegrityError:
             flash("اسم المستخدم مستخدم بالفعل.", "error")
