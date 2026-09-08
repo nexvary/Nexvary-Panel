@@ -9,7 +9,7 @@ It is not a substitute for legal review. Before redistributing any third-party s
 - **library-review** — source/library reuse may be considered only after license and dependency review.
 - **concept-only** — use product/workflow ideas only; do not copy proprietary code, branding, assets, or UI.
 
-| Provider | Role | Default Nexvary mode | License family recorded in registry | Current 0.6 scope |
+| Provider / Library | Role | Default Nexvary mode | License family recorded | Current 0.6 scope |
 |---|---|---|---|---|
 | NGINX | Web/Reverse Proxy | native-adapter | BSD-2-Clause | Detect + existing site configuration |
 | Caddy | Edge/Automatic HTTPS | native-adapter | Apache-2.0 | Detect/read-only |
@@ -22,6 +22,7 @@ It is not a substitute for legal review. Before redistributing any third-party s
 | Docker | Containers | native-adapter | Apache-2.0-components | Detect + existing constrained lifecycle controls |
 | Podman | Rootless containers | native-adapter | Apache-2.0 | Detect/read-only |
 | PowerDNS | Authoritative DNS | native-adapter | GPL-family | Separate component; detect/read-only |
+| dnspython | DNS protocol/resolver library | library-review | ISC | Read-only A/AAAA/NS/MX/TXT/CAA + DMARC inventory |
 
 ## Mandatory provider rules
 
@@ -35,6 +36,20 @@ It is not a substitute for legal review. Before redistributing any third-party s
 8. GPL-family components remain separate processes by default. Any source redistribution or derivative integration requires version-specific license review.
 9. Proprietary products such as Plesk, cPanel, and DirectAdmin are concept/UX references only unless an official public API is used under its terms.
 10. Every new provider must add CI coverage for its ID, fixed argv definition, permissions boundary, and UI rendering.
+11. Secret-bearing integrations (DNS write APIs, cloud storage, backup repositories) must use the Nexvary Secret Vault boundary; plaintext tokens must not be stored in SQLite, templates, audit details, or browser storage.
+
+## Current capability-first model
+
+The Fusion control plane resolves features by capability rather than vendor name. Examples:
+
+- `automatic-https` can be satisfied by an eligible edge provider such as Caddy.
+- `reverse-proxy` may be satisfied by NGINX, Caddy, or Traefik.
+- `encrypted-snapshots` is associated with restic.
+- `cloud-remotes` is associated with rclone.
+- `containers` / `rootless-containers` can map to Docker or Podman depending on the capability requested.
+- `behavior-detection` and `bruteforce-protection` map to separate security-provider capabilities.
+
+This keeps the Nexvary UI and workflows stable while providers remain replaceable.
 
 ## Why this speeds development
 
