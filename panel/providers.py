@@ -42,6 +42,15 @@ REGISTRY: tuple[ProviderSpec, ...] = (
     ProviderSpec("powerdns", "PowerDNS", "dns", "pdns_server", ("--version",), ("authoritative-dns", "zones", "api"), "GPL-family", "pdns"),
 )
 
+CAPABILITY_GROUPS: dict[str, tuple[str, ...]] = {
+    "edge-delivery": ("web-server", "reverse-proxy", "automatic-https", "load-balancing", "service-discovery"),
+    "identity-access": ("mfa", "oidc", "webauthn", "policy"),
+    "active-defense": ("behavior-detection", "decisions", "bruteforce-protection", "jails"),
+    "backup-recovery": ("encrypted-snapshots", "deduplication", "restore", "s3", "webdav", "cloud-remotes", "sync"),
+    "container-runtime": ("containers", "rootless-containers", "pods", "images", "networks", "volumes"),
+    "dns-control": ("authoritative-dns", "zones", "api"),
+}
+
 
 def _service_state(unit: str | None) -> str:
     if not unit or not shutil.which("systemctl"):
@@ -82,6 +91,27 @@ def detect_provider(spec: ProviderSpec) -> dict:
     return item
 
 
+def _capability_index(providers: list[dict]) -> tuple[dict[str, dict], dict[str, dict]]:
+    capability_index: dict[str, dict] = {}
+    for provider in providers:
+        for capability in provider.get("capabilities", ()):
+            entry = capability_index.setdefault(capability, {"providers": [], "available": []})
+            entry["providers"].append(provider["provider_id"])
+            if provider["installed"]:
+                entry["available"].append(provider["provider_id"])
+    group_index: dict[str, dict] = {}
+    for group, capabilities in CAPABILITY_GROUPS.items():
+        available = [cap for cap in capabilities if capability_index.get(cap, {}).get("available")]
+        provider_ids = sorted({pid for cap in capabilities for pid in capability_index.get(cap, {}).get("available", [])})
+        group_index[group] = {
+            "capabilities": list(capabilities),
+            "available_capabilities": available,
+            "providers": provider_ids,
+            "coverage": round((len(available) / len(capabilities)) * 100) if capabilities else 0,
+        }
+    return capability_index, group_index
+
+
 def provider_snapshot() -> dict:
     providers = [detect_provider(spec) for spec in REGISTRY]
     installed = [p for p in providers if p["installed"]]
@@ -92,6 +122,8 @@ def provider_snapshot() -> dict:
         bucket["installed"] += int(provider["installed"])
     covered = sum(1 for values in categories.values() if values["installed"] > 0)
     coverage = round((covered / len(categories)) * 100) if categories else 0
+    capability_index, capability_groups = _capability_index(providers)
+    available_capabilities = sum(1 for value in capability_index.values() if value["available"])
     return {
         "providers": providers,
         "summary": {
@@ -100,13 +132,18 @@ def provider_snapshot() -> dict:
             "categories": len(categories),
             "covered_categories": covered,
             "integration_coverage": coverage,
+            "capabilities": len(capability_index),
+            "available_capabilities": available_capabilities,
         },
         "categories": categories,
+        "capability_index": capability_index,
+        "capability_groups": capability_groups,
         "policy": {
             "execution": "fixed-argv-only",
             "shell": False,
             "automatic_install": False,
             "privileged_actions": "root-agent-allowlist-only",
             "provider_detection": "read-only",
+            "selection_model": "capability-first",
         },
     }
