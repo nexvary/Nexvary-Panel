@@ -1,0 +1,34 @@
+{% from "macros/icons.html" import icon %}
+<section id="fusion" class="workspace-page fusion-workspace">
+  <div class="workspace-hero purple-hero royal-frame">
+    <div class="hero-icon">{{icon('layers')}}</div>
+    <div class="hero-copy"><span class="kicker">NEXVARY FUSION ARCHITECTURE</span><h2>Fusion Center</h2><p>طبقة قيادة موحدة تجمع مزودي Edge وSecurity وIdentity وBackup وContainers وDNS خلف Policy Engine واحد.</p></div>
+    <div class="hero-stats"><div><small>MODE</small><strong>READ ONLY</strong></div><div><small>EXECUTION</small><strong>FIXED ARGV</strong></div><div><small>ROOT SHELL</small><strong>BLOCKED</strong></div></div>
+  </div>
+
+  <div class="fusion-summary-grid">
+    <article class="fusion-summary-card royal-frame"><span>{{icon('layers')}}</span><div><small>REGISTERED PROVIDERS</small><strong id="fusionRegistered">—</strong></div></article>
+    <article class="fusion-summary-card royal-frame"><span>{{icon('activity')}}</span><div><small>INSTALLED</small><strong id="fusionInstalled">—</strong></div></article>
+    <article class="fusion-summary-card royal-frame"><span>{{icon('network')}}</span><div><small>COVERED CATEGORIES</small><strong id="fusionCategories">—</strong></div></article>
+    <article class="fusion-summary-card royal-frame"><span>{{icon('shield')}}</span><div><small>INTEGRATION COVERAGE</small><strong id="fusionCoverage">—</strong></div></article>
+  </div>
+
+  <div class="fusion-toolbar royal-frame">
+    <div><span class="toolbar-dot green"></span><b>Provider Registry</b><small>اكتشاف آمن للمكونات المثبتة بدون تثبيت تلقائي أو Shell مفتوح.</small></div>
+    <button id="fusionRefresh" type="button" class="compact-action">{{icon('refresh')}} تحديث الاكتشاف</button>
+  </div>
+
+  <div id="fusionGrid" class="fusion-provider-grid">
+    <div class="fusion-loading royal-frame">جاري قراءة مزودي Nexvary Fusion…</div>
+  </div>
+
+  <div class="fusion-policy royal-frame">
+    <div class="fusion-policy-head"><span>{{icon('shield')}}</span><div><small>POLICY ENGINE</small><h3>قواعد التكامل الإلزامية</h3></div></div>
+    <div class="fusion-policy-grid">
+      <div><b>Fixed argv only</b><small>لا يتم تمرير أوامر نصية إلى Shell.</small></div>
+      <div><b>No automatic install</b><small>الاكتشاف لا يغيّر الخادم ولا يثبت حزماً.</small></div>
+      <div><b>Root Agent allowlist</b><small>أي كتابة مستقبلية تمر عبر Action Schema محدد.</small></div>
+      <div><b>Provider isolation</b><small>كل Adapter يعرف قدراته وحدوده بشكل صريح.</small></div>
+    </div>
+  </div>
+</section>
