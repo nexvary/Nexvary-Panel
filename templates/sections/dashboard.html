@@ -1,51 +1,15 @@
 {% from "macros/icons.html" import icon %}
-<section id="dashboard" class="dashboard-section">
-  <div class="dashboard-intro">
-    <div><span class="kicker">LIVE TELEMETRY</span><h2>نظرة عامة على الخادم</h2><p>موارد النظام والحالة التشغيلية تتحدث مباشرة من الخادم.</p></div>
-    <div class="telemetry-badge"><span class="signal-bars"><i></i><i></i><i></i><i></i></span><div><small>TELEMETRY</small><b>ACTIVE</b></div></div>
-  </div>
+<section id="dashboard" class="workspace-page dashboard-section">
+  <div class="dashboard-intro"><div><span class="kicker">LIVE TELEMETRY</span><h2>نظرة عامة على الخادم</h2><p>موارد النظام والحالة التشغيلية تتحدث مباشرة من الخادم.</p></div><div class="telemetry-badge"><span class="signal-bars"><i></i><i></i><i></i><i></i></span><div><small>TELEMETRY</small><b>ACTIVE</b></div></div></div>
   <div class="grid metrics electric-metrics">
-    <article class="metric-card metric-cyan">
-      <div class="metric-top"><span class="metric-icon">{{icon('cpu')}}</span><span class="metric-state"><i></i>LIVE</span></div>
-      <div class="metric-copy"><label>CPU PROCESSOR</label><strong id="cpu">{{metrics.cpu}}<sup>%</sup></strong><small>استخدام المعالج اللحظي</small></div>
-      <progress id="cpuBar" max="100" value="{{metrics.cpu}}"></progress><span class="metric-glow"></span>
-    </article>
-    <article class="metric-card metric-violet">
-      <div class="metric-top"><span class="metric-icon">{{icon('ram')}}</span><span class="metric-state"><i></i>LIVE</span></div>
-      <div class="metric-copy"><label>MEMORY / RAM</label><strong id="ram">{{metrics.ram}}<sup>%</sup></strong><small>استخدام الذاكرة الحالية</small></div>
-      <progress id="ramBar" max="100" value="{{metrics.ram}}"></progress><span class="metric-glow"></span>
-    </article>
-    <article class="metric-card metric-green">
-      <div class="metric-top"><span class="metric-icon">{{icon('disk')}}</span><span class="metric-state"><i></i>STORAGE</span></div>
-      <div class="metric-copy"><label>DISK STORAGE</label><strong id="disk">{{metrics.disk}}<sup>%</sup></strong><small>{{metrics.disk_free|bytes}} مساحة متاحة</small></div>
-      <progress id="diskBar" max="100" value="{{metrics.disk}}"></progress><span class="metric-glow"></span>
-    </article>
-    <article class="metric-card metric-gold">
-      <div class="metric-top"><span class="metric-icon">{{icon('clock')}}</span><span class="metric-state"><i></i>UPTIME</span></div>
-      <div class="metric-copy"><label>SERVER UPTIME</label><strong>{{metrics.uptime_h}}<sup>h</sup></strong><small>استمرارية تشغيل الخادم</small></div>
-      <div class="load-strip"><span>LOAD AVERAGE</span><b>{{'%.2f'|format(metrics.load)}}</b></div><span class="metric-glow"></span>
-    </article>
+    <article class="metric-card metric-cyan"><div class="metric-top"><span class="metric-icon">{{icon('cpu')}}</span><span class="metric-state"><i></i>LIVE</span></div><div class="metric-copy"><label>CPU PROCESSOR</label><strong id="cpu">{{metrics.cpu}}<sup>%</sup></strong><small>استخدام المعالج اللحظي</small></div><progress id="cpuBar" max="100" value="{{metrics.cpu}}"></progress><span class="metric-glow"></span></article>
+    <article class="metric-card metric-violet"><div class="metric-top"><span class="metric-icon">{{icon('ram')}}</span><span class="metric-state"><i></i>LIVE</span></div><div class="metric-copy"><label>MEMORY / RAM</label><strong id="ram">{{metrics.ram}}<sup>%</sup></strong><small>استخدام الذاكرة الحالية</small></div><progress id="ramBar" max="100" value="{{metrics.ram}}"></progress><span class="metric-glow"></span></article>
+    <article class="metric-card metric-green"><div class="metric-top"><span class="metric-icon">{{icon('disk')}}</span><span class="metric-state"><i></i>STORAGE</span></div><div class="metric-copy"><label>DISK STORAGE</label><strong id="disk">{{metrics.disk}}<sup>%</sup></strong><small>{{metrics.disk_free|bytes}} مساحة متاحة</small></div><progress id="diskBar" max="100" value="{{metrics.disk}}"></progress><span class="metric-glow"></span></article>
+    <article class="metric-card metric-gold"><div class="metric-top"><span class="metric-icon">{{icon('clock')}}</span><span class="metric-state"><i></i>UPTIME</span></div><div class="metric-copy"><label>SERVER UPTIME</label><strong>{{metrics.uptime_h}}<sup>h</sup></strong><small>استمرارية تشغيل الخادم</small></div><div class="load-strip"><span>LOAD AVERAGE</span><b>{{'%.2f'|format(metrics.load)}}</b></div><span class="metric-glow"></span></article>
   </div>
-
-  <div class="overview-grid premium-overview">
-    <article class="panel server-score command-card">
-      <div class="panel-head"><div><span class="kicker">SERVER PULSE</span><h3>مركز الحالة</h3><p>ملخص البنية المدارة من Nexvary Panel.</p></div><div class="radar-core"><span></span><i></i></div></div>
-      <div class="score-grid">
-        <div class="score-tile"><span class="score-icon cyan">{{icon('sites')}}</span><div><strong>{{sites|length}}</strong><small>موقع / تطبيق</small></div></div>
-        <div class="score-tile"><span class="score-icon violet">{{icon('database')}}</span><div><strong>{{databases|length}}</strong><small>قاعدة بيانات</small></div></div>
-        <div class="score-tile"><span class="score-icon green">{{icon('backup')}}</span><div><strong>{{backups|length}}</strong><small>نسخة احتياطية</small></div></div>
-      </div>
-      <div class="core-line"><span><i></i>Root Agent isolated</span><span><i></i>Audit enabled</span><span><i></i>CSRF protected</span></div>
-    </article>
-
-    <article class="panel quick-actions command-card">
-      <div class="panel-head"><div><span class="kicker">QUICK LAUNCH</span><h3>إجراءات سريعة</h3><p>اختصارات مباشرة لأكثر مهام الإدارة استخدامًا.</p></div><span class="shortcut-key">4 ACTIONS</span></div>
-      <div class="quick-grid electric-actions">
-        <a href="#sites"><span class="quick-icon cyan">{{icon('plus')}}</span><div><b>موقع جديد</b><small>Website / App</small></div>{{icon('chevron','arrow')}}</a>
-        <a href="#databases"><span class="quick-icon violet">{{icon('database')}}</span><div><b>قاعدة بيانات</b><small>MariaDB</small></div>{{icon('chevron','arrow')}}</a>
-        <a href="#security"><span class="quick-icon green">{{icon('lock')}}</span><div><b>شهادة SSL</b><small>Let's Encrypt</small></div>{{icon('chevron','arrow')}}</a>
-        <button type="button" id="doctorQuick"><span class="quick-icon gold">{{icon('spark')}}</span><div><b>NEXVARY Doctor</b><small>Health scan</small></div>{{icon('chevron','arrow')}}</button>
-      </div>
-    </article>
+  <div class="dashboard-command-grid">
+    <article class="panel infrastructure-map"><div class="panel-head"><div><span class="kicker">INFRASTRUCTURE MAP</span><h3>حالة طبقة الخدمات</h3><p>قراءة مباشرة للخدمات التي يعتمد عليها الخادم.</p></div><button type="button" class="mini-link" data-open-view="services">فتح Operations {{icon('chevron')}}</button></div><div class="infra-core"><div class="server-core-node"><span>{{icon('server')}}</span><b>NEXVARY NODE</b><small>Control Plane</small><i></i></div><div class="infra-lines"></div><div class="infra-services">{% for n,s in services.items() %}<div class="infra-service {{'up' if s else 'down'}}"><span>{% if n=='nginx' %}{{icon('globe')}}{% elif n=='mariadb' %}{{icon('database')}}{% elif n=='docker' %}{{icon('docker')}}{% elif n=='fail2ban' %}{{icon('shield')}}{% else %}{{icon('activity')}}{% endif %}</span><div><b>{{n}}</b><small>{{'ACTIVE' if s else 'STOPPED / ABSENT'}}</small></div><i></i></div>{% endfor %}</div></div></article>
+    <article class="panel quick-actions command-card"><div class="panel-head"><div><span class="kicker">QUICK LAUNCH</span><h3>إجراءات سريعة</h3><p>انتقل مباشرة إلى مساحة العمل المطلوبة.</p></div><span class="shortcut-key">WORKSPACES</span></div><div class="quick-grid electric-actions"><button type="button" data-open-view="sites" data-focus="true"><span class="quick-icon cyan">{{icon('plus')}}</span><div><b>تطبيق جديد</b><small>Website / App</small></div>{{icon('chevron','arrow')}}</button><button type="button" data-open-view="databases"><span class="quick-icon violet">{{icon('database')}}</span><div><b>قواعد البيانات</b><small>MariaDB</small></div>{{icon('chevron','arrow')}}</button><button type="button" data-open-view="security"><span class="quick-icon green">{{icon('lock')}}</span><div><b>مركز الأمان</b><small>SSL + Trust</small></div>{{icon('chevron','arrow')}}</button><button type="button" id="doctorQuick"><span class="quick-icon gold">{{icon('spark')}}</span><div><b>NEXVARY Doctor</b><small>Health scan</small></div>{{icon('chevron','arrow')}}</button></div></article>
   </div>
+  <div class="dashboard-bottom-grid"><article class="panel fleet-summary"><div class="panel-head"><div><span class="kicker">MANAGED RESOURCES</span><h3>الموارد المدارة</h3></div></div><div class="summary-tiles"><button data-open-view="sites"><span class="cyan">{{icon('sites')}}</span><strong>{{sites|length}}</strong><small>Applications</small></button><button data-open-view="databases"><span class="violet">{{icon('database')}}</span><strong>{{databases|length}}</strong><small>Databases</small></button><button data-open-view="backups"><span class="green">{{icon('backup')}}</span><strong>{{backups|length}}</strong><small>Restore Points</small></button></div></article><article class="panel recent-activity"><div class="panel-head"><div><span class="kicker">RECENT ACTIVITY</span><h3>آخر العمليات</h3></div><button type="button" class="mini-link" data-open-view="audit">السجل {{icon('chevron')}}</button></div><div class="activity-list">{% for a in audits[:4] %}<div><span class="activity-icon">{{icon('audit')}}</span><div><b>{{a.action}}</b><small>{{a.actor}} · {{a.ts|when}}</small></div></div>{% else %}<div class="empty">لا يوجد نشاط مسجل بعد.</div>{% endfor %}</div></article></div>
 </section>
