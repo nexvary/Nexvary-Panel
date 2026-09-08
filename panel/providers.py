@@ -1,13 +1,19 @@
 from __future__ import annotations
 
-import os
 import re
 import shutil
 import subprocess
 from dataclasses import asdict, dataclass
 
 SAFE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{1,31}$")
-SAFE_ENV = {"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8", "HOME": "/nonexistent"}
+SAFE_ENV = {
+    "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "LANG": "C.UTF-8",
+    "HOME": "/tmp",
+    "XDG_CONFIG_HOME": "/tmp/nexvary-panel-provider-config",
+    "XDG_DATA_HOME": "/tmp/nexvary-panel-provider-data",
+    "XDG_CACHE_HOME": "/tmp/nexvary-panel-provider-cache",
+}
 
 
 @dataclass(frozen=True)
