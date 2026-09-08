@@ -54,9 +54,13 @@ await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-sites-desktop.png`, f
 
 await openView(desktop,'fusion');
 await desktop.locator('.fusion-provider-card').first().waitFor({state:'visible',timeout:10000});
+await desktop.locator('.fusion-capability-card').first().waitFor({state:'visible',timeout:10000});
 if(await desktop.locator('.fusion-provider-card').count()<10)throw new Error('Fusion provider registry did not render expected providers');
+if(await desktop.locator('.fusion-capability-card').count()!==6)throw new Error('Capability Matrix did not render six capability groups');
 if(await desktop.locator('.fusion-policy-grid > div').count()!==4)throw new Error('Fusion policy controls missing');
+if(!(await desktop.locator('#fusionCapabilities').textContent())?.includes('/'))throw new Error('Available capability summary missing');
 await assertRoyalFrame(desktop,'.fusion-provider-card','Fusion provider card');
+await assertRoyalFrame(desktop,'.fusion-capability-card','Fusion capability card');
 await assertRoyalFrame(desktop,'.fusion-policy','Fusion policy panel');
 await assertNoOverflow(desktop,'Fusion desktop');
 await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-fusion-desktop.png`, fullPage: true });
@@ -113,4 +117,4 @@ await mobile.waitForTimeout(250);
 if(await mobile.locator('#sidebar.open').count())throw new Error('Escape did not close mobile drawer');
 await browser.close();
 if (failures.length) throw new Error(failures.join('\n'));
-console.log('Nexvary Panel 0.6 Fusion/Site Health/Royal UI Release Gate: PASS');
+console.log('Nexvary Panel 0.6 Fusion Capability/Site Health/Royal UI Release Gate: PASS');
