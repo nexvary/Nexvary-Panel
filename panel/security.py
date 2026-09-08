@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import os
 import secrets
+import struct
+import time
 from functools import wraps
+from urllib.parse import quote
+
 from flask import flash, redirect, request, session, url_for
 from .config import ADMIN_FILE
 from .db_layer import db
@@ -43,6 +48,52 @@ def authenticate(username: str, password: str) -> tuple[bool, str]:
     if not row or not row["enabled"]:
         return False, "viewer"
     return hmac.compare_digest(password_hash(password, row["salt"]), row["password_hash"]), row["role"]
+
+
+def new_totp_secret() -> str:
+    return base64.b32encode(secrets.token_bytes(20)).decode("ascii").rstrip("=")
+
+
+def _totp(secret: str, timestamp: int | None = None) -> str:
+    ts = int(time.time() if timestamp is None else timestamp)
+    counter = ts // 30
+    padded = secret.upper() + "=" * ((8 - len(secret) % 8) % 8)
+    key = base64.b32decode(padded, casefold=True)
+    msg = struct.pack(">Q", counter)
+    digest = hmac.new(key, msg, hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    value = (struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF) % 1_000_000
+    return f"{value:06d}"
+
+
+def verify_totp_secret(secret: str, code: str) -> bool:
+    if not secret or not isinstance(code, str) or not code.isdigit() or len(code) != 6:
+        return False
+    now = int(time.time())
+    try:
+        return any(hmac.compare_digest(_totp(secret, now + delta * 30), code) for delta in (-1, 0, 1))
+    except Exception:
+        return False
+
+
+def totp_enabled_for(username: str) -> bool:
+    if not username:
+        return False
+    with db() as conn:
+        row = conn.execute("SELECT totp_enabled FROM user_security WHERE username=?", (username,)).fetchone()
+    return bool(row and row["totp_enabled"])
+
+
+def verify_totp(username: str, code: str) -> bool:
+    with db() as conn:
+        row = conn.execute("SELECT totp_secret,totp_enabled FROM user_security WHERE username=?", (username,)).fetchone()
+    return bool(row and row["totp_enabled"] and verify_totp_secret(row["totp_secret"], code))
+
+
+def totp_uri(username: str, secret: str) -> str:
+    issuer = "Nexvary Panel"
+    label = quote(f"{issuer}:{username}")
+    return f"otpauth://totp/{label}?secret={secret}&issuer={quote(issuer)}&algorithm=SHA1&digits=6&period=30"
 
 
 def csrf_token() -> str:
