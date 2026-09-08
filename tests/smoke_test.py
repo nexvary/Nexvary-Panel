@@ -23,6 +23,7 @@ os.environ["NVP_SECRET"] = "test-secret-only"
 os.environ["NVP_AGENT_SOCK"] = str(pathlib.Path(tmp) / "missing.sock")
 os.environ["NVP_COOKIE_SECURE"] = "0"
 
+from panel.db_layer import db
 from panel.security import _totp, totp_enabled_for, verify_totp_secret
 assert verify_totp_secret("JBSWY3DPEHPK3PXP", _totp("JBSWY3DPEHPK3PXP"))
 assert not verify_totp_secret("JBSWY3DPEHPK3PXP", "000000") or _totp("JBSWY3DPEHPK3PXP") == "000000"
@@ -85,16 +86,18 @@ r = client.post("/sites", data={"domain": "example.com", "kind": "static"})
 assert r.status_code == 403
 r = client.post("/api/file/save", json={"domain": "example.com", "path": "public/a.txt", "content": "x"})
 assert r.status_code == 403
-# Enrollment creates a pending secret but does not enable 2FA until a valid TOTP is supplied.
+# Enrollment stores a pending secret server-side, not in Flask's client-side session cookie.
 with client.session_transaction() as sess:
     csrf = sess["csrf"]
 r = client.post("/2fa/start", data={"csrf_token": csrf}, follow_redirects=False)
 assert r.status_code == 302
 with client.session_transaction() as sess:
-    pending = sess.get("totp_pending")
+    assert "totp_pending" not in sess
     csrf = sess["csrf"]
-assert pending and len(pending) >= 16
-code = _totp(pending)
+with db() as conn:
+    sec = conn.execute("SELECT totp_secret,totp_enabled FROM user_security WHERE username='admin'").fetchone()
+assert sec and not sec["totp_enabled"] and len(sec["totp_secret"]) >= 16
+code = _totp(sec["totp_secret"])
 r = client.post("/2fa/enable", data={"csrf_token": csrf, "otp": code}, follow_redirects=False)
 assert r.status_code == 302
 assert totp_enabled_for("admin")
