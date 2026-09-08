@@ -28,7 +28,7 @@ from panel.providers import CAPABILITY_GROUPS, REGISTRY, SAFE_ID_RE, provider_sn
 from panel.routes_dns import MAX_RECORDS_PER_TYPE, RECORD_TYPES, _record_text
 from panel.routes_health import _is_public_ip, _parse_http_head
 from panel.routes_platform import _safe_rel_request
-from panel.security import _totp, totp_enabled_for, verify_totp_secret
+from panel.security import _totp, step_up_required, totp_enabled_for, verify_totp_secret
 
 assert verify_totp_secret("JBSWY3DPEHPK3PXP", _totp("JBSWY3DPEHPK3PXP"))
 assert not verify_totp_secret("JBSWY3DPEHPK3PXP", "000000") or _totp("JBSWY3DPEHPK3PXP") == "000000"
@@ -107,6 +107,12 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 app = mod.app
 app.config.update(TESTING=True)
+
+@app.get("/api/_test-step-up")
+@step_up_required
+def _test_step_up():
+    return {"ok": True}
+
 client = app.test_client()
 
 r = client.get("/")
@@ -124,7 +130,7 @@ r = client.post("/login", data={"csrf_token": csrf, "username": "admin", "passwo
 assert r.status_code == 302 and r.location.endswith("/")
 r = client.get("/")
 assert r.status_code == 200
-for marker in [b"Docker Center", b"NEXVARY Doctor", b'id="sites"', b'id="databases"', b'id="files"', b'id="deploy"', b'id="wordpress"', b'id="notifications"', b'id="fusion"', b'Fusion Center', b'id="fusionCapabilityGrid"', b'id="dns"', b'DNS Center', b'dns.css', b'dns.js', b'id="fileNewFile"', b'id="healthDialog"', b'notification-filter', b'platform-controls.css', b'platform-controls.js', b'fusion.css', b'fusion.js', b"nexvary-panel-primary.jpg"]:
+for marker in [b"Docker Center", b"NEXVARY Doctor", b'id="sites"', b'id="databases"', b'id="files"', b'id="deploy"', b'id="wordpress"', b'id="notifications"', b'id="fusion"', b'Fusion Center', b'id="fusionCapabilityGrid"', b'id="dns"', b'DNS Center', b'dns.css', b'dns.js', b'Step-Up Authentication', b'action="/security/step-up"', b'id="fileNewFile"', b'id="healthDialog"', b'notification-filter', b'platform-controls.css', b'platform-controls.js', b'fusion.css', b'fusion.js', b"nexvary-panel-primary.jpg"]:
     assert marker in r.data, marker
 r = client.get("/api/metrics")
 assert r.status_code == 200 and {"cpu", "ram", "disk"}.issubset(r.get_json())
@@ -141,6 +147,23 @@ r = client.post("/sites", data={"domain": "example.com", "kind": "static"})
 assert r.status_code == 403
 r = client.post("/api/file/save", json={"domain": "example.com", "path": "public/a.txt", "content": "x"})
 assert r.status_code == 403
+
+# Sensitive APIs are locked until explicit Step-Up succeeds.
+r = client.get("/api/_test-step-up")
+assert r.status_code == 428
+with client.session_transaction() as sess:
+    csrf = sess["csrf"]
+r = client.post("/security/step-up", data={"csrf_token": csrf, "password": "wrong"}, follow_redirects=False)
+assert r.status_code == 302 and client.get("/api/_test-step-up").status_code == 428
+with client.session_transaction() as sess:
+    csrf = sess["csrf"]
+r = client.post("/security/step-up", data={"csrf_token": csrf, "password": password}, follow_redirects=False)
+assert r.status_code == 302 and client.get("/api/_test-step-up").status_code == 200
+with client.session_transaction() as sess:
+    csrf = sess["csrf"]
+r = client.post("/security/step-up/clear", data={"csrf_token": csrf}, follow_redirects=False)
+assert r.status_code == 302 and client.get("/api/_test-step-up").status_code == 428
+
 with client.session_transaction() as sess:
     csrf = sess["csrf"]
 r = client.post("/2fa/start", data={"csrf_token": csrf}, follow_redirects=False)
@@ -156,5 +179,19 @@ r = client.post("/2fa/enable", data={"csrf_token": csrf, "otp": code}, follow_re
 assert r.status_code == 302
 assert totp_enabled_for("admin")
 
+# Once 2FA is enabled, Step-Up requires both factors.
+with client.session_transaction() as sess:
+    csrf = sess["csrf"]
+bad_code = "000000" if code != "000000" else "000001"
+r = client.post("/security/step-up", data={"csrf_token": csrf, "password": password, "otp": bad_code}, follow_redirects=False)
+assert r.status_code == 302 and client.get("/api/_test-step-up").status_code == 428
+with client.session_transaction() as sess:
+    csrf = sess["csrf"]
+with db() as conn:
+    sec = conn.execute("SELECT totp_secret FROM user_security WHERE username='admin'").fetchone()
+fresh_code = _totp(sec["totp_secret"])
+r = client.post("/security/step-up", data={"csrf_token": csrf, "password": password, "otp": fresh_code}, follow_redirects=False)
+assert r.status_code == 302 and client.get("/api/_test-step-up").status_code == 200
+
 _tmp_ctx.cleanup()
-print("Nexvary Panel platform/security/health/fusion/dns smoke tests: PASS")
+print("Nexvary Panel platform/security/step-up/health/fusion/dns smoke tests: PASS")
