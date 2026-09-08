@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Nexvary Panel</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="shell">
+  <aside id="sidebar">
+    <div class="brand"><span class="brand-mark">N</span><div><b>NEXVARY</b><small>Control Panel · {{panel_version}}</small></div></div>
+    <div class="account-chip"><span>{{username[:1]|upper}}</span><div><b>{{username}}</b><small>{{role|upper}}</small></div></div>
+    <nav id="nav">
+      <a class="active" href="#dashboard"><i>◈</i>لوحة القيادة</a><a href="#sites"><i>◎</i>المواقع والتطبيقات</a><a href="#databases"><i>▦</i>قواعد البيانات</a><a href="#backups"><i>↺</i>النسخ الاحتياطي</a><a href="#security"><i>⬡</i>الأمان و SSL</a><a href="#services"><i>⚙</i>الخدمات و Doctor</a><a href="#docker"><i>▣</i>Docker</a>{% if role == 'admin' %}<a href="#users"><i>♙</i>المستخدمون والصلاحيات</a>{% endif %}<a href="#audit"><i>≣</i>سجل التدقيق</a>
+    </nav>
+    <form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{csrf_token()}}"><button class="ghost">تسجيل الخروج</button></form>
+  </aside>
+  <main>
+    <header class="topbar"><button class="mobile-menu" id="mobileMenu" type="button" aria-label="القائمة">☰</button><div><div class="eyebrow">CONTROL CENTER</div><h1>لوحة القيادة</h1><p>إدارة المواقع والخدمات والأمان من واجهة واحدة، مع فصل صارم بين واجهة الويب وصلاحيات النظام.</p></div><div class="status"><i></i> Server Online</div></header>
+    {% with ms=get_flashed_messages(with_categories=true) %}{% for c,m in ms %}<div class="flash {{c}}">{{m}}</div>{% endfor %}{% endwith %}
+    {% include "sections/dashboard.html" %}
+    {% include "sections/sites.html" %}
+    {% include "sections/databases.html" %}
+    {% include "sections/backups.html" %}
+    {% include "sections/security.html" %}
+    {% include "sections/services.html" %}
+    {% include "sections/docker.html" %}
+    {% if role == 'admin' %}{% include "sections/users.html" %}{% endif %}
+    {% include "sections/audit.html" %}
+    <dialog id="logDialog" class="log-dialog"><div class="panel-head"><div><span class="kicker">SITE LOGS</span><h3 id="logTitle">Logs</h3></div><button type="button" id="closeLogs" class="tiny ghost">إغلاق</button></div><pre id="logContent">Loading…</pre></dialog>
+    <footer>Nexvary Panel · Build {{panel_version}} · Security-first server control plane</footer>
+  </main>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

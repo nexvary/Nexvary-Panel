@@ -1,0 +1,28 @@
+[Unit]
+Description=Nexvary Panel Web UI
+After=network.target nginx.service nexvary-panel-agent.service
+Requires=nexvary-panel-agent.service
+
+[Service]
+Type=simple
+User=nexvary-panel
+Group=nexvary-panel
+WorkingDirectory=/opt/nexvary-panel
+EnvironmentFile=/etc/nexvary-panel/admin.env
+ExecStart=/opt/nexvary-panel/venv/bin/gunicorn -w 2 -b 127.0.0.1:9180 --timeout 150 --access-logfile - --error-logfile - app:app
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/nexvary-panel /run/nexvary-panel
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target
