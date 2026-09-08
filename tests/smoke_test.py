@@ -25,6 +25,7 @@ os.environ["NVP_COOKIE_SECURE"] = "0"
 
 from panel.db_layer import db
 from panel.providers import CAPABILITY_GROUPS, REGISTRY, SAFE_ID_RE, provider_snapshot
+from panel.routes_dns import MAX_RECORDS_PER_TYPE, RECORD_TYPES, _record_text
 from panel.routes_health import _is_public_ip, _parse_http_head
 from panel.routes_platform import _safe_rel_request
 from panel.security import _totp, totp_enabled_for, verify_totp_secret
@@ -52,6 +53,14 @@ for group_name, group in snap["capability_groups"].items():
     assert set(group["available_capabilities"]).issubset(set(group["capabilities"]))
     for provider_id in group["providers"]:
         assert provider_id in {p.provider_id for p in REGISTRY}
+
+# DNS Center is read-only and bounded. Do not perform internet DNS queries in smoke tests.
+assert RECORD_TYPES == ("A", "AAAA", "NS", "MX", "TXT", "CAA")
+assert MAX_RECORDS_PER_TYPE <= 20
+class _FakeRecord:
+    def to_text(self):
+        return "v=DMARC1; p=reject" + ("x" * 800)
+assert _record_text(_FakeRecord()).startswith("v=DMARC1") and len(_record_text(_FakeRecord())) <= 500
 
 for blocked_ip in ["127.0.0.1", "10.0.0.1", "172.16.0.1", "192.168.1.1", "169.254.1.1", "::1", "fc00::1", "fe80::1"]:
     assert not _is_public_ip(blocked_ip), f"private/reserved IP accepted: {blocked_ip}"
@@ -115,7 +124,7 @@ r = client.post("/login", data={"csrf_token": csrf, "username": "admin", "passwo
 assert r.status_code == 302 and r.location.endswith("/")
 r = client.get("/")
 assert r.status_code == 200
-for marker in [b"Docker Center", b"NEXVARY Doctor", b'id="sites"', b'id="databases"', b'id="files"', b'id="deploy"', b'id="wordpress"', b'id="notifications"', b'id="fusion"', b'Fusion Center', b'id="fusionCapabilityGrid"', b'id="fileNewFile"', b'id="healthDialog"', b'notification-filter', b'platform-controls.css', b'platform-controls.js', b'fusion.css', b'fusion.js', b"nexvary-panel-primary.jpg"]:
+for marker in [b"Docker Center", b"NEXVARY Doctor", b'id="sites"', b'id="databases"', b'id="files"', b'id="deploy"', b'id="wordpress"', b'id="notifications"', b'id="fusion"', b'Fusion Center', b'id="fusionCapabilityGrid"', b'id="dns"', b'DNS Center', b'dns.css', b'dns.js', b'id="fileNewFile"', b'id="healthDialog"', b'notification-filter', b'platform-controls.css', b'platform-controls.js', b'fusion.css', b'fusion.js', b"nexvary-panel-primary.jpg"]:
     assert marker in r.data, marker
 r = client.get("/api/metrics")
 assert r.status_code == 200 and {"cpu", "ram", "disk"}.issubset(r.get_json())
@@ -125,6 +134,8 @@ assert "capability_groups" in r.get_json() and "capability_index" in r.get_json(
 r = client.get("/api/fusion/policy")
 assert r.status_code == 200 and r.get_json()["policy"]["shell"] is False
 r = client.get("/api/site-health?domain=example.com")
+assert r.status_code == 403 and r.get_json().get("ok") is False
+r = client.get("/api/dns/inventory?domain=example.com")
 assert r.status_code == 403 and r.get_json().get("ok") is False
 r = client.post("/sites", data={"domain": "example.com", "kind": "static"})
 assert r.status_code == 403
@@ -146,4 +157,4 @@ assert r.status_code == 302
 assert totp_enabled_for("admin")
 
 _tmp_ctx.cleanup()
-print("Nexvary Panel platform/security/health/fusion capability smoke tests: PASS")
+print("Nexvary Panel platform/security/health/fusion/dns smoke tests: PASS")
