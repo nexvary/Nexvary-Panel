@@ -2,9 +2,14 @@ import hashlib
 import importlib.util
 import os
 import pathlib
+import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+# Ensure repository-local packages (notably panel/) are importable when this
+# file is executed directly as `python tests/smoke_test.py` in CI.
+sys.path.insert(0, str(ROOT))
+
 with tempfile.TemporaryDirectory() as tmp:
     salt = "11" * 16
     password = "Correct-Horse-Panel-2026"
