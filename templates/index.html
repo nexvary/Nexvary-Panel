@@ -12,7 +12,7 @@
 </head>
 <body>
 <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div><div class="noise"></div>
-<div class="shell">
+<div class="shell workspace-shell">
   <aside id="sidebar">
     <div class="brand">
       <span class="brand-mark"><span>N</span></span>
@@ -24,42 +24,45 @@
       <div><small>CONTROL NODE</small><b>Server Core</b></div>
       <span class="live-dot"></span>
     </div>
-    <nav id="nav">
+    <nav id="nav" aria-label="لوحة التحكم">
       <span class="nav-label">CONTROL CENTER</span>
-      <a class="active" href="#dashboard">{{icon('dashboard')}}<span>لوحة القيادة</span><em></em></a>
-      <a href="#sites">{{icon('sites')}}<span>المواقع والتطبيقات</span><em></em></a>
-      <a href="#databases">{{icon('database')}}<span>قواعد البيانات</span><em></em></a>
-      <a href="#backups">{{icon('backup')}}<span>النسخ الاحتياطي</span><em></em></a>
+      <a class="active" href="#dashboard" data-title="لوحة القيادة" data-subtitle="نظرة تشغيلية موحدة على الخادم والموارد والحماية">{{icon('dashboard')}}<span>لوحة القيادة</span><em></em></a>
+      <a href="#sites" data-title="المواقع والتطبيقات" data-subtitle="إدارة التطبيقات والـRuntime وNGINX والحالة والسجلات">{{icon('sites')}}<span>المواقع والتطبيقات</span><em></em></a>
+      <a href="#databases" data-title="قواعد البيانات" data-subtitle="MariaDB، المستخدمون والربط الآمن بالتطبيقات">{{icon('database')}}<span>قواعد البيانات</span><em></em></a>
+      <a href="#backups" data-title="خزنة النسخ الاحتياطي" data-subtitle="نسخ المواقع وقواعد البيانات وسجل نقاط الاستعادة">{{icon('backup')}}<span>النسخ الاحتياطي</span><em></em></a>
       <span class="nav-label nav-gap">INFRASTRUCTURE</span>
-      <a href="#security">{{icon('shield')}}<span>الأمان و SSL</span><em></em></a>
-      <a href="#services">{{icon('activity')}}<span>الخدمات و Doctor</span><em></em></a>
-      <a href="#docker">{{icon('docker')}}<span>Docker Center</span><em></em></a>
-      {% if role == 'admin' %}<a href="#users">{{icon('users')}}<span>المستخدمون والصلاحيات</span><em></em></a>{% endif %}
-      <a href="#audit">{{icon('audit')}}<span>سجل التدقيق</span><em></em></a>
+      <a href="#security" data-title="مركز الأمان وSSL" data-subtitle="الشهادات وحالة طبقات الحماية والثقة">{{icon('shield')}}<span>الأمان و SSL</span><em></em></a>
+      <a href="#services" data-title="الخدمات وNEXVARY Doctor" data-subtitle="صحة الخدمات والتشخيص والإصلاحات المسموح بها">{{icon('activity')}}<span>الخدمات و Doctor</span><em></em></a>
+      <a href="#docker" data-title="Docker Center" data-subtitle="حالة الحاويات والتحكم التشغيلي المقيد">{{icon('docker')}}<span>Docker Center</span><em></em></a>
+      {% if role == 'admin' %}<a href="#users" data-title="المستخدمون والصلاحيات" data-subtitle="إدارة الوصول والأدوار داخل لوحة التحكم">{{icon('users')}}<span>المستخدمون والصلاحيات</span><em></em></a>{% endif %}
+      <a href="#audit" data-title="سجل التدقيق" data-subtitle="تسلسل زمني لكل العمليات الإدارية المهمة">{{icon('audit')}}<span>سجل التدقيق</span><em></em></a>
     </nav>
     <div class="sidebar-bottom">
       <div class="account-chip"><span class="avatar">{{username[:1]|upper}}</span><div><b>{{username}}</b><small>{{role|upper}} ACCOUNT</small></div><span class="account-state"></span></div>
       <form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{csrf_token()}}"><button class="ghost logout-btn">تسجيل الخروج</button></form>
     </div>
   </aside>
-  <main>
-    <header class="topbar">
-      <div class="topbar-title"><button class="mobile-menu" id="mobileMenu" type="button" aria-label="القائمة">☰</button><div><div class="eyebrow"><span></span>NEXVARY CONTROL CENTER</div><h1>لوحة القيادة</h1><p>مركز إدارة الخادم والمواقع والأمان في واجهة تشغيل موحدة.</p></div></div>
+  <main class="workspace-main">
+    <header class="topbar workspace-topbar">
+      <div class="topbar-title"><button class="mobile-menu" id="mobileMenu" type="button" aria-label="القائمة">☰</button><div><div class="workspace-breadcrumb"><span>NEXVARY</span><i>/</i><b id="pageCrumb">CONTROL CENTER</b></div><h1 id="pageTitle">لوحة القيادة</h1><p id="pageSubtitle">نظرة تشغيلية موحدة على الخادم والموارد والحماية</p></div></div>
       <div class="top-tools">
-        <label class="command-search">{{icon('search')}}<input id="globalSearch" type="search" placeholder="ابحث داخل اللوحة..." autocomplete="off"><kbd>/</kbd></label>
+        <label class="command-search">{{icon('search')}}<input id="globalSearch" type="search" placeholder="انتقل إلى شاشة..." autocomplete="off"><kbd>/</kbd></label>
+        <button class="tool-button" id="quickCreate" type="button" title="إنشاء تطبيق جديد">{{icon('plus')}}<span>إنشاء</span></button>
         <div class="status"><i></i><div><small>SERVER STATUS</small><b>ONLINE</b></div></div>
       </div>
     </header>
     {% with ms=get_flashed_messages(with_categories=true) %}{% for c,m in ms %}<div class="flash {{c}}">{{m}}</div>{% endfor %}{% endwith %}
-    {% include "sections/dashboard.html" %}
-    {% include "sections/sites.html" %}
-    {% include "sections/databases.html" %}
-    {% include "sections/backups.html" %}
-    {% include "sections/security.html" %}
-    {% include "sections/services.html" %}
-    {% include "sections/docker.html" %}
-    {% if role == 'admin' %}{% include "sections/users.html" %}{% endif %}
-    {% include "sections/audit.html" %}
+    <div class="workspace-stage" id="workspaceStage">
+      {% include "sections/dashboard.html" %}
+      {% include "sections/sites.html" %}
+      {% include "sections/databases.html" %}
+      {% include "sections/backups.html" %}
+      {% include "sections/security.html" %}
+      {% include "sections/services.html" %}
+      {% include "sections/docker.html" %}
+      {% if role == 'admin' %}{% include "sections/users.html" %}{% endif %}
+      {% include "sections/audit.html" %}
+    </div>
     <dialog id="logDialog" class="log-dialog"><div class="panel-head"><div><span class="kicker">SITE LOGS</span><h3 id="logTitle">Logs</h3></div><button type="button" id="closeLogs" class="tiny ghost">إغلاق</button></div><pre id="logContent">Loading…</pre></dialog>
     <footer><span class="footer-mark">N</span><b>Nexvary Panel</b><span>Build {{panel_version}}</span><i></i><span>Security-first control plane</span></footer>
   </main>
