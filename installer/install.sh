@@ -5,9 +5,10 @@ set -euo pipefail
 [[ "${ID:-}" =~ ^(ubuntu|debian)$ ]] || { echo 'Supported: Ubuntu / Debian'; exit 2; }
 WITH_DOCKER=0
 [[ "${1:-}" == "--with-docker" ]] && WITH_DOCKER=1
+PANEL_VERSION="$(tr -d '[:space:]' < VERSION 2>/dev/null || printf 'unknown')"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y nginx python3 python3-venv python3-pip openssl certbot python3-certbot-nginx fail2ban ufw php-fpm mariadb-server nodejs ca-certificates curl rsync
+apt-get install -y nginx python3 python3-venv python3-pip openssl certbot python3-certbot-nginx fail2ban ufw php-fpm mariadb-server nodejs ca-certificates curl rsync git
 if (( WITH_DOCKER )); then apt-get install -y docker.io; fi
 
 getent group nexvary-panel >/dev/null || groupadd --system nexvary-panel
@@ -17,7 +18,7 @@ install -d -m 0750 -o root -g nexvary-panel /opt/nexvary-panel-agent
 install -d -m 0750 -o root -g root /etc/nexvary-panel
 install -d -m 0700 -o root -g root /var/backups/nexvary-panel
 install -d -m 0750 -o root -g nexvary-panel /run/nexvary-panel
-cp -a app.py panel requirements.txt templates static /opt/nexvary-panel/
+cp -a app.py panel requirements.txt templates static VERSION /opt/nexvary-panel/
 python3 -m venv /opt/nexvary-panel/venv
 /opt/nexvary-panel/venv/bin/pip install --upgrade pip
 /opt/nexvary-panel/venv/bin/pip install -r /opt/nexvary-panel/requirements.txt
@@ -89,5 +90,5 @@ ufw allow 80/tcp >/dev/null || true
 ufw allow 443/tcp >/dev/null || true
 ufw allow 8443/tcp >/dev/null || true
 
-printf '\nNexvary Panel 0.2.1 installed.\nOpen: https://SERVER_IP:8443\nUser: admin\nPassword: %s\n\nInitial TLS is self-signed. Assign a panel hostname before replacing it with a trusted certificate.\n' "$PASS"
+printf '\nNexvary Panel %s installed.\nOpen: https://SERVER_IP:8443\nUser: admin\nPassword: %s\n\nInitial TLS is self-signed. Assign a panel hostname before replacing it with a trusted certificate.\n' "$PANEL_VERSION" "$PASS"
 if (( ! WITH_DOCKER )); then printf 'Docker was not installed. Re-run installer with --with-docker if you want Docker Center.\n'; fi
