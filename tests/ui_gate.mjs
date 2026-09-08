@@ -25,14 +25,14 @@ const failures = [];
 const desktop = await browser.newPage({ viewport: { width: 1440, height: 1050 } });
 desktop.on('pageerror', e => failures.push(`desktop: ${e.message}`));
 await enterPanel(desktop);
-const workspaces=['dashboard','sites','databases','backups','fusion','files','deploy','wordpress','security','services','docker','notifications','users','audit'];
+const workspaces=['dashboard','sites','databases','backups','fusion','dns','files','deploy','wordpress','security','services','docker','notifications','users','audit'];
 for (const id of workspaces) if (await desktop.locator(`#${id}`).count() !== 1) throw new Error(`Missing workspace #${id}`);
 if (await desktop.locator('.ui-icon').count() < 45) throw new Error('Original icon system missing or incomplete');
 if (await desktop.locator('.metric-card').count() !== 4) throw new Error('Live telemetry cards missing');
 if (await desktop.locator('.command-search').count() !== 1) throw new Error('Command search missing');
 if (await desktop.locator('img[src*="nexvary-panel-primary.jpg"]').count() < 2) throw new Error('Approved Nexvary brand icon not integrated into shell/footer');
-for(const asset of ['/static/platform-controls.css','/static/fusion.css'])if(await desktop.locator(`link[href="${asset}"]`).count()!==1)throw new Error(`Stylesheet missing: ${asset}`);
-for(const asset of ['/static/platform-controls.js','/static/fusion.js'])if(await desktop.locator(`script[src="${asset}"]`).count()!==1)throw new Error(`Script missing: ${asset}`);
+for(const asset of ['/static/platform-controls.css','/static/fusion.css','/static/dns.css'])if(await desktop.locator(`link[href="${asset}"]`).count()!==1)throw new Error(`Stylesheet missing: ${asset}`);
+for(const asset of ['/static/platform-controls.js','/static/fusion.js','/static/dns.js'])if(await desktop.locator(`script[src="${asset}"]`).count()!==1)throw new Error(`Script missing: ${asset}`);
 if (await desktop.locator('#healthDialog').count() !== 1 || await desktop.locator('#healthReport').count() !== 1 || await desktop.locator('#closeHealth').count() !== 1) throw new Error('Site Health Inspector shell missing');
 if (await desktop.locator('#workspaceStage > section.active-view').count() !== 1) throw new Error('Workspace isolation failed on load');
 
@@ -64,6 +64,14 @@ await assertRoyalFrame(desktop,'.fusion-capability-card','Fusion capability card
 await assertRoyalFrame(desktop,'.fusion-policy','Fusion policy panel');
 await assertNoOverflow(desktop,'Fusion desktop');
 await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-fusion-desktop.png`, fullPage: true });
+
+await openView(desktop,'dns');
+if(await desktop.locator('#dnsGrid .dns-record-card').count()!==6)throw new Error('DNS Center must render six core record cards');
+if(await desktop.locator('#dnsDomain').count()!==1||await desktop.locator('#dnsInspect').count()!==1)throw new Error('DNS Center controls missing');
+await assertRoyalFrame(desktop,'.dns-record-card','DNS record card');
+await assertRoyalFrame(desktop,'.dns-mail-panel','DNS mail posture panel');
+await assertNoOverflow(desktop,'DNS desktop');
+await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-dns-desktop.png`, fullPage: true });
 
 await openView(desktop,'files');
 if(await desktop.locator('#fileBrowser').count()!==1||await desktop.locator('#fileContent').count()!==1||await desktop.locator('#fileSave').count()!==1||await desktop.locator('#fileNewFile').count()!==1)throw new Error('Safe File Manager controls missing');
@@ -117,4 +125,4 @@ await mobile.waitForTimeout(250);
 if(await mobile.locator('#sidebar.open').count())throw new Error('Escape did not close mobile drawer');
 await browser.close();
 if (failures.length) throw new Error(failures.join('\n'));
-console.log('Nexvary Panel 0.6 Fusion Capability/Site Health/Royal UI Release Gate: PASS');
+console.log('Nexvary Panel 0.6 Fusion Capability/DNS/Site Health/Royal UI Release Gate: PASS');
