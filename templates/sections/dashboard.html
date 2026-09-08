@@ -1,1 +1,51 @@
-<section id="dashboard"><div class="grid metrics"><article><label>CPU</label><strong id="cpu">{{metrics.cpu}}%</strong><progress id="cpuBar" max="100" value="{{metrics.cpu}}"></progress><small>المعالج اللحظي</small></article><article><label>RAM</label><strong id="ram">{{metrics.ram}}%</strong><progress id="ramBar" max="100" value="{{metrics.ram}}"></progress><small>استخدام الذاكرة</small></article><article><label>Disk</label><strong id="disk">{{metrics.disk}}%</strong><progress id="diskBar" max="100" value="{{metrics.disk}}"></progress><small>{{metrics.disk_free|bytes}} متاح</small></article><article><label>Uptime</label><strong>{{metrics.uptime_h}}h</strong><div class="mini-stat"><span>Load</span><b>{{'%.2f'|format(metrics.load)}}</b></div></article></div><div class="overview-grid"><article class="panel server-score"><div class="panel-head"><div><span class="kicker">SERVER PULSE</span><h3>مركز الحالة</h3></div><span class="pulse-ring"></span></div><div class="score-line"><strong>{{sites|length}}</strong><span>موقع/تطبيق</span></div><div class="score-line"><strong>{{databases|length}}</strong><span>قاعدة بيانات</span></div><div class="score-line"><strong>{{backups|length}}</strong><span>نسخة احتياطية مسجلة</span></div></article><article class="panel quick-actions"><div class="panel-head"><div><span class="kicker">QUICK ACTIONS</span><h3>إجراءات سريعة</h3></div></div><div class="quick-grid"><a href="#sites"><b>＋</b><span>موقع جديد</span></a><a href="#databases"><b>▦</b><span>قاعدة بيانات</span></a><a href="#security"><b>🔒</b><span>SSL</span></a><button type="button" id="doctorQuick"><b>✦</b><span>Doctor</span></button></div></article></div></section>
+{% from "macros/icons.html" import icon %}
+<section id="dashboard" class="dashboard-section">
+  <div class="dashboard-intro">
+    <div><span class="kicker">LIVE TELEMETRY</span><h2>نظرة عامة على الخادم</h2><p>موارد النظام والحالة التشغيلية تتحدث مباشرة من الخادم.</p></div>
+    <div class="telemetry-badge"><span class="signal-bars"><i></i><i></i><i></i><i></i></span><div><small>TELEMETRY</small><b>ACTIVE</b></div></div>
+  </div>
+  <div class="grid metrics electric-metrics">
+    <article class="metric-card metric-cyan">
+      <div class="metric-top"><span class="metric-icon">{{icon('cpu')}}</span><span class="metric-state"><i></i>LIVE</span></div>
+      <div class="metric-copy"><label>CPU PROCESSOR</label><strong id="cpu">{{metrics.cpu}}<sup>%</sup></strong><small>استخدام المعالج اللحظي</small></div>
+      <progress id="cpuBar" max="100" value="{{metrics.cpu}}"></progress><span class="metric-glow"></span>
+    </article>
+    <article class="metric-card metric-violet">
+      <div class="metric-top"><span class="metric-icon">{{icon('ram')}}</span><span class="metric-state"><i></i>LIVE</span></div>
+      <div class="metric-copy"><label>MEMORY / RAM</label><strong id="ram">{{metrics.ram}}<sup>%</sup></strong><small>استخدام الذاكرة الحالية</small></div>
+      <progress id="ramBar" max="100" value="{{metrics.ram}}"></progress><span class="metric-glow"></span>
+    </article>
+    <article class="metric-card metric-green">
+      <div class="metric-top"><span class="metric-icon">{{icon('disk')}}</span><span class="metric-state"><i></i>STORAGE</span></div>
+      <div class="metric-copy"><label>DISK STORAGE</label><strong id="disk">{{metrics.disk}}<sup>%</sup></strong><small>{{metrics.disk_free|bytes}} مساحة متاحة</small></div>
+      <progress id="diskBar" max="100" value="{{metrics.disk}}"></progress><span class="metric-glow"></span>
+    </article>
+    <article class="metric-card metric-gold">
+      <div class="metric-top"><span class="metric-icon">{{icon('clock')}}</span><span class="metric-state"><i></i>UPTIME</span></div>
+      <div class="metric-copy"><label>SERVER UPTIME</label><strong>{{metrics.uptime_h}}<sup>h</sup></strong><small>استمرارية تشغيل الخادم</small></div>
+      <div class="load-strip"><span>LOAD AVERAGE</span><b>{{'%.2f'|format(metrics.load)}}</b></div><span class="metric-glow"></span>
+    </article>
+  </div>
+
+  <div class="overview-grid premium-overview">
+    <article class="panel server-score command-card">
+      <div class="panel-head"><div><span class="kicker">SERVER PULSE</span><h3>مركز الحالة</h3><p>ملخص البنية المدارة من Nexvary Panel.</p></div><div class="radar-core"><span></span><i></i></div></div>
+      <div class="score-grid">
+        <div class="score-tile"><span class="score-icon cyan">{{icon('sites')}}</span><div><strong>{{sites|length}}</strong><small>موقع / تطبيق</small></div></div>
+        <div class="score-tile"><span class="score-icon violet">{{icon('database')}}</span><div><strong>{{databases|length}}</strong><small>قاعدة بيانات</small></div></div>
+        <div class="score-tile"><span class="score-icon green">{{icon('backup')}}</span><div><strong>{{backups|length}}</strong><small>نسخة احتياطية</small></div></div>
+      </div>
+      <div class="core-line"><span><i></i>Root Agent isolated</span><span><i></i>Audit enabled</span><span><i></i>CSRF protected</span></div>
+    </article>
+
+    <article class="panel quick-actions command-card">
+      <div class="panel-head"><div><span class="kicker">QUICK LAUNCH</span><h3>إجراءات سريعة</h3><p>اختصارات مباشرة لأكثر مهام الإدارة استخدامًا.</p></div><span class="shortcut-key">4 ACTIONS</span></div>
+      <div class="quick-grid electric-actions">
+        <a href="#sites"><span class="quick-icon cyan">{{icon('plus')}}</span><div><b>موقع جديد</b><small>Website / App</small></div>{{icon('chevron','arrow')}}</a>
+        <a href="#databases"><span class="quick-icon violet">{{icon('database')}}</span><div><b>قاعدة بيانات</b><small>MariaDB</small></div>{{icon('chevron','arrow')}}</a>
+        <a href="#security"><span class="quick-icon green">{{icon('lock')}}</span><div><b>شهادة SSL</b><small>Let's Encrypt</small></div>{{icon('chevron','arrow')}}</a>
+        <button type="button" id="doctorQuick"><span class="quick-icon gold">{{icon('spark')}}</span><div><b>NEXVARY Doctor</b><small>Health scan</small></div>{{icon('chevron','arrow')}}</button>
+      </div>
+    </article>
+  </div>
+</section>
