@@ -24,17 +24,25 @@ os.environ["NVP_AGENT_SOCK"] = str(pathlib.Path(tmp) / "missing.sock")
 os.environ["NVP_COOKIE_SECURE"] = "0"
 
 from panel.db_layer import db
+from panel.routes_platform import _safe_rel_request
 from panel.security import _totp, totp_enabled_for, verify_totp_secret
 assert verify_totp_secret("JBSWY3DPEHPK3PXP", _totp("JBSWY3DPEHPK3PXP"))
 assert not verify_totp_secret("JBSWY3DPEHPK3PXP", "000000") or _totp("JBSWY3DPEHPK3PXP") == "000000"
 
+# Web boundary rejects absolute, traversal and Windows-style paths before any agent/filesystem call.
+for bad in ["../etc/passwd", "/etc/passwd", "public/../../etc", "public\\secret", "./public", "public//x"]:
+    assert not _safe_rel_request(bad), f"unsafe request path accepted: {bad}"
+assert _safe_rel_request("public/index.php")
+assert _safe_rel_request("", allow_root=True)
+
 agent_spec = importlib.util.spec_from_file_location("nvp_root_agent", ROOT / "agent" / "root_agent.py")
 agent_mod = importlib.util.module_from_spec(agent_spec)
 agent_spec.loader.exec_module(agent_mod)
-for bad in ["../etc/passwd", "/etc/passwd", "public/../../etc", "public\\secret"]:
+# Agent-level path handling must still reject traversal and backslash tricks; absolute syntax is normalized below the site root.
+for bad in ["../etc/passwd", "public/../../etc", "public\\secret"]:
     try:
         agent_mod._rel_parts(bad)
-        raise AssertionError(f"unsafe path accepted: {bad}")
+        raise AssertionError(f"unsafe agent path accepted: {bad}")
     except ValueError:
         pass
 assert agent_mod.GIT_URL_RE.match("https://github.com/example/project.git")
