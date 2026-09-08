@@ -85,7 +85,7 @@ r = client.post("/login", data={"csrf_token": csrf, "username": "admin", "passwo
 assert r.status_code == 302 and r.location.endswith("/")
 r = client.get("/")
 assert r.status_code == 200
-for marker in [b"Docker Center", b"NEXVARY Doctor", b'id="sites"', b'id="databases"', b'id="files"', b'id="deploy"', b'id="wordpress"', b'id="notifications"', b"nexvary-panel-primary.jpg"]:
+for marker in [b"Docker Center", b"NEXVARY Doctor", b'id="sites"', b'id="databases"', b'id="files"', b'id="deploy"', b'id="wordpress"', b'id="notifications"', b'id="fileNewFile"', b'notification-filter', b'platform-controls.css', b'platform-controls.js', b"nexvary-panel-primary.jpg"]:
     assert marker in r.data, marker
 r = client.get("/api/metrics")
 assert r.status_code == 200 and {"cpu", "ram", "disk"}.issubset(r.get_json())
