@@ -12,6 +12,8 @@ from .core import csrf_guard, csrf_token, ensure_schema_columns
 from .routes_auth import register_auth_routes
 from .routes_ops import register_ops_routes
 from .routes_sites import register_site_routes
+from .routes_platform import register_platform_routes
+from .routes_security import register_security_routes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -46,4 +48,6 @@ def create_app() -> Flask:
     register_auth_routes(app)
     register_site_routes(app)
     register_ops_routes(app)
+    register_platform_routes(app)
+    register_security_routes(app)
     return app

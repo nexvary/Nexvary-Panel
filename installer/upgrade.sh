@@ -6,11 +6,12 @@ set -euo pipefail
 [[ "${ID:-}" =~ ^(ubuntu|debian)$ ]] || { echo 'Supported: Ubuntu / Debian'; exit 2; }
 WITH_DOCKER=0
 [[ "${1:-}" == "--with-docker" ]] && WITH_DOCKER=1
+PANEL_VERSION="$(tr -d '[:space:]' < VERSION 2>/dev/null || printf 'unknown')"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y nginx python3 python3-venv python3-pip openssl certbot python3-certbot-nginx fail2ban ufw php-fpm mariadb-server nodejs ca-certificates curl rsync
+apt-get install -y nginx python3 python3-venv python3-pip openssl certbot python3-certbot-nginx fail2ban ufw php-fpm mariadb-server nodejs ca-certificates curl rsync git
 if (( WITH_DOCKER )); then apt-get install -y docker.io; fi
-cp -a app.py panel requirements.txt templates static /opt/nexvary-panel/
+cp -a app.py panel requirements.txt templates static VERSION /opt/nexvary-panel/
 chown -R nexvary-panel:nexvary-panel /opt/nexvary-panel
 /opt/nexvary-panel/venv/bin/pip install -r /opt/nexvary-panel/requirements.txt
 install -m 0755 agent/nvpctl /usr/local/sbin/nvpctl
@@ -23,4 +24,4 @@ systemctl enable --now mariadb fail2ban nginx
 if (( WITH_DOCKER )); then systemctl enable --now docker; fi
 systemctl restart nexvary-panel-agent nexvary-panel
 nginx -t
-printf '\nUpgrade complete. Existing admin credentials and SQLite data were preserved.\n'
+printf '\nNexvary Panel %s upgrade complete. Existing admin credentials and SQLite data were preserved.\n' "$PANEL_VERSION"

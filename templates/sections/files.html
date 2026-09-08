@@ -1,0 +1,16 @@
+{% from "macros/icons.html" import icon %}
+<section id="files" class="workspace-page">
+  <div class="workspace-hero violet-hero royal-frame"><span class="hero-icon">{{icon('file')}}</span><div class="hero-copy"><span class="kicker">SITE SANDBOX</span><h2>مدير الملفات</h2><p>تصفح وتحرير ملفات الموقع داخل /var/www/&lt;domain&gt; فقط، مع رفض traversal والروابط الرمزية.</p></div><div class="hero-stats"><div><small>MODE</small><strong>SAFE ROOT</strong></div><div><small>EDITOR</small><strong>TEXT ONLY</strong></div></div></div>
+  <div class="file-manager-grid">
+    <div class="panel royal-frame workspace-primary">
+      <div class="file-toolbar"><select id="fileDomain" aria-label="الموقع"><option value="">اختر موقعًا</option>{% for s in sites %}<option value="{{s.domain}}">{{s.domain}}</option>{% endfor %}</select><input id="filePath" value="" placeholder="المسار داخل الموقع، مثال public/"><button id="fileRefresh" type="button">{{icon('refresh')}} تحديث</button></div>
+      <div id="fileBrowser" class="file-browser"><div class="empty">اختر موقعًا ثم اضغط تحديث.</div></div>
+    </div>
+    <div class="panel royal-frame file-editor">
+      <div class="panel-head"><div><span class="kicker">SECURE EDITOR</span><h3 id="fileEditorTitle">لا يوجد ملف محدد</h3></div><span class="pill">≤ 512 KB</span></div>
+      <textarea id="fileContent" spellcheck="false" placeholder="سيظهر محتوى الملف النصي هنا..." disabled></textarea>
+      <div class="file-actions"><button id="fileSave" type="button" disabled>حفظ</button><button id="fileNewFile" class="ghost" type="button">ملف جديد</button><button id="fileNewFolder" class="ghost" type="button">مجلد جديد</button><button id="fileDelete" class="danger-action" type="button" disabled>حذف</button></div>
+      <p class="hint">إنشاء الملفات والتحرير محصوران داخل جذر الموقع. لا يسمح بالخروج من الجذر أو فتح symlink، وحذف المجلدات غير الفارغة مرفوض.</p>
+    </div>
+  </div>
+</section>

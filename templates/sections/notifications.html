@@ -1,0 +1,9 @@
+{% from "macros/icons.html" import icon %}
+<section id="notifications" class="workspace-page">
+  <div class="workspace-hero silver-hero royal-frame"><span class="hero-icon">{{icon('bell')}}</span><div class="hero-copy"><span class="kicker">HEALTH & EVENTS</span><h2>مركز التنبيهات</h2><p>تنبيهات Doctor، الاستعادة، النشر والأمان في سجل واحد قابل للمراجعة.</p></div><div class="hero-stats"><div><small>UNREAD</small><strong>{{notifications_unread}}</strong></div><div><small>VISIBLE</small><strong>{{notifications|length}}</strong></div></div></div>
+  <div class="panel royal-frame">
+    <div class="content-toolbar"><div><span class="toolbar-dot silver"></span><div><b>Notification Feed</b><small>الأحدث أولًا</small></div></div><div class="notification-tools"><button type="button" class="ghost notification-filter active" data-notification-filter="all">الكل</button><button type="button" class="ghost notification-filter" data-notification-filter="unread">غير مقروء</button><button type="button" class="ghost notification-filter danger-action" data-notification-filter="critical">حرج</button>{% if notifications_unread %}<form method="post" action="/notifications/read-all"><input type="hidden" name="csrf_token" value="{{csrf_token()}}"><button class="ghost">تحديد الكل كمقروء</button></form>{% endif %}</div></div>
+    <div id="notificationList" class="notification-list">{% for n in notifications %}<div class="notification-row" data-level="{{n.level}}" data-read="{{'1' if n.read_at else '0'}}"><span class="notification-level {{n.level}}"></span><div style="flex:1"><b>{{n.title}}</b><small>{{n.detail}}</small></div><div><span class="tag {{'off' if not n.read_at else ''}}">{{n.source|upper}}</span><small>{{n.created_at|when}}</small></div></div>{% else %}<div class="empty">لا توجد تنبيهات حتى الآن.</div>{% endfor %}</div>
+    <div id="notificationEmptyFilter" class="empty hidden">لا توجد تنبيهات مطابقة لهذا الفلتر.</div>
+  </div>
+</section>
