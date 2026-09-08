@@ -37,6 +37,8 @@ if (await desktop.locator('.ui-icon').count() < 45) throw new Error('Original ic
 if (await desktop.locator('.metric-card').count() !== 4) throw new Error('Live telemetry cards missing');
 if (await desktop.locator('.command-search').count() !== 1) throw new Error('Command search missing');
 if (await desktop.locator('img[src*="nexvary-panel-primary.jpg"]').count() < 2) throw new Error('Approved Nexvary brand icon not integrated into shell/footer');
+if (await desktop.locator('link[href="/static/platform-controls.css"]').count() !== 1) throw new Error('Platform control stylesheet missing');
+if (await desktop.locator('script[src="/static/platform-controls.js"]').count() !== 1) throw new Error('Platform control script missing');
 if (await desktop.locator('#workspaceStage > section.active-view').count() !== 1) throw new Error('Workspace isolation failed on load');
 
 await assertRoyalFrame(desktop,'.workspace-topbar','Header');
@@ -55,9 +57,10 @@ await assertRoyalFrame(desktop,'#sites .creation-panel input','Creation input');
 await desktop.screenshot({ path: `${out}/nexvary-panel-0.5-sites-desktop.png`, fullPage: true });
 
 await openView(desktop,'files');
-if(await desktop.locator('#fileBrowser').count()!==1||await desktop.locator('#fileContent').count()!==1||await desktop.locator('#fileSave').count()!==1)throw new Error('Safe File Manager controls missing');
+if(await desktop.locator('#fileBrowser').count()!==1||await desktop.locator('#fileContent').count()!==1||await desktop.locator('#fileSave').count()!==1||await desktop.locator('#fileNewFile').count()!==1)throw new Error('Safe File Manager controls missing');
 await assertRoyalFrame(desktop,'#fileBrowser','File Manager browser');
 await assertRoyalFrame(desktop,'#fileSave','File Manager save button');
+await assertRoyalFrame(desktop,'#fileNewFile','File Manager new-file button');
 await desktop.screenshot({ path: `${out}/nexvary-panel-0.5-files-desktop.png`, fullPage: true });
 
 await openView(desktop,'deploy');
@@ -81,6 +84,11 @@ await desktop.screenshot({ path: `${out}/nexvary-panel-0.5-services-desktop.png`
 
 await openView(desktop,'notifications');
 if(await desktop.locator('.notification-list').count()!==1)throw new Error('Notification Center missing');
+if(await desktop.locator('.notification-filter').count()!==3)throw new Error('Notification filters missing');
+await assertRoyalFrame(desktop,'.notification-filter','Notification filter button');
+await desktop.locator('.notification-filter[data-notification-filter="critical"]').click();
+if(await desktop.locator('.notification-filter.active[data-notification-filter="critical"]').count()!==1)throw new Error('Critical notification filter does not activate');
+await desktop.locator('.notification-filter[data-notification-filter="all"]').click();
 await desktop.screenshot({ path: `${out}/nexvary-panel-0.5-notifications-desktop.png`, fullPage: true });
 
 const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } });
