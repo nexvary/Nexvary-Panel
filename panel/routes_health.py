@@ -10,6 +10,8 @@ from flask import jsonify, request
 from .config import DOMAIN_RE
 from .core import can_manage_domain, db, role_required
 
+MAX_HEAD_BYTES = 16 * 1024
+
 
 def _registered_site(domain: str) -> bool:
     with db() as conn:
@@ -41,6 +43,34 @@ def _resolve(domain: str) -> tuple[list[str], list[str], int]:
     return public[:12], blocked[:12], elapsed_ms
 
 
+def _parse_http_head(raw: bytes) -> dict:
+    text = raw.decode("iso-8859-1", errors="replace")
+    lines = text.split("\r\n")
+    status = 0
+    if lines and lines[0].startswith("HTTP/"):
+        parts = lines[0].split(" ", 2)
+        if len(parts) >= 2 and parts[1].isdigit():
+            status = int(parts[1])
+    headers: dict[str, str] = {}
+    for line in lines[1:]:
+        if not line:
+            break
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        key = key.strip().lower()
+        value = value.strip()
+        if key and key not in headers:
+            headers[key] = value[:500]
+    return {
+        "status": status,
+        "server": headers.get("server", "")[:120],
+        "hsts": bool(headers.get("strict-transport-security")),
+        "location": headers.get("location", "")[:500],
+        "content_type": headers.get("content-type", "")[:180],
+    }
+
+
 def _tls_probe(domain: str, ip: str) -> dict:
     family = socket.AF_INET6 if ":" in ip else socket.AF_INET
     address = (ip, 443, 0, 0) if family == socket.AF_INET6 else (ip, 443)
@@ -65,15 +95,31 @@ def _tls_probe(domain: str, ip: str) -> dict:
                 if subject:
                     break
             cipher = tls.cipher() or ("", "", 0)
+            tls_elapsed = int((time.perf_counter() - started) * 1000)
+            http_started = time.perf_counter()
+            request_bytes = (
+                f"HEAD / HTTP/1.1\r\nHost: {domain}\r\nUser-Agent: Nexvary-Panel-Health/0.6\r\n"
+                "Accept: */*\r\nConnection: close\r\n\r\n"
+            ).encode("ascii")
+            tls.sendall(request_bytes)
+            buf = bytearray()
+            while len(buf) < MAX_HEAD_BYTES and b"\r\n\r\n" not in buf:
+                chunk = tls.recv(min(4096, MAX_HEAD_BYTES - len(buf)))
+                if not chunk:
+                    break
+                buf.extend(chunk)
+            http = _parse_http_head(bytes(buf))
+            http["latency_ms"] = int((time.perf_counter() - http_started) * 1000)
             return {
                 "ok": True,
                 "ip": ip,
-                "latency_ms": int((time.perf_counter() - started) * 1000),
+                "latency_ms": tls_elapsed,
                 "protocol": tls.version() or "",
                 "cipher": str(cipher[0] or ""),
                 "subject": subject,
                 "expires": expires_text,
                 "days_left": days_left,
+                "http": http,
             }
     except (OSError, ssl.SSLError, ValueError) as exc:
         try:
@@ -85,6 +131,7 @@ def _tls_probe(domain: str, ip: str) -> dict:
             "ip": ip,
             "latency_ms": int((time.perf_counter() - started) * 1000),
             "error": str(exc)[:240],
+            "http": {"status": 0, "server": "", "hsts": False, "location": "", "content_type": "", "latency_ms": 0},
         }
 
 
@@ -98,10 +145,10 @@ def register_health_routes(app):
         try:
             public, blocked, dns_ms = _resolve(domain)
         except socket.gaierror as exc:
-            return jsonify(ok=True, domain=domain, dns={"ok": False, "addresses": [], "blocked": [], "latency_ms": 0, "error": str(exc)[:180]}, tls={"ok": False, "error": "DNS resolution failed"})
+            return jsonify(ok=True, domain=domain, dns={"ok": False, "addresses": [], "blocked": [], "latency_ms": 0, "error": str(exc)[:180]}, tls={"ok": False, "error": "DNS resolution failed", "http": {"status": 0}})
         dns = {"ok": bool(public or blocked), "addresses": public, "blocked": blocked, "latency_ms": dns_ms}
         if not public:
-            tls = {"ok": False, "error": "TLS probe blocked: no verified public IP address"}
+            tls = {"ok": False, "error": "TLS probe blocked: no verified public IP address", "http": {"status": 0}}
         else:
             tls = _tls_probe(domain, public[0])
         return jsonify(ok=True, domain=domain, dns=dns, tls=tls)
