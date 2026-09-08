@@ -41,7 +41,7 @@
       <a href="#security" data-title="مركز الأمان وSSL" data-subtitle="الشهادات وحالة طبقات الحماية والثقة">{{icon('shield')}}<span>الأمان و SSL</span><em></em></a>
       <a href="#services" data-title="الخدمات وNEXVARY Doctor" data-subtitle="صحة الخدمات والتشخيص والإصلاحات المسموح بها">{{icon('activity')}}<span>الخدمات و Doctor</span><em></em></a>
       <a href="#docker" data-title="Docker Center" data-subtitle="حالة الحاويات والتحكم التشغيلي المقيد">{{icon('docker')}}<span>Docker Center</span><em></em></a>
-      <a href="#notifications" data-title="مركز التنبيهات" data-subtitle="تنبيهات الصحة والأمان والاستعادة والنشر">{{icon('bell')}}<span>التنبيهات</span><em></em></a>
+      <a href="#notifications" data-title="مركز التنبيهات" data-subtitle="تنبيهات الصحة والأمان والاستعادة والنشر">{{icon('bell')}}<span>التنبيهات</span>{% if notifications_unread %}<strong class="nav-badge" aria-label="{{notifications_unread}} تنبيه غير مقروء">{{notifications_unread if notifications_unread < 100 else '99+'}}</strong>{% endif %}<em></em></a>
       {% if role == 'admin' %}<a href="#users" data-title="المستخدمون والصلاحيات" data-subtitle="إدارة الوصول والأدوار داخل لوحة التحكم">{{icon('users')}}<span>المستخدمون والصلاحيات</span><em></em></a>{% endif %}
       <a href="#audit" data-title="سجل التدقيق" data-subtitle="تسلسل زمني لكل العمليات الإدارية المهمة">{{icon('audit')}}<span>سجل التدقيق</span><em></em></a>
     </nav>
