@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+set -euo pipefail
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+DOMAIN_RE='^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$'
+DB_RE='^[A-Za-z][A-Za-z0-9_]{0,31}$'
+CONTAINER_RE='^[A-Za-z0-9_.-]{1,128}$'
+domain_ok(){ [[ "$1" =~ $DOMAIN_RE ]]; }
+need_domain(){ domain_ok "$1" || { echo "invalid domain" >&2; exit 2; }; }
+unit_for(){ printf 'nvp-%s' "${1//./-}"; }
+site_service(){ systemctl list-unit-files "$(unit_for "$1").service" --no-legend 2>/dev/null | grep -q "$(unit_for "$1").service"; }
+port_free(){ ! ss -H -ltn "sport = :$1" 2>/dev/null | grep -q .; }
+
+case "${1:-}" in
+  site-create)
+    d="${2:-}"; kind="${3:-}"; arg="${4:-}"; need_domain "$d"
+    [[ "$kind" =~ ^(static|php|node|python|reverse)$ ]] || { echo "invalid kind" >&2; exit 2; }
+    root="/var/www/$d/public"; appdir="/var/www/$d/app"; unit="$(unit_for "$d")"
+    install -d -m 0750 -o www-data -g www-data "$root"
+    if [[ "$kind" == static ]]; then
+      [[ -f "$root/index.html" ]] || printf '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>%s</title><main><h1>%s is live</h1><p>Managed by Nexvary Panel.</p></main>\n' "$d" "$d" > "$root/index.html"
+      chown www-data:www-data "$root/index.html"
+      cat > "/etc/nginx/sites-available/$d.conf" <<EOF
+server { listen 80; listen [::]:80; server_name $d www.$d; root $root; index index.html; access_log /var/log/nginx/$d.access.log; error_log /var/log/nginx/$d.error.log; server_tokens off; location / { try_files \$uri \$uri/ =404; } location ~ /\. { deny all; } }
+EOF
+    elif [[ "$kind" == php ]]; then
+      sock="$(find /run/php -maxdepth 1 -type s -name 'php*-fpm.sock' 2>/dev/null | sort -V | tail -1 || true)"
+      [[ -n "$sock" ]] || { echo "php-fpm socket not found" >&2; exit 3; }
+      [[ -f "$root/index.php" ]] || printf '<?php echo "<h1>%s PHP is live</h1><p>Managed by Nexvary Panel.</p>"; ?>\n' "$d" > "$root/index.php"
+      chown www-data:www-data "$root/index.php"
+      cat > "/etc/nginx/sites-available/$d.conf" <<EOF
+server { listen 80; listen [::]:80; server_name $d www.$d; root $root; index index.php index.html; access_log /var/log/nginx/$d.access.log; error_log /var/log/nginx/$d.error.log; server_tokens off; location / { try_files \$uri \$uri/ /index.php?\$query_string; } location ~ \.php$ { include snippets/fastcgi-php.conf; fastcgi_pass unix:$sock; } location ~ /\. { deny all; } }
+EOF
+    elif [[ "$kind" == reverse ]]; then
+      [[ "$arg" =~ ^https?://[A-Za-z0-9.:-]+(/.*)?$ ]] || { echo "invalid proxy target" >&2; exit 2; }
+      cat > "/etc/nginx/sites-available/$d.conf" <<EOF
+server { listen 80; listen [::]:80; server_name $d www.$d; access_log /var/log/nginx/$d.access.log; error_log /var/log/nginx/$d.error.log; server_tokens off; location / { proxy_http_version 1.1; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto \$scheme; proxy_pass $arg; } }
+EOF
+    else
+      port="$arg"; [[ "$port" =~ ^[0-9]+$ ]] && (( port >= 1024 && port <= 65535 )) || { echo "invalid port" >&2; exit 2; }
+      port_free "$port" || { echo "port already in use" >&2; exit 4; }
+      install -d -m 0750 -o www-data -g www-data "$appdir"
+      if [[ "$kind" == node ]]; then
+        command -v node >/dev/null || { echo "node is not installed" >&2; exit 3; }
+        cat > "$appdir/server.js" <<EOF
+const http=require('http');const port=Number(process.env.PORT||$port);http.createServer((req,res)=>{res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end('<h1>$d Node.js is live</h1>');}).listen(port,'127.0.0.1');
+EOF
+        exec_line="/usr/bin/node $appdir/server.js"
+      else
+        cat > "$appdir/server.py" <<EOF
+from http.server import BaseHTTPRequestHandler,HTTPServer
+class H(BaseHTTPRequestHandler):
+ def do_GET(self):
+  b=b'<h1>$d Python is live</h1>';self.send_response(200);self.send_header('Content-Length',str(len(b)));self.end_headers();self.wfile.write(b)
+HTTPServer(('127.0.0.1',$port),H).serve_forever()
+EOF
+        exec_line="/usr/bin/python3 $appdir/server.py"
+      fi
+      chown -R www-data:www-data "$appdir"
+      cat > "/etc/systemd/system/$unit.service" <<EOF
+[Unit]
+Description=Nexvary Panel managed app $d
+After=network.target
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=$appdir
+Environment=PORT=$port
+ExecStart=$exec_line
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/www/$d
+[Install]
+WantedBy=multi-user.target
+EOF
+      systemctl daemon-reload; systemctl enable --now "$unit.service"
+      cat > "/etc/nginx/sites-available/$d.conf" <<EOF
+server { listen 80; listen [::]:80; server_name $d www.$d; access_log /var/log/nginx/$d.access.log; error_log /var/log/nginx/$d.error.log; server_tokens off; location / { proxy_http_version 1.1; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto \$scheme; proxy_pass http://127.0.0.1:$port; } }
+EOF
+    fi
+    ln -sfn "/etc/nginx/sites-available/$d.conf" "/etc/nginx/sites-enabled/$d.conf"; nginx -t; systemctl reload nginx
+    ;;
+  site-toggle)
+    d="${2:-}"; desired="${3:-}"; need_domain "$d"; conf="/etc/nginx/sites-available/$d.conf"; link="/etc/nginx/sites-enabled/$d.conf"
+    [[ -f "$conf" ]] || { echo "site config not found" >&2; exit 3; }
+    case "$desired" in enable) ln -sfn "$conf" "$link"; site_service "$d" && systemctl start "$(unit_for "$d").service" || true;; disable) rm -f "$link"; site_service "$d" && systemctl stop "$(unit_for "$d").service" || true;; *) exit 2;; esac
+    nginx -t; systemctl reload nginx
+    ;;
+  ssl)
+    d="${2:-}"; email="${3:-}"; need_domain "$d"; [[ "$email" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || exit 2
+    [[ -e "/etc/nginx/sites-enabled/$d.conf" ]] || { echo "site must be enabled" >&2; exit 3; }
+    certbot --nginx -d "$d" -d "www.$d" --non-interactive --agree-tos -m "$email" --redirect
+    ;;
+  db-create)
+    dbname="${2:-}"; dbuser="${3:-}"; [[ "$dbname" =~ $DB_RE && "$dbuser" =~ $DB_RE ]] || exit 2; IFS= read -r dbpass || true
+    [[ "$dbpass" =~ ^[A-Za-z0-9_@%+=:.,!\$#?-]{14,128}$ ]] || exit 2
+    [[ "$(mariadb --batch --skip-column-names -e "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='$dbname';")" == "0" ]] || { echo "database exists" >&2; exit 4; }
+    [[ "$(mariadb --batch --skip-column-names -e "SELECT COUNT(*) FROM mysql.user WHERE User='$dbuser' AND Host='localhost';")" == "0" ]] || { echo "user exists" >&2; exit 4; }
+    mariadb --protocol=socket <<SQL
+CREATE DATABASE \`$dbname\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER '$dbuser'@'localhost' IDENTIFIED BY '$dbpass';
+GRANT ALL PRIVILEGES ON \`$dbname\`.* TO '$dbuser'@'localhost';
+FLUSH PRIVILEGES;
+SQL
+    ;;
+  backup-site)
+    d="${2:-}"; dbname="${3:-}"; need_domain "$d"; [[ -d "/var/www/$d" ]] || exit 3; [[ -z "$dbname" || "$dbname" =~ $DB_RE ]] || exit 2
+    stamp="$(date -u +%Y%m%dT%H%M%SZ)"; outdir="/var/backups/nexvary-panel/$d"; install -d -m 0700 "$outdir"; archive="$outdir/${d}-${stamp}.tar.gz"; tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+    cp -a "/var/www/$d" "$tmp/site"; [[ -f "/etc/nginx/sites-available/$d.conf" ]] && cp -a "/etc/nginx/sites-available/$d.conf" "$tmp/nginx.conf"
+    if [[ -n "$dbname" ]]; then mariadb-dump --single-transaction --routines --triggers "$dbname" > "$tmp/database.sql"; chmod 0600 "$tmp/database.sql"; fi
+    tar -C "$tmp" -czf "$archive" .; chmod 0600 "$archive"; size="$(stat -c %s "$archive")"; printf '{"archive":"%s","size_bytes":%s,"database":"%s"}\n' "$archive" "$size" "$dbname"
+    ;;
+  site-logs)
+    d="${2:-}"; need_domain "$d"; echo '--- ACCESS ---'; [[ -f "/var/log/nginx/$d.access.log" ]] && tail -n 60 "/var/log/nginx/$d.access.log" || echo '(empty)'; echo '--- ERROR ---'; [[ -f "/var/log/nginx/$d.error.log" ]] && tail -n 60 "/var/log/nginx/$d.error.log" || echo '(empty)'
+    ;;
+  service-restart)
+    name="${2:-}"; [[ "$name" =~ ^(nginx|mariadb|fail2ban|docker)$ ]] || exit 2; systemctl restart "$name"; systemctl is-active --quiet "$name"; echo "$name active"
+    ;;
+  doctor)
+    python3 - <<'PY'
+import json,os,shutil,subprocess
+def run(c):
+ try:
+  p=subprocess.run(c,capture_output=True,text=True,timeout=12);return p.returncode==0,(p.stdout or p.stderr).strip()[-500:]
+ except Exception as e:return False,str(e)
+checks=[]
+def add(n,o,d,s='warning'):checks.append({'name':n,'ok':bool(o),'severity':'ok' if o else s,'detail':d})
+ok,out=run(['nginx','-t']);add('NGINX configuration',ok,out,'critical')
+for svc in ['nginx','mariadb','fail2ban']:
+ ok,_=run(['systemctl','is-active','--quiet',svc]);add('Service: '+svc,ok,'active' if ok else 'inactive','critical' if svc in ('nginx','mariadb') else 'warning')
+u=shutil.disk_usage('/');pct=u.used/u.total*100 if u.total else 0;add('Disk capacity',pct<90,f'{pct:.1f}% used','critical' if pct>=95 else 'warning')
+load=float(open('/proc/loadavg').read().split()[0]);cpus=os.cpu_count() or 1;add('System load',load<cpus*2,f'1m load {load:.2f} / {cpus} CPU')
+ok,_=run(['certbot','certificates']);add('Certbot',ok,'certificate inventory readable' if ok else 'unavailable')
+ok,_=run(['ufw','status']);add('Firewall',ok,'UFW responds' if ok else 'unavailable')
+if shutil.which('docker'):
+ ok,_=run(['docker','info']);add('Docker engine',ok,'available' if ok else 'daemon unavailable')
+print(json.dumps({'summary':{'total':len(checks),'passed':sum(c['ok'] for c in checks),'failed':sum(not c['ok'] for c in checks)},'checks':checks},separators=(',',':')))
+PY
+    ;;
+  docker-list) command -v docker >/dev/null || exit 0; docker ps -a --format '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}';;
+  docker-control) container="${2:-}"; desired="${3:-}"; [[ "$container" =~ $CONTAINER_RE && "$desired" =~ ^(start|stop|restart)$ ]] || exit 2; command -v docker >/dev/null || exit 3; docker inspect "$container" >/dev/null 2>&1 || exit 3; docker "$desired" "$container";;
+  *) echo "unsupported action" >&2; exit 2;;
+esac
