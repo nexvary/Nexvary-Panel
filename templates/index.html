@@ -76,6 +76,7 @@
       {% if role == 'admin' %}{% include "sections/users.html" %}{% endif %}
       {% include "sections/audit.html" %}
     </div>
+    <dialog id="healthDialog" class="health-dialog royal-frame"><div class="panel-head"><div><span class="kicker">SITE HEALTH INSPECTOR</span><h3 id="healthTitle">Health</h3></div><button type="button" id="closeHealth" class="tiny ghost">إغلاق</button></div><div id="healthReport" class="health-report"><div class="health-loading">اختر Health من بطاقة موقع لبدء الفحص.</div></div></dialog>
     <dialog id="logDialog" class="log-dialog royal-frame"><div class="panel-head"><div><span class="kicker">SITE LOGS</span><h3 id="logTitle">Logs</h3></div><button type="button" id="closeLogs" class="tiny ghost">إغلاق</button></div><pre id="logContent">Loading…</pre></dialog>
     <footer><span class="footer-mark brand-footer"><img src="/static/brand/nexvary-panel-primary.jpg" alt=""></span><b>Nexvary Panel</b><span>Build {{panel_version}}</span><i></i><span>Security-first control plane</span></footer>
   </main>
