@@ -24,7 +24,7 @@ os.environ["NVP_AGENT_SOCK"] = str(pathlib.Path(tmp) / "missing.sock")
 os.environ["NVP_COOKIE_SECURE"] = "0"
 
 from panel.db_layer import db
-from panel.routes_health import _is_public_ip
+from panel.routes_health import _is_public_ip, _parse_http_head
 from panel.routes_platform import _safe_rel_request
 from panel.security import _totp, totp_enabled_for, verify_totp_secret
 assert verify_totp_secret("JBSWY3DPEHPK3PXP", _totp("JBSWY3DPEHPK3PXP"))
@@ -35,6 +35,8 @@ for blocked_ip in ["127.0.0.1", "10.0.0.1", "172.16.0.1", "192.168.1.1", "169.25
     assert not _is_public_ip(blocked_ip), f"private/reserved IP accepted: {blocked_ip}"
 assert _is_public_ip("8.8.8.8")
 assert _is_public_ip("2606:4700:4700::1111")
+head = _parse_http_head(b"HTTP/1.1 301 Moved Permanently\r\nServer: nginx\r\nStrict-Transport-Security: max-age=31536000\r\nLocation: https://www.example.com/\r\nContent-Type: text/html\r\n\r\n")
+assert head["status"] == 301 and head["hsts"] is True and head["server"] == "nginx" and head["location"].startswith("https://")
 
 # Web boundary rejects absolute, traversal and Windows-style paths before any agent/filesystem call.
 for bad in ["../etc/passwd", "/etc/passwd", "public/../../etc", "public\\secret", "./public", "public//x"]:
