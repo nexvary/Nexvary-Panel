@@ -1,0 +1,11 @@
+{% from "macros/icons.html" import icon %}
+<section id="deploy" class="workspace-page">
+  <div class="workspace-hero green-hero royal-frame"><span class="hero-icon">{{icon('git')}}</span><div class="hero-copy"><span class="kicker">PUSH TO DEPLOY</span><h2>Git Deploy</h2><p>نشر كود من GitHub/GitLab/Bitbucket إلى public أو app بدون أوامر Shell مخصصة أو post-deploy scripts.</p></div><div class="hero-stats"><div><small>PROTOCOL</small><strong>HTTPS ONLY</strong></div><div><small>HOOKS</small><strong>BLOCKED</strong></div></div></div>
+  <div class="deploy-grid">
+    <div class="panel royal-frame">
+      <div class="content-toolbar"><div><span class="toolbar-dot green"></span><div><b>Deployment History</b><small>آخر عمليات النشر</small></div></div><span class="pill">{{deployments|length}} RUNS</span></div>
+      <div class="deploy-history">{% for d in deployments %}<div class="deploy-row"><div><b>{{d.domain}}</b><small>{{d.repo_url}} · {{d.branch}} → {{d.target}}</small></div><div><span class="tag {{'off' if d.status!='success' else ''}}">{{d.status|upper}}</span><small>{{d.updated_at|when}}</small></div></div>{% else %}<div class="empty">لا توجد عمليات نشر مسجلة بعد.</div>{% endfor %}</div>
+    </div>
+    {% if role != 'viewer' %}<form class="creation-panel royal-frame" method="post" action="/git/deploy"><input type="hidden" name="csrf_token" value="{{csrf_token()}}"><div class="creation-head"><span class="creation-icon green">{{icon('git')}}</span><div><span class="kicker">NEW DEPLOYMENT</span><h3>نشر مستودع</h3></div></div><label>الموقع</label><select name="domain" required>{% for s in sites %}<option value="{{s.domain}}">{{s.domain}}</option>{% endfor %}</select><label>Repository HTTPS URL</label><input name="repo_url" placeholder="https://github.com/org/repo.git" required><label>Branch</label><input name="branch" value="main" pattern="[A-Za-z0-9._/-]{1,120}" required><label>Target</label><select name="target"><option value="public">public/</option><option value="app">app/</option></select><button class="primary-create" {% if not sites %}disabled{% endif %}>{{icon('git')}} Deploy</button><div class="creation-note">{{icon('shield')}} يتم تعطيل Git hooks وعدم تشغيل npm/pip/build scripts تلقائيًا.</div></form>{% endif %}
+  </div>
+</section>
