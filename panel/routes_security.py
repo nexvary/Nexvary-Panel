@@ -8,6 +8,12 @@ from .core import audit, db, notify, role_required
 from .security import new_totp_secret, totp_enabled_for, verify_totp, verify_totp_secret
 
 
+def _pending_secret(username: str) -> str:
+    with db() as conn:
+        row = conn.execute("SELECT totp_secret,totp_enabled FROM user_security WHERE username=?", (username,)).fetchone()
+    return str(row["totp_secret"]) if row and not row["totp_enabled"] else ""
+
+
 def register_security_routes(app):
     @app.post("/2fa/start")
     @role_required("admin", "operator", "viewer")
@@ -17,29 +23,28 @@ def register_security_routes(app):
             flash("المصادقة الثنائية مفعلة بالفعل على هذا الحساب.", "error")
             return redirect(url_for("home") + "#security")
         secret = new_totp_secret()
-        session["totp_pending"] = secret
-        session.modified = True
+        with db() as conn:
+            conn.execute(
+                "INSERT INTO user_security(username,totp_secret,totp_enabled,updated_at) VALUES(?,?,0,?) "
+                "ON CONFLICT(username) DO UPDATE SET totp_secret=excluded.totp_secret,totp_enabled=0,updated_at=excluded.updated_at",
+                (username, secret, int(time.time())),
+            )
         audit("2fa-enrollment-start")
-        flash("تم إنشاء مفتاح 2FA مؤقت. أضفه إلى تطبيق Authenticator ثم أدخل الرمز للتفعيل.", "ok")
+        flash("تم إنشاء مفتاح 2FA مؤقت على الخادم. أضفه إلى تطبيق Authenticator ثم أدخل الرمز للتفعيل.", "ok")
         return redirect(url_for("home") + "#security")
 
     @app.post("/2fa/enable")
     @role_required("admin", "operator", "viewer")
     def two_factor_enable():
         username = session.get("user", "")
-        secret = str(session.get("totp_pending", ""))
+        secret = _pending_secret(username)
         code = request.form.get("otp", "").strip()
         if not secret or not verify_totp_secret(secret, code):
             audit("2fa-enable-failed")
-            flash("رمز 2FA غير صحيح أو انتهت جلسة الإعداد.", "error")
+            flash("رمز 2FA غير صحيح أو لا يوجد إعداد معلق.", "error")
             return redirect(url_for("home") + "#security")
         with db() as conn:
-            conn.execute(
-                "INSERT INTO user_security(username,totp_secret,totp_enabled,updated_at) VALUES(?,?,1,?) "
-                "ON CONFLICT(username) DO UPDATE SET totp_secret=excluded.totp_secret,totp_enabled=1,updated_at=excluded.updated_at",
-                (username, secret, int(time.time())),
-            )
-        session.pop("totp_pending", None)
+            conn.execute("UPDATE user_security SET totp_enabled=1,updated_at=? WHERE username=?", (int(time.time()), username))
         audit("2fa-enabled")
         notify("ok", "Two-factor authentication enabled", username, "security", owner=username)
         flash("تم تفعيل المصادقة الثنائية بنجاح.", "ok")
@@ -48,7 +53,10 @@ def register_security_routes(app):
     @app.post("/2fa/cancel")
     @role_required("admin", "operator", "viewer")
     def two_factor_cancel():
-        session.pop("totp_pending", None)
+        username = session.get("user", "")
+        with db() as conn:
+            conn.execute("DELETE FROM user_security WHERE username=? AND totp_enabled=0", (username,))
+        audit("2fa-enrollment-cancel")
         return redirect(url_for("home") + "#security")
 
     @app.post("/2fa/disable")
