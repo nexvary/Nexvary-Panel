@@ -1,0 +1,11 @@
+(()=>{
+  'use strict';
+  const $=(s,r=document)=>r.querySelector(s);const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const grid=$('#fusionGrid');
+  function setText(id,value){const el=$(id);if(el)el.textContent=value}
+  function providerCard(p){const installed=Boolean(p.installed);const state=String(p.service_state||'unknown');const version=p.version||'Not detected';const caps=(p.capabilities||[]).map(x=>`<span>${esc(x)}</span>`).join('');const initial=esc((p.label||'?').slice(0,1).toUpperCase());return `<article class="fusion-provider-card royal-frame ${installed?'':'not-installed'}"><div class="fusion-card-head"><div class="fusion-card-title"><span class="fusion-provider-orb">${initial}</span><div><b>${esc(p.label)}</b><small>${esc(p.category)}</small></div></div><span class="fusion-status ${installed?'':'off'}">${installed?'DETECTED':'NOT INSTALLED'}</span></div><div class="fusion-version">${esc(version)}</div><div class="fusion-capabilities">${caps}</div><div class="fusion-card-meta"><span>${esc(p.license_family||'—')}</span><span class="fusion-service-${esc(state)}">${esc(state)}</span></div></article>`}
+  async function loadFusion(){if(!grid)return;grid.innerHTML='<div class="fusion-loading royal-frame">جاري اكتشاف المكونات المثبتة…</div>';try{const r=await fetch('/api/fusion/providers',{credentials:'same-origin',headers:{Accept:'application/json'}});let d={ok:false,error:`HTTP ${r.status}`};try{d=await r.json()}catch{}if(!r.ok||!d.ok){grid.innerHTML=`<div class="fusion-loading royal-frame">${esc(d.error||'Fusion discovery failed')}</div>`;return}const s=d.summary||{};setText('#fusionRegistered',s.registered??0);setText('#fusionInstalled',s.installed??0);setText('#fusionCategories',`${s.covered_categories??0}/${s.categories??0}`);setText('#fusionCoverage',`${s.integration_coverage??0}%`);grid.innerHTML=(d.providers||[]).map(providerCard).join('')||'<div class="fusion-loading royal-frame">لا يوجد مزودون مسجلون.</div>'}catch(e){grid.innerHTML=`<div class="fusion-loading royal-frame">${esc(e.message||'Fusion discovery failed')}</div>`}}
+  $('#fusionRefresh')?.addEventListener('click',loadFusion);
+  const fusionNav=$('#nav a[href="#fusion"]');fusionNav?.addEventListener('click',()=>setTimeout(loadFusion,50));
+  if(location.hash==='#fusion')loadFusion();
+})();
