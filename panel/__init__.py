@@ -15,6 +15,7 @@ from .routes_sites import register_site_routes
 from .routes_platform import register_platform_routes
 from .routes_security import register_security_routes
 from .routes_health import register_health_routes
+from .routes_fusion import register_fusion_routes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -52,4 +53,5 @@ def create_app() -> Flask:
     register_platform_routes(app)
     register_security_routes(app)
     register_health_routes(app)
+    register_fusion_routes(app)
     return app
