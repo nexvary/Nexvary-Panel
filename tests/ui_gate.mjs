@@ -92,7 +92,9 @@ await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-wordpress-desktop.png
 await openView(desktop,'security');
 if(await desktop.locator('.security-posture-grid .posture-card').count()!==4)throw new Error('Security posture cards missing');
 if(await desktop.locator('form[action="/2fa/start"]').count()!==1)throw new Error('2FA enrollment control missing');
+if(await desktop.locator('.stepup-panel').count()!==1||await desktop.locator('form[action="/security/step-up"]').count()!==1)throw new Error('Step-Up Authentication controls missing');
 await assertRoyalFrame(desktop,'.security-posture-grid .posture-card','Security posture card');
+await assertRoyalFrame(desktop,'.stepup-panel','Step-Up panel');
 await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-security-desktop.png`, fullPage: true });
 
 await openView(desktop,'services');
@@ -125,4 +127,4 @@ await mobile.waitForTimeout(250);
 if(await mobile.locator('#sidebar.open').count())throw new Error('Escape did not close mobile drawer');
 await browser.close();
 if (failures.length) throw new Error(failures.join('\n'));
-console.log('Nexvary Panel 0.6 Fusion Capability/DNS/Site Health/Royal UI Release Gate: PASS');
+console.log('Nexvary Panel 0.6 Fusion Capability/DNS/Step-Up/Site Health/Royal UI Release Gate: PASS');
