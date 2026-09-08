@@ -39,7 +39,6 @@ if (await desktop.locator('.command-search').count() !== 1) throw new Error('Com
 if (await desktop.locator('img[src*="nexvary-panel-primary.jpg"]').count() < 2) throw new Error('Approved Nexvary brand icon not integrated into shell/footer');
 if (await desktop.locator('#workspaceStage > section.active-view').count() !== 1) throw new Error('Workspace isolation failed on load');
 
-// Royal Gold Frame release gate: header, nav, page, card, button and field must all carry a visible luminous edge.
 await assertRoyalFrame(desktop,'.workspace-topbar','Header');
 await assertRoyalFrame(desktop,'#nav a.active','Active navigation item');
 await assertRoyalFrame(desktop,'#workspaceStage > section.active-view','Active workspace page');
@@ -50,9 +49,9 @@ await assertNoOverflow(desktop,'Dashboard desktop');
 await desktop.screenshot({ path: `${out}/nexvary-panel-0.5-dashboard-desktop.png`, fullPage: true });
 
 await openView(desktop,'sites');
-if(await desktop.locator('.application-grid').count()!==1||await desktop.locator('.creation-panel').count()<1)throw new Error('Sites workspace structure missing');
-await assertRoyalFrame(desktop,'.creation-panel','Creation panel');
-await assertRoyalFrame(desktop,'.creation-panel input','Creation input');
+if(await desktop.locator('#sites .application-grid').count()!==1||await desktop.locator('#sites .creation-panel').count()<1)throw new Error('Sites workspace structure missing');
+await assertRoyalFrame(desktop,'#sites .creation-panel','Creation panel');
+await assertRoyalFrame(desktop,'#sites .creation-panel input','Creation input');
 await desktop.screenshot({ path: `${out}/nexvary-panel-0.5-sites-desktop.png`, fullPage: true });
 
 await openView(desktop,'files');
