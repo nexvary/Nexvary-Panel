@@ -17,13 +17,27 @@ def _domain_allowed(domain: str) -> bool:
     return bool(DOMAIN_RE.match(domain)) and can_manage_domain(domain)
 
 
+def _safe_rel_request(value: str, *, allow_root: bool = False) -> bool:
+    if not isinstance(value, str) or len(value) > 500 or "\x00" in value or "\\" in value:
+        return False
+    value = value.strip()
+    if value.startswith("/"):
+        return False
+    if not value:
+        return allow_root
+    parts = value.split("/")
+    if any(part in {"", ".", ".."} for part in parts):
+        return False
+    return True
+
+
 def register_platform_routes(app):
     @app.get("/api/files")
     @role_required("admin", "operator")
     def files_list():
         domain = request.args.get("domain", "").lower().strip()
         rel = request.args.get("path", "").strip()
-        if not _domain_allowed(domain) or len(rel) > 500:
+        if not _domain_allowed(domain) or not _safe_rel_request(rel, allow_root=True):
             return jsonify(ok=False, error="site/path not allowed"), 403
         result = agent_call({"action": "file-list", "domain": domain, "path": rel}, timeout=20)
         audit("file-list", f"{domain}:{rel}")
@@ -34,7 +48,7 @@ def register_platform_routes(app):
     def file_read():
         domain = request.args.get("domain", "").lower().strip()
         rel = request.args.get("path", "").strip()
-        if not _domain_allowed(domain) or not rel or len(rel) > 500:
+        if not _domain_allowed(domain) or not _safe_rel_request(rel):
             return jsonify(ok=False, error="site/path not allowed"), 403
         result = agent_call({"action": "file-read", "domain": domain, "path": rel}, timeout=20)
         audit("file-read", f"{domain}:{rel}")
@@ -47,7 +61,7 @@ def register_platform_routes(app):
         domain = str(data.get("domain", "")).lower().strip()
         rel = str(data.get("path", "")).strip()
         content = data.get("content", "")
-        if not _domain_allowed(domain) or not rel or len(rel) > 500 or not isinstance(content, str) or len(content.encode("utf-8")) > 512 * 1024:
+        if not _domain_allowed(domain) or not _safe_rel_request(rel) or not isinstance(content, str) or len(content.encode("utf-8")) > 512 * 1024:
             return jsonify(ok=False, error="invalid file request"), 400
         result = agent_call({"action": "file-write", "domain": domain, "path": rel, "content": content}, timeout=25)
         audit("file-write" if result.get("ok") else "file-write-failed", f"{domain}:{rel}")
@@ -59,7 +73,7 @@ def register_platform_routes(app):
         data = request.get_json(silent=True) or {}
         domain = str(data.get("domain", "")).lower().strip()
         rel = str(data.get("path", "")).strip()
-        if not _domain_allowed(domain) or not rel or len(rel) > 500:
+        if not _domain_allowed(domain) or not _safe_rel_request(rel):
             return jsonify(ok=False, error="invalid folder request"), 400
         result = agent_call({"action": "file-mkdir", "domain": domain, "path": rel}, timeout=20)
         audit("file-mkdir" if result.get("ok") else "file-mkdir-failed", f"{domain}:{rel}")
@@ -71,7 +85,7 @@ def register_platform_routes(app):
         data = request.get_json(silent=True) or {}
         domain = str(data.get("domain", "")).lower().strip()
         rel = str(data.get("path", "")).strip()
-        if not _domain_allowed(domain) or not rel or len(rel) > 500:
+        if not _domain_allowed(domain) or not _safe_rel_request(rel):
             return jsonify(ok=False, error="invalid delete request"), 400
         result = agent_call({"action": "file-delete", "domain": domain, "path": rel}, timeout=20)
         audit("file-delete" if result.get("ok") else "file-delete-failed", f"{domain}:{rel}")
