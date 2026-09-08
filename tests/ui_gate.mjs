@@ -18,27 +18,21 @@ async function enterPanel(page) {
 }
 async function assertNoOverflow(page,label){if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error(`${label} overflow`)}
 async function openView(page,id){await page.locator(`#nav a[href="#${id}"]`).click();await page.locator(`#${id}.active-view`).waitFor({state:'visible'});const active=await page.locator('#workspaceStage > section.active-view').count();if(active!==1)throw new Error(`Expected exactly one active workspace, got ${active}`);await assertNoOverflow(page,`${id} desktop`)}
-async function assertRoyalFrame(page, selector, label){
-  const el=page.locator(selector).first();
-  if(await el.count()!==1)throw new Error(`${label} target missing: ${selector}`);
-  const style=await el.evaluate(node=>{const s=getComputedStyle(node);return {border:s.borderColor,borderStyle:s.borderStyle,shadow:s.boxShadow}});
-  if(!style.border||style.borderStyle==='none'||style.border==='rgba(0, 0, 0, 0)')throw new Error(`${label} gold border missing`);
-  if(!style.shadow||style.shadow==='none')throw new Error(`${label} luminous shadow missing`);
-}
+async function assertRoyalFrame(page, selector, label){const el=page.locator(selector).first();if(await el.count()!==1)throw new Error(`${label} target missing: ${selector}`);const style=await el.evaluate(node=>{const s=getComputedStyle(node);return {border:s.borderColor,borderStyle:s.borderStyle,shadow:s.boxShadow}});if(!style.border||style.borderStyle==='none'||style.border==='rgba(0, 0, 0, 0)')throw new Error(`${label} gold border missing`);if(!style.shadow||style.shadow==='none')throw new Error(`${label} luminous shadow missing`)}
 
 const browser = await chromium.launch({ headless: true });
 const failures = [];
 const desktop = await browser.newPage({ viewport: { width: 1440, height: 1050 } });
 desktop.on('pageerror', e => failures.push(`desktop: ${e.message}`));
 await enterPanel(desktop);
-const workspaces=['dashboard','sites','databases','backups','files','deploy','wordpress','security','services','docker','notifications','users','audit'];
+const workspaces=['dashboard','sites','databases','backups','fusion','files','deploy','wordpress','security','services','docker','notifications','users','audit'];
 for (const id of workspaces) if (await desktop.locator(`#${id}`).count() !== 1) throw new Error(`Missing workspace #${id}`);
 if (await desktop.locator('.ui-icon').count() < 45) throw new Error('Original icon system missing or incomplete');
 if (await desktop.locator('.metric-card').count() !== 4) throw new Error('Live telemetry cards missing');
 if (await desktop.locator('.command-search').count() !== 1) throw new Error('Command search missing');
 if (await desktop.locator('img[src*="nexvary-panel-primary.jpg"]').count() < 2) throw new Error('Approved Nexvary brand icon not integrated into shell/footer');
-if (await desktop.locator('link[href="/static/platform-controls.css"]').count() !== 1) throw new Error('Platform control stylesheet missing');
-if (await desktop.locator('script[src="/static/platform-controls.js"]').count() !== 1) throw new Error('Platform control script missing');
+for(const asset of ['/static/platform-controls.css','/static/fusion.css'])if(await desktop.locator(`link[href="${asset}"]`).count()!==1)throw new Error(`Stylesheet missing: ${asset}`);
+for(const asset of ['/static/platform-controls.js','/static/fusion.js'])if(await desktop.locator(`script[src="${asset}"]`).count()!==1)throw new Error(`Script missing: ${asset}`);
 if (await desktop.locator('#healthDialog').count() !== 1 || await desktop.locator('#healthReport').count() !== 1 || await desktop.locator('#closeHealth').count() !== 1) throw new Error('Site Health Inspector shell missing');
 if (await desktop.locator('#workspaceStage > section.active-view').count() !== 1) throw new Error('Workspace isolation failed on load');
 
@@ -57,6 +51,15 @@ if(await desktop.locator('#sites .application-grid').count()!==1||await desktop.
 await assertRoyalFrame(desktop,'#sites .creation-panel','Creation panel');
 await assertRoyalFrame(desktop,'#sites .creation-panel input','Creation input');
 await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-sites-desktop.png`, fullPage: true });
+
+await openView(desktop,'fusion');
+await desktop.locator('.fusion-provider-card').first().waitFor({state:'visible',timeout:10000});
+if(await desktop.locator('.fusion-provider-card').count()<10)throw new Error('Fusion provider registry did not render expected providers');
+if(await desktop.locator('.fusion-policy-grid > div').count()!==4)throw new Error('Fusion policy controls missing');
+await assertRoyalFrame(desktop,'.fusion-provider-card','Fusion provider card');
+await assertRoyalFrame(desktop,'.fusion-policy','Fusion policy panel');
+await assertNoOverflow(desktop,'Fusion desktop');
+await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-fusion-desktop.png`, fullPage: true });
 
 await openView(desktop,'files');
 if(await desktop.locator('#fileBrowser').count()!==1||await desktop.locator('#fileContent').count()!==1||await desktop.locator('#fileSave').count()!==1||await desktop.locator('#fileNewFile').count()!==1)throw new Error('Safe File Manager controls missing');
@@ -110,4 +113,4 @@ await mobile.waitForTimeout(250);
 if(await mobile.locator('#sidebar.open').count())throw new Error('Escape did not close mobile drawer');
 await browser.close();
 if (failures.length) throw new Error(failures.join('\n'));
-console.log('Nexvary Panel 0.6 Site Health/Royal UI Release Gate: PASS');
+console.log('Nexvary Panel 0.6 Fusion/Site Health/Royal UI Release Gate: PASS');
