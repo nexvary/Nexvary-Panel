@@ -1,0 +1,115 @@
+name: Nexvary Panel Release Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Code and security smoke checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install Python dependencies
+        run: python -m pip install --upgrade pip && pip install -r requirements.txt
+      - name: Python compile gate
+        run: python -m compileall -q app.py panel agent tests
+      - name: Shell syntax gate
+        run: bash -n installer/install.sh installer/upgrade.sh agent/nvpctl
+      - name: Smoke tests
+        env:
+          NVP_COOKIE_SECURE: '0'
+        run: python tests/smoke_test.py
+
+  installation-gate:
+    name: Ubuntu 24.04 full installer gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nexvary Panel on clean runner
+        run: sudo bash installer/install.sh
+      - name: Verify services, files and HTTPS login
+        run: |
+          sudo systemctl is-active --quiet nginx
+          sudo systemctl is-active --quiet mariadb
+          sudo systemctl is-active --quiet nexvary-panel-agent
+          sudo systemctl is-active --quiet nexvary-panel
+          test -f /opt/nexvary-panel/panel/__init__.py
+          test -f /opt/nexvary-panel/static/app.css
+          curl -kfsS https://127.0.0.1:8443/login | grep -q 'Nexvary Panel'
+          sudo nginx -t
+
+  ui-release-gate:
+    name: Real browser UI gate and screenshots
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install app dependencies
+        run: python -m pip install --upgrade pip && pip install -r requirements.txt
+      - name: Install Playwright Chromium
+        run: npm install --no-save playwright@1.55.0 && npx playwright install --with-deps chromium
+      - name: Prepare isolated CI identity
+        shell: bash
+        run: |
+          TEST_PASSWORD="$(openssl rand -hex 18)"
+          SALT="$(openssl rand -hex 16)"
+          HASH="$(python - "$TEST_PASSWORD" "$SALT" <<'PY'
+          import hashlib,sys
+          p,s=sys.argv[1:]
+          print(hashlib.pbkdf2_hmac('sha256',p.encode(),bytes.fromhex(s),310000).hex())
+          PY
+          )"
+          {
+            echo "NVP_ADMIN_SALT=$SALT"
+            echo "NVP_ADMIN_HASH=$HASH"
+            echo "NVP_SECRET=$(openssl rand -hex 32)"
+            echo 'NVP_COOKIE_SECURE=0'
+            echo 'NVP_DATA_DIR=/tmp/nexvary-panel-ci'
+            echo 'NVP_DB_PATH=/tmp/nexvary-panel-ci/panel.db'
+            echo 'NVP_AGENT_SOCK=/tmp/nexvary-panel-ci/missing-agent.sock'
+            echo "NVP_TEST_PASSWORD=$TEST_PASSWORD"
+          } >> "$GITHUB_ENV"
+      - name: Start Nexvary Panel
+        run: |
+          mkdir -p /tmp/nexvary-panel-ci tests/artifacts
+          gunicorn --bind 127.0.0.1:8000 --workers 1 --timeout 30 app:app > /tmp/nexvary-panel.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8000/login >/dev/null && exit 0; sleep 1; done
+          cat /tmp/nexvary-panel.log
+          exit 1
+      - name: UI Release Gate
+        run: node tests/ui_gate.mjs
+      - name: Upload real UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexvary-panel-ui-screenshots
+          path: tests/artifacts/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexvary-panel-ci-log
+          path: /tmp/nexvary-panel.log
+          if-no-files-found: ignore
