@@ -39,6 +39,7 @@ if (await desktop.locator('.command-search').count() !== 1) throw new Error('Com
 if (await desktop.locator('img[src*="nexvary-panel-primary.jpg"]').count() < 2) throw new Error('Approved Nexvary brand icon not integrated into shell/footer');
 if (await desktop.locator('link[href="/static/platform-controls.css"]').count() !== 1) throw new Error('Platform control stylesheet missing');
 if (await desktop.locator('script[src="/static/platform-controls.js"]').count() !== 1) throw new Error('Platform control script missing');
+if (await desktop.locator('#healthDialog').count() !== 1 || await desktop.locator('#healthReport').count() !== 1 || await desktop.locator('#closeHealth').count() !== 1) throw new Error('Site Health Inspector shell missing');
 if (await desktop.locator('#workspaceStage > section.active-view').count() !== 1) throw new Error('Workspace isolation failed on load');
 
 await assertRoyalFrame(desktop,'.workspace-topbar','Header');
@@ -47,40 +48,41 @@ await assertRoyalFrame(desktop,'#workspaceStage > section.active-view','Active w
 await assertRoyalFrame(desktop,'.metric-card','Dashboard card');
 await assertRoyalFrame(desktop,'#quickCreate','Primary action button');
 await assertRoyalFrame(desktop,'.command-search','Command field');
+await assertRoyalFrame(desktop,'#healthDialog','Site Health dialog');
 await assertNoOverflow(desktop,'Dashboard desktop');
-await desktop.screenshot({ path: `${out}/nexvary-panel-0.5-dashboard-desktop.png`, fullPage: true });
+await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-dashboard-desktop.png`, fullPage: true });
 
 await openView(desktop,'sites');
 if(await desktop.locator('#sites .application-grid').count()!==1||await desktop.locator('#sites .creation-panel').count()<1)throw new Error('Sites workspace structure missing');
 await assertRoyalFrame(desktop,'#sites .creation-panel','Creation panel');
 await assertRoyalFrame(desktop,'#sites .creation-panel input','Creation input');
-await desktop.screenshot({ path: `${out}/nexvary-panel-0.5-sites-desktop.png`, fullPage: true });
+await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-sites-desktop.png`, fullPage: true });
 
 await openView(desktop,'files');
 if(await desktop.locator('#fileBrowser').count()!==1||await desktop.locator('#fileContent').count()!==1||await desktop.locator('#fileSave').count()!==1||await desktop.locator('#fileNewFile').count()!==1)throw new Error('Safe File Manager controls missing');
 await assertRoyalFrame(desktop,'#fileBrowser','File Manager browser');
 await assertRoyalFrame(desktop,'#fileSave','File Manager save button');
 await assertRoyalFrame(desktop,'#fileNewFile','File Manager new-file button');
-await desktop.screenshot({ path: `${out}/nexvary-panel-0.5-files-desktop.png`, fullPage: true });
+await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-files-desktop.png`, fullPage: true });
 
 await openView(desktop,'deploy');
 if(await desktop.locator('form[action="/git/deploy"]').count()!==1)throw new Error('Git Deploy form missing');
 await assertRoyalFrame(desktop,'form[action="/git/deploy"] input','Git Deploy input');
-await desktop.screenshot({ path: `${out}/nexvary-panel-0.5-deploy-desktop.png`, fullPage: true });
+await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-deploy-desktop.png`, fullPage: true });
 
 await openView(desktop,'wordpress');
 if(await desktop.locator('form[action="/wordpress/prepare"]').count()!==1)throw new Error('WordPress Manager provisioning form missing');
-await desktop.screenshot({ path: `${out}/nexvary-panel-0.5-wordpress-desktop.png`, fullPage: true });
+await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-wordpress-desktop.png`, fullPage: true });
 
 await openView(desktop,'security');
 if(await desktop.locator('.security-posture-grid .posture-card').count()!==4)throw new Error('Security posture cards missing');
 if(await desktop.locator('form[action="/2fa/start"]').count()!==1)throw new Error('2FA enrollment control missing');
 await assertRoyalFrame(desktop,'.security-posture-grid .posture-card','Security posture card');
-await desktop.screenshot({ path: `${out}/nexvary-panel-0.5-security-desktop.png`, fullPage: true });
+await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-security-desktop.png`, fullPage: true });
 
 await openView(desktop,'services');
 if(await desktop.locator('.doctor-command-center').count()!==1)throw new Error('Doctor command center missing');
-await desktop.screenshot({ path: `${out}/nexvary-panel-0.5-services-desktop.png`, fullPage: true });
+await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-services-desktop.png`, fullPage: true });
 
 await openView(desktop,'notifications');
 if(await desktop.locator('.notification-list').count()!==1)throw new Error('Notification Center missing');
@@ -89,7 +91,7 @@ await assertRoyalFrame(desktop,'.notification-filter','Notification filter butto
 await desktop.locator('.notification-filter[data-notification-filter="critical"]').click();
 if(await desktop.locator('.notification-filter.active[data-notification-filter="critical"]').count()!==1)throw new Error('Critical notification filter does not activate');
 await desktop.locator('.notification-filter[data-notification-filter="all"]').click();
-await desktop.screenshot({ path: `${out}/nexvary-panel-0.5-notifications-desktop.png`, fullPage: true });
+await desktop.screenshot({ path: `${out}/nexvary-panel-0.6-notifications-desktop.png`, fullPage: true });
 
 const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } });
 mobile.on('pageerror', e => failures.push(`mobile: ${e.message}`));
@@ -97,15 +99,15 @@ await enterPanel(mobile);
 if (await mobile.locator('#sidebar.open').count() !== 0) throw new Error('Mobile drawer must start closed');
 await assertRoyalFrame(mobile,'#workspaceStage > section.active-view','Mobile workspace page');
 await assertNoOverflow(mobile,'Mobile dashboard');
-await mobile.screenshot({ path: `${out}/nexvary-panel-0.5-mobile.png`, fullPage: true });
+await mobile.screenshot({ path: `${out}/nexvary-panel-0.6-mobile.png`, fullPage: true });
 await mobile.locator('#mobileMenu').click();
 await mobile.locator('#sidebar.open').waitFor({ state: 'visible' });
 await mobile.waitForTimeout(300);
 await assertRoyalFrame(mobile,'#nav a.active','Mobile active navigation item');
-await mobile.screenshot({ path: `${out}/nexvary-panel-0.5-mobile-drawer.png`, fullPage: false });
+await mobile.screenshot({ path: `${out}/nexvary-panel-0.6-mobile-drawer.png`, fullPage: false });
 await mobile.keyboard.press('Escape');
 await mobile.waitForTimeout(250);
 if(await mobile.locator('#sidebar.open').count())throw new Error('Escape did not close mobile drawer');
 await browser.close();
 if (failures.length) throw new Error(failures.join('\n'));
-console.log('Nexvary Panel 0.5 Royal Platform UI Release Gate: PASS');
+console.log('Nexvary Panel 0.6 Site Health/Royal UI Release Gate: PASS');
