@@ -16,6 +16,17 @@
     $('#fileRefresh')?.click();
   });
 
+  // Keep site workflows connected: Files/Deploy actions carry the current domain into the target workspace.
+  $$('.context-nav').forEach(button=>button.addEventListener('click',()=>{
+    const view=button.dataset.contextView||'',domain=button.dataset.domain||'';
+    const nav=$(`#nav a[href="#${CSS.escape(view)}"]`);if(!nav)return;nav.click();
+    if(view==='files'){
+      const select=$('#fileDomain');if(select&&[...select.options].some(o=>o.value===domain)){select.value=domain;select.dispatchEvent(new Event('change',{bubbles:true}))}
+    }else if(view==='deploy'){
+      const select=$('#deploy select[name="domain"]');if(select&&[...select.options].some(o=>o.value===domain)){select.value=domain;select.focus()}
+    }
+  }));
+
   const filterButtons=$$('.notification-filter'),rows=$$('#notificationList .notification-row'),empty=$('#notificationEmptyFilter');
   function applyNotificationFilter(mode){let visible=0;rows.forEach(row=>{const show=mode==='all'||(mode==='unread'&&row.dataset.read==='0')||(mode==='critical'&&row.dataset.level==='critical');row.classList.toggle('filter-hidden',!show);if(show)visible++});filterButtons.forEach(b=>b.classList.toggle('active',b.dataset.notificationFilter===mode));empty?.classList.toggle('hidden',visible!==0||rows.length===0)}
   filterButtons.forEach(b=>b.addEventListener('click',()=>applyNotificationFilter(b.dataset.notificationFilter||'all')));
