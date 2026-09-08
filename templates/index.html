@@ -6,7 +6,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#12072c">
+  <meta name="csrf-token" content="{{csrf_token()}}">
   <title>Nexvary Panel</title>
+  <link rel="icon" type="image/jpeg" href="/static/brand/nexvary-panel-primary.jpg">
   <link rel="stylesheet" href="/static/app.css">
   <link rel="stylesheet" href="/static/electric.css">
   <link rel="stylesheet" href="/static/royal-electric.css">
@@ -16,7 +18,7 @@
 <div class="shell workspace-shell">
   <aside id="sidebar">
     <div class="brand">
-      <span class="brand-mark"><span>N</span></span>
+      <span class="brand-mark brand-image"><img src="/static/brand/nexvary-panel-primary.jpg" alt="Nexvary"></span>
       <div class="brand-copy"><b>NEXVARY</b><small>PANEL · {{panel_version}}</small></div>
       <span class="brand-live">LIVE</span>
     </div>
@@ -31,10 +33,15 @@
       <a href="#sites" data-title="المواقع والتطبيقات" data-subtitle="إدارة التطبيقات والـRuntime وNGINX والحالة والسجلات">{{icon('sites')}}<span>المواقع والتطبيقات</span><em></em></a>
       <a href="#databases" data-title="قواعد البيانات" data-subtitle="MariaDB، المستخدمون والربط الآمن بالتطبيقات">{{icon('database')}}<span>قواعد البيانات</span><em></em></a>
       <a href="#backups" data-title="خزنة النسخ الاحتياطي" data-subtitle="نسخ المواقع وقواعد البيانات وسجل نقاط الاستعادة">{{icon('backup')}}<span>النسخ الاحتياطي</span><em></em></a>
+      <span class="nav-label nav-gap">PLATFORM</span>
+      <a href="#files" data-title="مدير الملفات" data-subtitle="إدارة ملفات المواقع داخل نطاق آمن ومحصور">{{icon('file')}}<span>مدير الملفات</span><em></em></a>
+      <a href="#deploy" data-title="Git Deploy" data-subtitle="نشر مستودعات موثوقة إلى التطبيقات بدون Shell مفتوح">{{icon('git')}}<span>Git Deploy</span><em></em></a>
+      <a href="#wordpress" data-title="WordPress Manager" data-subtitle="تهيئة WordPress وفحص حالته لكل موقع PHP">{{icon('wordpress')}}<span>WordPress Manager</span><em></em></a>
       <span class="nav-label nav-gap">INFRASTRUCTURE</span>
       <a href="#security" data-title="مركز الأمان وSSL" data-subtitle="الشهادات وحالة طبقات الحماية والثقة">{{icon('shield')}}<span>الأمان و SSL</span><em></em></a>
       <a href="#services" data-title="الخدمات وNEXVARY Doctor" data-subtitle="صحة الخدمات والتشخيص والإصلاحات المسموح بها">{{icon('activity')}}<span>الخدمات و Doctor</span><em></em></a>
       <a href="#docker" data-title="Docker Center" data-subtitle="حالة الحاويات والتحكم التشغيلي المقيد">{{icon('docker')}}<span>Docker Center</span><em></em></a>
+      <a href="#notifications" data-title="مركز التنبيهات" data-subtitle="تنبيهات الصحة والأمان والاستعادة والنشر">{{icon('bell')}}<span>التنبيهات</span><em></em></a>
       {% if role == 'admin' %}<a href="#users" data-title="المستخدمون والصلاحيات" data-subtitle="إدارة الوصول والأدوار داخل لوحة التحكم">{{icon('users')}}<span>المستخدمون والصلاحيات</span><em></em></a>{% endif %}
       <a href="#audit" data-title="سجل التدقيق" data-subtitle="تسلسل زمني لكل العمليات الإدارية المهمة">{{icon('audit')}}<span>سجل التدقيق</span><em></em></a>
     </nav>
@@ -44,12 +51,12 @@
     </div>
   </aside>
   <main class="workspace-main">
-    <header class="topbar workspace-topbar">
+    <header class="topbar workspace-topbar royal-frame">
       <div class="topbar-title"><button class="mobile-menu" id="mobileMenu" type="button" aria-label="القائمة">☰</button><div><div class="workspace-breadcrumb"><span>NEXVARY</span><i>/</i><b id="pageCrumb">CONTROL CENTER</b></div><h1 id="pageTitle">لوحة القيادة</h1><p id="pageSubtitle">نظرة تشغيلية موحدة على الخادم والموارد والحماية</p></div></div>
       <div class="top-tools">
-        <label class="command-search">{{icon('search')}}<input id="globalSearch" type="search" placeholder="انتقل إلى شاشة..." autocomplete="off"><kbd>/</kbd></label>
-        <button class="tool-button" id="quickCreate" type="button" title="إنشاء تطبيق جديد">{{icon('plus')}}<span>إنشاء</span></button>
-        <div class="status"><i></i><div><small>SERVER STATUS</small><b>ONLINE</b></div></div>
+        <label class="command-search royal-frame">{{icon('search')}}<input id="globalSearch" type="search" placeholder="انتقل إلى شاشة..." autocomplete="off"><kbd>/</kbd></label>
+        <button class="tool-button royal-action" id="quickCreate" type="button" title="إنشاء تطبيق جديد">{{icon('plus')}}<span>إنشاء</span></button>
+        <div class="status royal-frame"><i></i><div><small>SERVER STATUS</small><b>ONLINE</b></div></div>
       </div>
     </header>
     {% with ms=get_flashed_messages(with_categories=true) %}{% for c,m in ms %}<div class="flash {{c}}">{{m}}</div>{% endfor %}{% endwith %}
@@ -58,14 +65,18 @@
       {% include "sections/sites.html" %}
       {% include "sections/databases.html" %}
       {% include "sections/backups.html" %}
+      {% include "sections/files.html" %}
+      {% include "sections/deploy.html" %}
+      {% include "sections/wordpress.html" %}
       {% include "sections/security.html" %}
       {% include "sections/services.html" %}
       {% include "sections/docker.html" %}
+      {% include "sections/notifications.html" %}
       {% if role == 'admin' %}{% include "sections/users.html" %}{% endif %}
       {% include "sections/audit.html" %}
     </div>
-    <dialog id="logDialog" class="log-dialog"><div class="panel-head"><div><span class="kicker">SITE LOGS</span><h3 id="logTitle">Logs</h3></div><button type="button" id="closeLogs" class="tiny ghost">إغلاق</button></div><pre id="logContent">Loading…</pre></dialog>
-    <footer><span class="footer-mark">N</span><b>Nexvary Panel</b><span>Build {{panel_version}}</span><i></i><span>Security-first control plane</span></footer>
+    <dialog id="logDialog" class="log-dialog royal-frame"><div class="panel-head"><div><span class="kicker">SITE LOGS</span><h3 id="logTitle">Logs</h3></div><button type="button" id="closeLogs" class="tiny ghost">إغلاق</button></div><pre id="logContent">Loading…</pre></dialog>
+    <footer><span class="footer-mark brand-footer"><img src="/static/brand/nexvary-panel-primary.jpg" alt=""></span><b>Nexvary Panel</b><span>Build {{panel_version}}</span><i></i><span>Security-first control plane</span></footer>
   </main>
 </div>
 <script src="/static/app.js"></script>
