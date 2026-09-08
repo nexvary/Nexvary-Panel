@@ -24,11 +24,26 @@ os.environ["NVP_AGENT_SOCK"] = str(pathlib.Path(tmp) / "missing.sock")
 os.environ["NVP_COOKIE_SECURE"] = "0"
 
 from panel.db_layer import db
+from panel.providers import REGISTRY, SAFE_ID_RE, provider_snapshot
 from panel.routes_health import _is_public_ip, _parse_http_head
 from panel.routes_platform import _safe_rel_request
 from panel.security import _totp, totp_enabled_for, verify_totp_secret
+
 assert verify_totp_secret("JBSWY3DPEHPK3PXP", _totp("JBSWY3DPEHPK3PXP"))
 assert not verify_totp_secret("JBSWY3DPEHPK3PXP", "000000") or _totp("JBSWY3DPEHPK3PXP") == "000000"
+
+# Fusion Provider Framework: declarative, fixed argv, no shell/user-command input.
+assert len(REGISTRY) >= 10
+assert {"caddy", "traefik", "crowdsec", "restic", "rclone", "docker", "podman", "powerdns"}.issubset({p.provider_id for p in REGISTRY})
+for provider in REGISTRY:
+    assert SAFE_ID_RE.match(provider.provider_id)
+    assert provider.binary and "/" not in provider.binary and "\\" not in provider.binary
+    assert all(isinstance(x, str) and x and "\x00" not in x for x in provider.version_args)
+snap = provider_snapshot()
+assert snap["summary"]["registered"] == len(REGISTRY)
+assert snap["policy"]["shell"] is False
+assert snap["policy"]["automatic_install"] is False
+assert snap["policy"]["privileged_actions"] == "root-agent-allowlist-only"
 
 for blocked_ip in ["127.0.0.1", "10.0.0.1", "172.16.0.1", "192.168.1.1", "169.254.1.1", "::1", "fc00::1", "fe80::1"]:
     assert not _is_public_ip(blocked_ip), f"private/reserved IP accepted: {blocked_ip}"
@@ -92,10 +107,14 @@ r = client.post("/login", data={"csrf_token": csrf, "username": "admin", "passwo
 assert r.status_code == 302 and r.location.endswith("/")
 r = client.get("/")
 assert r.status_code == 200
-for marker in [b"Docker Center", b"NEXVARY Doctor", b'id="sites"', b'id="databases"', b'id="files"', b'id="deploy"', b'id="wordpress"', b'id="notifications"', b'id="fileNewFile"', b'id="healthDialog"', b'notification-filter', b'platform-controls.css', b'platform-controls.js', b"nexvary-panel-primary.jpg"]:
+for marker in [b"Docker Center", b"NEXVARY Doctor", b'id="sites"', b'id="databases"', b'id="files"', b'id="deploy"', b'id="wordpress"', b'id="notifications"', b'id="fusion"', b'Fusion Center', b'id="fileNewFile"', b'id="healthDialog"', b'notification-filter', b'platform-controls.css', b'platform-controls.js', b'fusion.css', b'fusion.js', b"nexvary-panel-primary.jpg"]:
     assert marker in r.data, marker
 r = client.get("/api/metrics")
 assert r.status_code == 200 and {"cpu", "ram", "disk"}.issubset(r.get_json())
+r = client.get("/api/fusion/providers")
+assert r.status_code == 200 and r.get_json().get("ok") is True and len(r.get_json().get("providers", [])) == len(REGISTRY)
+r = client.get("/api/fusion/policy")
+assert r.status_code == 200 and r.get_json()["policy"]["shell"] is False
 r = client.get("/api/site-health?domain=example.com")
 assert r.status_code == 403 and r.get_json().get("ok") is False
 r = client.post("/sites", data={"domain": "example.com", "kind": "static"})
@@ -118,4 +137,4 @@ assert r.status_code == 302
 assert totp_enabled_for("admin")
 
 _tmp_ctx.cleanup()
-print("Nexvary Panel platform/security/health smoke tests: PASS")
+print("Nexvary Panel platform/security/health/fusion smoke tests: PASS")
