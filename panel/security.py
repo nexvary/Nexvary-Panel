@@ -10,11 +10,12 @@ import time
 from functools import wraps
 from urllib.parse import quote
 
-from flask import flash, redirect, request, session, url_for
+from flask import flash, jsonify, redirect, request, session, url_for
 from .config import ADMIN_FILE
 from .db_layer import db
 
 FAILED: dict[str, dict[str, float | int]] = {}
+STEP_UP_TTL_SECONDS = 300
 
 
 def load_admin() -> dict[str, str]:
@@ -47,7 +48,7 @@ def authenticate(username: str, password: str) -> tuple[bool, str]:
         row = conn.execute("SELECT username,role,salt,password_hash,enabled FROM users WHERE username=?", (username,)).fetchone()
     if not row or not row["enabled"]:
         return False, "viewer"
-    return hmac.compare_digest(password_hash(password, row["salt"]), row["password_hash"]), row["role"]
+    return hmac.compare_digest(password_hash(password, row["salt"],), row["password_hash"]), row["role"]
 
 
 def new_totp_secret() -> str:
@@ -96,6 +97,37 @@ def totp_uri(username: str, secret: str) -> str:
     return f"otpauth://totp/{label}?secret={secret}&issuer={quote(issuer)}&algorithm=SHA1&digits=6&period=30"
 
 
+def step_up_active() -> bool:
+    try:
+        return bool(session.get("auth") and int(session.get("step_up_until", 0)) >= int(time.time()))
+    except (TypeError, ValueError):
+        return False
+
+
+def grant_step_up() -> int:
+    until = int(time.time()) + STEP_UP_TTL_SECONDS
+    session["step_up_until"] = until
+    session["step_up_user"] = session.get("user", "")
+    return until
+
+
+def clear_step_up() -> None:
+    session.pop("step_up_until", None)
+    session.pop("step_up_user", None)
+
+
+def verify_step_up_credentials(password: str, otp: str = "") -> bool:
+    username = str(session.get("user", ""))
+    if not username or not isinstance(password, str) or not password:
+        return False
+    ok, role = authenticate(username, password)
+    if not ok or role != session.get("role"):
+        return False
+    if totp_enabled_for(username) and not verify_totp(username, otp.strip()):
+        return False
+    return True
+
+
 def csrf_token() -> str:
     if "csrf" not in session:
         session["csrf"] = secrets.token_urlsafe(32)
@@ -131,3 +163,17 @@ def role_required(*roles: str):
             return fn(*args, **kwargs)
         return wrapped
     return deco
+
+
+def step_up_required(fn):
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        if not session.get("auth"):
+            return redirect(url_for("login"))
+        if session.get("step_up_user") != session.get("user") or not step_up_active():
+            if request.is_json or request.path.startswith("/api/"):
+                return jsonify(ok=False, error="step-up authentication required"), 428
+            flash("هذه العملية حساسة وتتطلب Step-Up Authentication أولًا.", "error")
+            return redirect(url_for("home") + "#security")
+        return fn(*args, **kwargs)
+    return wrapped
