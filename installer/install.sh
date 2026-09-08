@@ -16,6 +16,7 @@ id nexvary-panel >/dev/null 2>&1 || useradd --system --gid nexvary-panel --home 
 install -d -m 0750 -o nexvary-panel -g nexvary-panel /opt/nexvary-panel /var/lib/nexvary-panel
 install -d -m 0750 -o root -g nexvary-panel /opt/nexvary-panel-agent
 install -d -m 0750 -o root -g root /etc/nexvary-panel
+install -d -m 0700 -o root -g root /etc/nexvary-panel/credentials
 install -d -m 0700 -o root -g root /var/backups/nexvary-panel
 install -d -m 0750 -o root -g nexvary-panel /run/nexvary-panel
 cp -a app.py panel requirements.txt templates static VERSION /opt/nexvary-panel/
@@ -25,6 +26,7 @@ python3 -m venv /opt/nexvary-panel/venv
 chown -R nexvary-panel:nexvary-panel /opt/nexvary-panel /var/lib/nexvary-panel
 install -m 0755 agent/nvpctl /usr/local/sbin/nvpctl
 install -m 0750 -o root -g root agent/root_agent.py /opt/nexvary-panel-agent/root_agent.py
+install -m 0640 -o root -g root agent/secret_vault.py /opt/nexvary-panel-agent/secret_vault.py
 rm -f /etc/sudoers.d/nexvary-panel
 
 if [[ ! -f /etc/nexvary-panel/admin.env ]]; then
