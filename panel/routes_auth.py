@@ -52,6 +52,7 @@ def register_auth_routes(app):
     @login_required
     def home():
         owner_where, owner_args = visible_owner_clause()
+        username = session.get("user", "")
         with db() as conn:
             sites = [dict(r) for r in conn.execute(f"SELECT * FROM sites WHERE {owner_where} ORDER BY id DESC", owner_args)]
             databases = [dict(r) for r in conn.execute(f"SELECT * FROM databases WHERE {owner_where} ORDER BY id DESC", owner_args)]
@@ -62,6 +63,7 @@ def register_auth_routes(app):
             notifications_unread = conn.execute(f"SELECT COUNT(*) FROM notifications WHERE {owner_where} AND read_at IS NULL", owner_args).fetchone()[0]
             audits = [dict(r) for r in conn.execute("SELECT * FROM audit ORDER BY id DESC LIMIT 18")]
             users = [dict(r) for r in conn.execute("SELECT username,role,enabled,created_at FROM users ORDER BY id DESC")] if session.get("role") == "admin" else []
+            sec = conn.execute("SELECT totp_secret,totp_enabled FROM user_security WHERE username=?", (username,)).fetchone()
         disk = psutil.disk_usage("/")
         metrics = {
             "cpu": round(psutil.cpu_percent(interval=0.15), 1),
@@ -72,13 +74,13 @@ def register_auth_routes(app):
             "disk_free": disk.free,
         }
         services = {name: service(name) for name in ["nginx", "mariadb", "fail2ban", "ssh", "docker"]}
-        username = session.get("user", "")
-        pending_secret = str(session.get("totp_pending", ""))
+        enabled = bool(sec and sec["totp_enabled"])
+        pending_secret = str(sec["totp_secret"]) if sec and not sec["totp_enabled"] else ""
         return render_template(
             "index.html", sites=sites, databases=databases, backups=backups, deployments=deployments,
             wordpress_instances=wordpress_instances, notifications=notifications, notifications_unread=notifications_unread,
             audits=audits, users=users, metrics=metrics, services=services, role=session.get("role"), username=username,
-            totp_enabled=totp_enabled_for(username), totp_pending=pending_secret,
+            totp_enabled=enabled, totp_pending=pending_secret,
             totp_uri_value=totp_uri(username, pending_secret) if pending_secret else "",
         )
 
