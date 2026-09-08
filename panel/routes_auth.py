@@ -7,7 +7,7 @@ import psutil
 from flask import flash, jsonify, redirect, render_template, request, session, url_for
 
 from .core import FAILED, audit, authenticate, csrf_token, db, login_required, service, visible_owner_clause
-from .security import totp_enabled_for, totp_uri, verify_totp
+from .security import step_up_active, totp_enabled_for, totp_uri, verify_totp
 
 
 def register_auth_routes(app):
@@ -80,7 +80,7 @@ def register_auth_routes(app):
             "index.html", sites=sites, databases=databases, backups=backups, deployments=deployments,
             wordpress_instances=wordpress_instances, notifications=notifications, notifications_unread=notifications_unread,
             audits=audits, users=users, metrics=metrics, services=services, role=session.get("role"), username=username,
-            totp_enabled=enabled, totp_pending=pending_secret,
+            totp_enabled=enabled, totp_pending=pending_secret, step_up_active=step_up_active(),
             totp_uri_value=totp_uri(username, pending_secret) if pending_secret else "",
         )
 
