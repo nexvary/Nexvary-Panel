@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="/static/royal-workspace-entities.css">
   <link rel="stylesheet" href="/static/hosting-suite.css">
   <link rel="stylesheet" href="/static/webtools.css">
+  <link rel="stylesheet" href="/static/scheduled-tasks.css">
   <link rel="stylesheet" href="/static/workspace-visibility.css">
   <link rel="stylesheet" href="/static/security-intelligence.css">
 </head>
@@ -48,6 +49,7 @@
       <a href="#hosting" data-title="Hosting Suite" data-subtitle="مركز وظائف الاستضافة والحزم والحدود والصلاحيات">{{icon('layers')}}<span>Hosting Suite</span><em></em></a>
       <a href="#sites" data-title="المواقع الإلكترونية" data-subtitle="إدارة المواقع والتطبيقات والـRuntime وNGINX">{{icon('globe')}}<span>المواقع الإلكترونية</span><em></em></a>
       <a href="#webtools" data-title="أدوات الويب" data-subtitle="Redirects وصفحات الأخطاء وإحصاءات الزوار والباندويدث">{{icon('activity')}}<span>أدوات الويب</span><em></em></a>
+      <a href="#schedules" data-title="المهام المجدولة" data-subtitle="Scheduled Tasks آمنة للنسخ والنشر بدون Shell خام">{{icon('activity')}}<span>المهام المجدولة</span><em></em></a>
       <a href="#databases" data-title="قواعد البيانات" data-subtitle="MariaDB والمستخدمون والربط الآمن بالتطبيقات">{{icon('database')}}<span>قواعد البيانات</span><em></em></a>
       <a href="#files" data-title="الملفات وإدارة المحتوى" data-subtitle="إدارة ملفات المواقع داخل نطاق آمن ومحصور">{{icon('file')}}<span>الملفات وإدارة المحتوى</span><em></em></a>
       <a href="#security" data-title="الأمن والحماية" data-subtitle="الشهادات و2FA وStep-Up وحالة طبقات الحماية">{{icon('shield')}}<span>الأمن والحماية</span><em></em></a>
@@ -89,6 +91,7 @@
       {% include "sections/hosting.html" %}
       {% include "sections/sites.html" %}
       {% include "sections/webtools.html" %}
+      {% include "sections/schedules.html" %}
       {% include "sections/databases.html" %}
       {% include "sections/backups.html" %}
       {% include "sections/fusion.html" %}
@@ -119,5 +122,6 @@
 <script src="/static/remote-backup.js"></script>
 <script src="/static/hosting-suite.js"></script>
 <script src="/static/webtools.js"></script>
+<script src="/static/scheduled-tasks.js"></script>
 </body>
 </html>
