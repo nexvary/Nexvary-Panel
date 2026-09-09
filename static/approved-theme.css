@@ -1,0 +1,159 @@
+/* Nexvary Panel — approved Royal Control Center theme
+   Deep navy + electric violet + luminous gold + electric green text + alternating silver/electric-black internal frames. */
+:root{
+  --nvp-navy:#020813;
+  --nvp-navy-2:#071426;
+  --nvp-violet:#27105f;
+  --nvp-green:#37ff9a;
+  --nvp-green-soft:#8affc3;
+  --nvp-gold:#e8bd4f;
+  --nvp-gold-hot:#ffd873;
+  --nvp-silver:#d9e0ea;
+  --nvp-silver-soft:#8190a6;
+  --nvp-black-electric:#02070d;
+  --nvp-crimson:#ff4168;
+}
+
+/* Sidebar: Kufi-like Arabic rhythm + electric green copy. */
+#sidebar #nav,
+#sidebar #nav a,
+#sidebar #nav span,
+#sidebar .account-chip,
+#sidebar .node-card{
+  font-family:"Noto Kufi Arabic","Noto Sans Arabic","Segoe UI",Tahoma,sans-serif;
+}
+#sidebar #nav a{
+  color:var(--nvp-green)!important;
+  font-weight:700;
+  letter-spacing:.01em;
+  text-shadow:0 0 8px rgba(55,255,154,.38),0 0 16px rgba(55,255,154,.12);
+  border:1px solid rgba(232,189,79,.52)!important;
+  background:linear-gradient(90deg,rgba(2,8,19,.92),rgba(8,17,36,.85));
+  box-shadow:inset 0 0 0 1px rgba(255,238,179,.025),0 0 8px rgba(232,189,79,.06)!important;
+}
+#sidebar #nav a:hover{
+  color:#a7ffd0!important;
+  border-color:rgba(255,216,115,.82)!important;
+  background:linear-gradient(90deg,rgba(39,16,95,.42),rgba(5,21,31,.92));
+  box-shadow:0 0 15px rgba(232,189,79,.13),inset 0 0 0 1px rgba(255,238,179,.05)!important;
+}
+#sidebar #nav a.active{
+  color:#b4ffda!important;
+  border-width:1.5px!important;
+  border-color:rgba(255,216,115,.92)!important;
+  background:linear-gradient(90deg,rgba(68,29,145,.46),rgba(7,20,35,.92))!important;
+  box-shadow:inset 3px 0 0 #15d8ff,0 0 18px rgba(232,189,79,.15),0 0 20px rgba(68,37,186,.13)!important;
+}
+#sidebar #nav a .ui-icon{
+  width:21px;height:21px;stroke-width:1.9;
+  filter:drop-shadow(0 0 4px currentColor);
+}
+/* Expressive multi-color icon map. Icons are deliberately not green. */
+#nav a[href="#dashboard"] .ui-icon{color:#72a8ff!important}
+#nav a[href="#sites"] .ui-icon{color:#29c8ff!important}
+#nav a[href="#databases"] .ui-icon{color:#a777ff!important}
+#nav a[href="#backups"] .ui-icon{color:#ffc94c!important}
+#nav a[href="#fusion"] .ui-icon{color:#4bd6ff!important}
+#nav a[href="#integrations"] .ui-icon{color:#d45cff!important}
+#nav a[href="#dns"] .ui-icon{color:#4f91ff!important}
+#nav a[href="#vault"] .ui-icon{color:#ffd04d!important}
+#nav a[href="#files"] .ui-icon{color:#ffb347!important}
+#nav a[href="#deploy"] .ui-icon{color:#ff645e!important}
+#nav a[href="#wordpress"] .ui-icon{color:#56a8ff!important}
+#nav a[href="#security"] .ui-icon{color:#72b7ff!important}
+#nav a[href="#services"] .ui-icon{color:#ff5f78!important}
+#nav a[href="#docker"] .ui-icon{color:#36c7ff!important}
+#nav a[href="#notifications"] .ui-icon{color:#ffc85d!important}
+#nav a[href="#users"] .ui-icon{color:#a77aff!important}
+#nav a[href="#audit"] .ui-icon{color:#dce6f4!important}
+#nav a.active .ui-icon{filter:drop-shadow(0 0 7px currentColor)!important}
+
+/* Gold stays on the structural shell. Internal cards alternate silver / electric black. */
+.workspace-topbar,
+.workspace-stage>section.active-view,
+.dashboard-intro.approved-hero,
+.frame-gold{
+  border:1.5px solid rgba(232,189,79,.66)!important;
+  box-shadow:0 0 14px rgba(232,189,79,.11),inset 0 0 0 1px rgba(255,236,170,.035)!important;
+}
+.frame-silver{
+  border:1px solid rgba(217,224,234,.88)!important;
+  background:linear-gradient(145deg,rgba(11,23,39,.96),rgba(3,10,19,.98))!important;
+  box-shadow:0 0 0 1px rgba(255,255,255,.08),0 0 13px rgba(160,190,230,.13),inset 0 0 14px rgba(155,185,220,.045)!important;
+}
+.frame-electric-black{
+  border:1px solid rgba(35,48,65,.98)!important;
+  background:linear-gradient(145deg,#02070d,#07121f 70%,#02060c)!important;
+  box-shadow:0 0 0 1px rgba(68,114,165,.18),0 0 13px rgba(30,122,255,.10),inset 0 0 18px rgba(0,0,0,.58)!important;
+}
+
+.approved-dashboard .metric-card:nth-child(odd){border-color:rgba(217,224,234,.86)!important}
+.approved-dashboard .metric-card:nth-child(even){border-color:rgba(36,53,72,.98)!important}
+.approved-dashboard .metric-card{
+  border-radius:15px!important;
+  backdrop-filter:blur(10px);
+}
+.approved-dashboard .metric-icon{border:1px solid rgba(132,175,225,.36);background:rgba(5,18,31,.85)}
+.approved-dashboard .metric-cyan .metric-icon{color:#26d5ff}
+.approved-dashboard .metric-violet .metric-icon{color:#b36aff}
+.approved-dashboard .metric-green .metric-icon{color:#55f3ba}
+.approved-dashboard .metric-gold .metric-icon{color:#ffd15c}
+
+.approved-hero{
+  padding:15px 20px!important;
+  margin-bottom:12px;
+  background:
+    radial-gradient(circle at 25% 50%,rgba(17,101,255,.16),transparent 24%),
+    linear-gradient(110deg,rgba(4,13,31,.98),rgba(24,10,69,.86),rgba(3,12,27,.98))!important;
+}
+.approved-hero h2{font-size:clamp(20px,2vw,30px);margin:3px 0 5px;color:#fff}
+
+/* Approved three-column operations band: Trust / Infrastructure / Quick Actions. */
+.approved-command-grid{
+  display:grid!important;
+  grid-template-columns:minmax(270px,.82fr) minmax(360px,1.25fr) minmax(280px,.93fr)!important;
+  gap:12px!important;
+  align-items:stretch;
+}
+.approved-command-grid>.panel{min-width:0}
+
+.trust-center-card{padding:16px!important;background:linear-gradient(155deg,rgba(5,19,28,.98),rgba(6,12,26,.98))!important}
+.trust-score{display:grid;grid-template-columns:68px auto 1fr;align-items:center;gap:12px;padding:13px;border:1px solid rgba(217,224,234,.42);border-radius:14px;background:linear-gradient(110deg,rgba(2,9,16,.92),rgba(7,23,31,.88));margin:10px 0}
+.trust-shield{width:62px;height:62px;display:grid;place-items:center;border-radius:18px;color:var(--nvp-green);background:radial-gradient(circle,rgba(55,255,154,.24),rgba(6,30,23,.74));box-shadow:0 0 24px rgba(55,255,154,.20),inset 0 0 15px rgba(55,255,154,.12)}
+.trust-shield .ui-icon{width:38px;height:38px;filter:drop-shadow(0 0 8px rgba(55,255,154,.7))}
+.trust-score>strong{font-size:34px;color:var(--nvp-green);text-shadow:0 0 14px rgba(55,255,154,.28)}
+.trust-score>strong small{font-size:14px;color:#dce5f2}
+.trust-score>div b{display:block;font-size:12px;color:#e8edf5;margin-bottom:7px}
+.trust-score progress{width:100%;height:7px;accent-color:var(--nvp-green)}
+.trust-score.attention .trust-shield,.trust-score.attention>strong{color:#ffd15d}.trust-score.attention progress{accent-color:#ffd15d}
+.trust-score.risk .trust-shield,.trust-score.risk>strong{color:var(--nvp-crimson)}.trust-score.risk progress{accent-color:var(--nvp-crimson)}
+.trust-checks{display:grid;gap:5px}
+.trust-checks>div{display:grid;grid-template-columns:23px 1fr auto;align-items:center;gap:7px;padding:7px 8px;border-bottom:1px solid rgba(217,224,234,.10)}
+.trust-checks>div>span{width:20px;height:20px;display:grid;place-items:center;border-radius:50%;font-weight:900}
+.trust-checks .pass>span{color:var(--nvp-green);border:1px solid rgba(55,255,154,.42);background:rgba(55,255,154,.08)}
+.trust-checks .warn>span{color:#ffd15d;border:1px solid rgba(255,209,93,.42);background:rgba(255,209,93,.08)}
+.trust-checks b{font-size:11px;color:#dce6f2}.trust-checks small{font-size:10px;color:#7f91a8}
+.trust-note{margin-top:8px;padding-top:7px;border-top:1px solid rgba(232,189,79,.18);font-size:9px;color:#7f91a8;line-height:1.6}
+
+.approved-command-grid .quick-grid{grid-template-columns:1fr 1fr!important;gap:8px!important}
+.approved-command-grid .quick-grid button:nth-child(odd){border:1px solid rgba(217,224,234,.58)!important;background:linear-gradient(145deg,rgba(8,19,34,.94),rgba(2,7,14,.98))!important}
+.approved-command-grid .quick-grid button:nth-child(even){border:1px solid rgba(28,43,60,.96)!important;background:linear-gradient(145deg,#02070d,#071422)!important}
+
+/* Alternate internal frames throughout operational sections. */
+.summary-tiles button:nth-child(odd),
+.electric-actions button:nth-child(odd),
+.infra-service:nth-child(odd){border-color:rgba(217,224,234,.58)!important;box-shadow:0 0 8px rgba(180,205,235,.08)!important}
+.summary-tiles button:nth-child(even),
+.electric-actions button:nth-child(even),
+.infra-service:nth-child(even){border-color:rgba(33,50,69,.96)!important;box-shadow:0 0 9px rgba(22,89,173,.08)!important}
+
+@media(max-width:1180px){
+  .approved-command-grid{grid-template-columns:1fr 1fr!important}
+  .trust-center-card{grid-column:1/-1}
+}
+@media(max-width:780px){
+  .approved-command-grid{grid-template-columns:1fr!important}
+  .trust-center-card{grid-column:auto}
+  .trust-score{grid-template-columns:56px auto 1fr}
+  .trust-shield{width:50px;height:50px}
+}
