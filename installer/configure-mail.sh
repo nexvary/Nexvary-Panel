@@ -11,12 +11,25 @@ VMAIL_GID="$(id -g vmail)"
 install -d -m 0750 -o root -g root /etc/nexvary-panel/mail
 install -d -m 0750 -o vmail -g vmail /var/mail/vhosts
 install -d -m 0700 -o vmail -g vmail /var/mail/vhosts/.deleted
-install -m 0640 -o root -g dovecot /dev/null /etc/nexvary-panel/mail/users
+if [[ ! -e /etc/nexvary-panel/mail/users ]]; then
+  install -m 0640 -o root -g dovecot /dev/null /etc/nexvary-panel/mail/users
+else
+  [[ ! -L /etc/nexvary-panel/mail/users && -f /etc/nexvary-panel/mail/users ]] || { echo 'Unsafe users map boundary'; exit 3; }
+  chown root:dovecot /etc/nexvary-panel/mail/users
+  chmod 0640 /etc/nexvary-panel/mail/users
+fi
 for map in domains vmailbox virtual; do
-  install -m 0640 -o root -g postfix /dev/null "/etc/nexvary-panel/mail/$map"
-  postmap "/etc/nexvary-panel/mail/$map"
-  chown root:postfix "/etc/nexvary-panel/mail/$map.db"
-  chmod 0640 "/etc/nexvary-panel/mail/$map.db"
+  file="/etc/nexvary-panel/mail/$map"
+  if [[ ! -e "$file" ]]; then
+    install -m 0640 -o root -g postfix /dev/null "$file"
+  else
+    [[ ! -L "$file" && -f "$file" ]] || { echo "Unsafe mail map boundary: $map"; exit 3; }
+    chown root:postfix "$file"
+    chmod 0640 "$file"
+  fi
+  postmap "$file"
+  chown root:postfix "$file.db"
+  chmod 0640 "$file.db"
 done
 
 postconf -e 'mydestination = localhost'
