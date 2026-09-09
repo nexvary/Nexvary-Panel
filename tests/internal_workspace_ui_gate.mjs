@@ -22,8 +22,10 @@ async function noOverflow(page,label){
 async function open(page,id){
   const nav=page.locator(`#nav a[href="#${id}"]`);
   if(await nav.count()!==1) throw new Error(`Missing navigation entry #${id}`);
-  if(await nav.isVisible()) await nav.click();
-  else await nav.evaluate(el=>el.click());
+  // This gate validates workspace rendering, not drawer hit-testing. The primary ui_gate
+  // separately opens and clicks the real mobile drawer. DOM click keeps this test stable
+  // when the off-canvas navigation is intentionally outside the mobile viewport.
+  await nav.evaluate(el=>el.click());
   await page.locator(`#${id}.active-view`).waitFor({state:'visible'});
 }
 
