@@ -19,6 +19,16 @@ await page.locator('#dashboard.active-view').waitFor({ state: 'visible' });
 if (await page.locator('link[href="/static/approved-theme.css"]').count() !== 1) throw new Error('Approved theme stylesheet missing');
 if (await page.locator('link[href="/static/security-intelligence.css"]').count() !== 1) throw new Error('Security intelligence stylesheet missing');
 if (await page.locator('.trust-center-card').count() !== 1) throw new Error('Trust Center card missing');
+
+const basmala = page.locator('.basmala-seal');
+if (await basmala.count() !== 1) throw new Error('Royal Basmala seal missing from header');
+const basmalaText = (await basmala.innerText()).replace(/\s+/g, ' ');
+if (!basmalaText.includes('بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيمِ')) throw new Error(`Basmala copy missing: ${basmalaText}`);
+const basmalaStyle = await basmala.evaluate(el => { const s=getComputedStyle(el); return { top:s.borderTopWidth, bottom:s.borderBottomWidth, color:s.color, shadow:s.boxShadow }; });
+if (parseFloat(basmalaStyle.top) < 1 || parseFloat(basmalaStyle.bottom) < 1 || basmalaStyle.shadow === 'none') throw new Error('Basmala royal gold frame/glow missing');
+const basmalaStrongStyle = await basmala.locator('strong').evaluate(el => { const s=getComputedStyle(el); return { size:parseFloat(s.fontSize), shadow:s.textShadow, color:s.color }; });
+if (basmalaStrongStyle.size < 14 || basmalaStrongStyle.shadow === 'none') throw new Error('Basmala is not visually prominent enough');
+
 const scoreText = (await page.locator('.trust-score > strong').innerText()).replace(/\s/g, '');
 const score = Number.parseInt(scoreText, 10);
 if (!Number.isFinite(score) || score < 0 || score > 100) throw new Error(`Invalid trust score: ${scoreText}`);
@@ -70,4 +80,4 @@ if (await page.evaluate(() => document.documentElement.scrollWidth > document.do
 await page.screenshot({ path: `${out}/nexvary-panel-0.6-security-intelligence-desktop.png`, fullPage: true });
 
 await browser.close();
-console.log('Nexvary Panel approved Royal Control Center + active-defense UI Gate: PASS');
+console.log('Nexvary Panel approved Royal Control Center + Basmala + active-defense UI Gate: PASS');
