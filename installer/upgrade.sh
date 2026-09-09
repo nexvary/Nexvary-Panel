@@ -7,11 +7,13 @@ set -euo pipefail
 WITH_DOCKER=0
 WITH_BACKUP_PROVIDERS=0
 WITH_MAIL=0
+WITH_SFTP=0
 for arg in "$@"; do
   case "$arg" in
     --with-docker) WITH_DOCKER=1 ;;
     --with-backup-providers) WITH_BACKUP_PROVIDERS=1 ;;
     --with-mail) WITH_MAIL=1 ;;
+    --with-sftp) WITH_SFTP=1 ;;
     *) echo "Unknown upgrade option: $arg"; exit 2 ;;
   esac
 done
@@ -27,6 +29,7 @@ if (( WITH_MAIL )); then
   echo 'postfix postfix/main_mailer_type select Internet Site' | debconf-set-selections
   apt-get install -y postfix dovecot-core dovecot-imapd
 fi
+if (( WITH_SFTP )); then apt-get install -y openssh-server acl; fi
 cp -a app.py panel requirements.txt templates static VERSION /opt/nexvary-panel/
 chown -R nexvary-panel:nexvary-panel /opt/nexvary-panel
 /opt/nexvary-panel/venv/bin/pip install -r /opt/nexvary-panel/requirements.txt
@@ -43,6 +46,7 @@ install -m 0750 -o root -g root agent/webtools_agent.py /opt/nexvary-panel-agent
 install -m 0750 -o root -g nexvary-panel agent/scheduler_agent.py /opt/nexvary-panel-agent/scheduler_agent.py
 install -m 0640 -o root -g root agent/mail_backend.py /opt/nexvary-panel-agent/mail_backend.py
 install -m 0750 -o root -g root agent/mail_agent.py /opt/nexvary-panel-agent/mail_agent.py
+install -m 0750 -o root -g root agent/transfer_agent.py /opt/nexvary-panel-agent/transfer_agent.py
 install -m 0644 systemd/nexvary-panel.service /etc/systemd/system/nexvary-panel.service
 install -m 0644 systemd/nexvary-panel-agent.service /etc/systemd/system/nexvary-panel-agent.service
 install -m 0644 systemd/nexvary-panel-vault.service /etc/systemd/system/nexvary-panel-vault.service
@@ -50,14 +54,19 @@ install -m 0644 systemd/nexvary-panel-provider.service /etc/systemd/system/nexva
 install -m 0644 systemd/nexvary-panel-webtools.service /etc/systemd/system/nexvary-panel-webtools.service
 install -m 0644 systemd/nexvary-panel-scheduler.service /etc/systemd/system/nexvary-panel-scheduler.service
 install -m 0644 systemd/nexvary-panel-mail.service /etc/systemd/system/nexvary-panel-mail.service
+install -m 0644 systemd/nexvary-panel-transfer.service /etc/systemd/system/nexvary-panel-transfer.service
 if (( WITH_MAIL )); then bash installer/configure-mail.sh; fi
+if (( WITH_SFTP )); then bash installer/configure-sftp.sh; fi
 systemctl daemon-reload
 systemctl enable --now mariadb fail2ban nginx nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler
 if (( WITH_DOCKER )); then systemctl enable --now docker; fi
 if (( WITH_MAIL )); then systemctl enable --now nexvary-panel-mail; fi
+if (( WITH_SFTP )); then systemctl enable --now nexvary-panel-transfer; fi
 systemctl restart nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel
 if (( WITH_MAIL )); then systemctl restart nexvary-panel-mail; fi
+if (( WITH_SFTP )); then systemctl restart nexvary-panel-transfer; fi
 nginx -t
 printf '\nNexvary Panel %s upgrade complete. Existing admin credentials, Secret Vault, Integration Targets and SQLite data were preserved.\n' "$PANEL_VERSION"
 if (( ! WITH_BACKUP_PROVIDERS )); then printf 'restic/rclone package state was preserved. Use --with-backup-providers to install/enable the curated backup engines.\n'; fi
 if (( ! WITH_MAIL )); then printf 'Existing mail package state was preserved. Use --with-mail to install/configure the Nexvary Email Stack.\n'; fi
+if (( ! WITH_SFTP )); then printf 'Existing SFTP provider state was preserved. Use --with-sftp to install/configure the key-only Transfer Center.\n'; fi
