@@ -1,0 +1,49 @@
+{% from "macros/icons.html" import icon %}
+<section id="integrations" class="workspace-page integrations-workspace">
+  <div class="workspace-hero purple-hero royal-frame">
+    <div class="hero-icon">{{icon('layers')}}</div>
+    <div class="hero-copy"><span class="kicker">CAPABILITY TARGET ROUTER</span><h2>Integration Targets</h2><p>اربط قدرات Nexvary بمزود وEndpoint وSecret Reference واحد، بدون تخزين الاعتمادات داخل قاعدة البيانات.</p></div>
+    <div class="hero-stats"><div><small>SECRET VALUES</small><strong>VAULT ONLY</strong></div><div><small>PREFLIGHT</small><strong>LOCAL ONLY</strong></div><div><small>WRITES</small><strong>STEP-UP</strong></div></div>
+  </div>
+
+  <div class="integration-layout">
+    <div class="integration-primary">
+      <div class="fusion-toolbar royal-frame">
+        <div><span class="toolbar-dot green"></span><b>Capability Targets</b><small>كل Target يربط Capability محددة بمزود مع Secret ID فقط.</small></div>
+        <button id="integrationRefresh" class="compact-action" type="button">{{icon('refresh')}} تحديث</button>
+      </div>
+      <div id="integrationGrid" class="integration-grid"><div class="integration-loading royal-frame">جاري تحميل Integration Targets…</div></div>
+    </div>
+
+    <div class="creation-panel integration-create royal-frame">
+      <div class="creation-head"><span class="creation-icon green">{{icon('plus')}}</span><div><span class="kicker">NEW TARGET</span><h3>إنشاء Integration Target</h3></div></div>
+      <form id="integrationForm" autocomplete="off">
+        <label for="integrationName">اسم الهدف</label>
+        <input id="integrationName" maxlength="64" placeholder="Primary Remote Backup" required>
+        <label for="integrationProvider">المزود</label>
+        <select id="integrationProvider" required>
+          <option value="restic">restic — encrypted snapshots</option>
+          <option value="rclone">rclone — cloud transport</option>
+          <option value="powerdns">PowerDNS — authoritative DNS</option>
+        </select>
+        <label for="integrationEndpoint">Endpoint غير السري</label>
+        <input id="integrationEndpoint" maxlength="500" placeholder="s3:https://storage.example.com/bucket" dir="ltr" required>
+        <label for="integrationSecretId">Secret Vault ID</label>
+        <input id="integrationSecretId" maxlength="48" pattern="[a-z][a-z0-9_-]{2,47}" placeholder="prod-backup" dir="ltr" required>
+        <button class="primary-create green-create" type="submit">{{icon('layers')}}<span>ربط القدرة بالهدف</span></button>
+        <div class="creation-note">{{icon('shield')}}<span>الإنشاء والتعطيل والحذف يتطلب Step-Up. لا ينسخ Target قيمة الاعتماد من Vault.</span></div>
+      </form>
+      <div id="integrationMessage" class="vault-message" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <article class="panel royal-frame integration-contract">
+    <div class="panel-head"><div><span class="kicker">PREFLIGHT CONTRACT</span><h3>فحص الجاهزية قبل التنفيذ</h3><p>لا يتم لمس الشبكة أو إرسال Backup أثناء Preflight.</p></div><span class="tag">NO NETWORK WRITE</span></div>
+    <div class="fusion-policy-grid">
+      <div><b>Provider installed</b><small>هل binary المطلوب موجود محليًا؟</small></div>
+      <div><b>Capability match</b><small>هل المزود يعلن القدرة المطلوبة في Registry؟</small></div>
+      <div><b>Credential reference</b><small>هل Secret ID موجود بالنوع الصحيح داخل Vault؟</small></div>
+      <div><b>Endpoint syntax</b><small>هل Endpoint يطابق العقد المسموح به قبل أي تنفيذ؟</small></div>
+    </div>
+  </article>
+</section>
