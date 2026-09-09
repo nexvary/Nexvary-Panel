@@ -6,6 +6,15 @@ from .db_layer import db
 def ensure_ops_schema() -> None:
     with db() as conn:
         conn.executescript("""
+        CREATE TABLE IF NOT EXISTS dns_zone_bindings (
+          domain TEXT PRIMARY KEY,
+          target_id INTEGER NOT NULL,
+          owner TEXT NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY(target_id) REFERENCES integration_targets(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_dns_zone_bindings_target ON dns_zone_bindings(target_id);
+
         CREATE TABLE IF NOT EXISTS dns_changes (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           domain TEXT NOT NULL,
