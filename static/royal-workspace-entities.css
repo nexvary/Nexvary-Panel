@@ -1,0 +1,51 @@
+/* Nexvary Panel — Royal Workspace entity refinements */
+#databases .database-grid,#users .user-card-grid,#services .services-grid{gap:9px!important}
+#databases .database-card,#users .user-access-card,#services .service-card,#audit .audit-event-card,#notifications .notification-row,#docker #dockerList>*:not(.empty-state){
+  border:1px solid rgba(151,185,216,.42)!important;
+  border-radius:9px!important;
+  background:linear-gradient(145deg,rgba(6,18,31,.985),rgba(2,8,16,.99))!important;
+  box-shadow:0 0 0 1px rgba(255,255,255,.02) inset,0 0 14px rgba(131,176,218,.07),inset 0 0 16px rgba(54,94,136,.035)!important;
+}
+#databases .database-card:nth-child(even),#users .user-access-card:nth-child(even),#services .service-card:nth-child(even),#audit .audit-event:nth-child(even) .audit-event-card,#notifications .notification-row:nth-child(even){
+  border-color:rgba(7,28,48,.98)!important;
+  box-shadow:0 0 0 1px rgba(111,153,194,.22),inset 0 0 20px rgba(0,0,0,.68)!important;
+  background:linear-gradient(145deg,#071522,#01060d)!important;
+}
+#databases .database-card{min-height:82px!important;padding:11px 12px!important}
+#databases .database-orb{color:#b975ff!important;border:1px solid rgba(232,189,79,.36)!important;background:radial-gradient(circle,rgba(166,93,255,.22),#081526 70%)!important;box-shadow:0 0 17px rgba(166,93,255,.16)!important}
+#databases .database-title b{color:#f2f6fb!important}.database-meta{gap:8px!important}
+
+#users .user-access-card{min-height:88px!important;padding:11px 12px!important}
+#users .user-avatar-large{border:1px solid rgba(232,189,79,.42)!important;background:radial-gradient(circle,rgba(59,216,255,.22),#071624 72%)!important;color:#58dbff!important;box-shadow:0 0 16px rgba(59,216,255,.15)!important}
+#users .admin-card .user-avatar-large{color:#ffd15d!important;background:radial-gradient(circle,rgba(255,209,93,.18),#191205 72%)!important}
+#users .role-line span{border-color:rgba(232,189,79,.28)!important;background:rgba(232,189,79,.05)!important}
+
+#services .services-grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))!important}
+#services .service-card{min-height:88px!important;padding:11px!important}
+#services .service-icon{border:1px solid rgba(232,189,79,.34)!important;background:#071725!important;box-shadow:0 0 15px rgba(38,215,255,.11)!important}
+#services .service-up .service-copy span{color:#65ffb4!important}.service-down .service-copy span{color:#ff8099!important}
+#services .security-intelligence,#services .doctor-command-center{border-color:rgba(151,185,216,.42)!important;background:linear-gradient(145deg,#061421,#020811)!important;box-shadow:0 0 15px rgba(38,215,255,.06),inset 0 0 18px rgba(0,0,0,.25)!important}
+#services .doctor-command-center{border-color:rgba(232,189,79,.38)!important}
+
+#notifications .panel{padding:12px!important}
+#notifications .notification-row{min-height:62px!important;padding:8px 10px!important}
+#notifications .notification-level{box-shadow:0 0 9px currentColor!important}
+#notifications .notification-row b{color:#eaf2fa!important}.notification-row small{color:#7f95aa!important}
+
+#audit .audit-console{padding:12px!important}
+#audit .audit-timeline{gap:7px!important}
+#audit .audit-event-card{padding:9px 11px!important}
+#audit .audit-marker span{border:1px solid rgba(232,189,79,.34)!important;background:#071725!important;box-shadow:0 0 12px rgba(220,174,85,.11)!important}
+#audit .audit-event-head b{color:#edf3f9!important}.audit-event-meta{gap:8px!important}
+
+#docker #dockerList{gap:9px!important}
+#docker #dockerList>*:not(.empty-state){padding:10px!important}
+
+#deploy .panel,#wordpress .panel,#vault .panel,#integrations .panel{border-color:rgba(151,185,216,.42)!important;background:linear-gradient(145deg,#061421,#020811)!important;box-shadow:0 0 14px rgba(var(--rw-accent-rgb),.06),inset 0 0 18px rgba(0,0,0,.28)!important}
+#deploy form,#wordpress form,#vault form,#integrations form{gap:8px!important}
+#deploy code,#wordpress code,#vault code,#integrations code{border:1px solid rgba(113,151,188,.25);background:#020911;color:#bcd9ef;border-radius:6px}
+
+@media(max-width:780px){
+  #services .services-grid{grid-template-columns:1fr!important}
+  #databases .database-card,#users .user-access-card,#services .service-card{min-height:76px!important}
+}
