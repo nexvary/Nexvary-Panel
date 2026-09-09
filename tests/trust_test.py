@@ -1,3 +1,9 @@
+import pathlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
 from panel.routes_auth import _trust_posture
 
 all_services = {"nginx": True, "mariadb": True, "fail2ban": True, "ssh": True, "docker": True}
