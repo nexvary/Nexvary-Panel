@@ -14,6 +14,12 @@ from .routes_ops import register_ops_routes
 from .routes_sites import register_site_routes
 from .routes_platform import register_platform_routes
 from .routes_security import register_security_routes
+from .routes_health import register_health_routes
+from .routes_fusion import register_fusion_routes
+from .routes_dns import register_dns_routes
+from .routes_vault import register_vault_routes
+from .routes_integrations import register_integration_routes
+from .routes_remote_backup import register_remote_backup_routes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -50,4 +56,10 @@ def create_app() -> Flask:
     register_ops_routes(app)
     register_platform_routes(app)
     register_security_routes(app)
+    register_health_routes(app)
+    register_fusion_routes(app)
+    register_dns_routes(app)
+    register_vault_routes(app)
+    register_integration_routes(app)
+    register_remote_backup_routes(app)
     return app

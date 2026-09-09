@@ -24,12 +24,52 @@ os.environ["NVP_AGENT_SOCK"] = str(pathlib.Path(tmp) / "missing.sock")
 os.environ["NVP_COOKIE_SECURE"] = "0"
 
 from panel.db_layer import db
+from panel.providers import CAPABILITY_GROUPS, REGISTRY, SAFE_ID_RE, provider_snapshot
+from panel.routes_dns import MAX_RECORDS_PER_TYPE, RECORD_TYPES, _record_text
+from panel.routes_health import _is_public_ip, _parse_http_head
 from panel.routes_platform import _safe_rel_request
-from panel.security import _totp, totp_enabled_for, verify_totp_secret
+from panel.security import _totp, step_up_required, totp_enabled_for, verify_totp_secret
+
 assert verify_totp_secret("JBSWY3DPEHPK3PXP", _totp("JBSWY3DPEHPK3PXP"))
 assert not verify_totp_secret("JBSWY3DPEHPK3PXP", "000000") or _totp("JBSWY3DPEHPK3PXP") == "000000"
 
-# Web boundary rejects absolute, traversal and Windows-style paths before any agent/filesystem call.
+# Fusion Provider Framework: declarative, fixed argv, capability-first, no shell/user-command input.
+assert len(REGISTRY) >= 10
+assert {"caddy", "traefik", "crowdsec", "restic", "rclone", "docker", "podman", "powerdns"}.issubset({p.provider_id for p in REGISTRY})
+for provider in REGISTRY:
+    assert SAFE_ID_RE.match(provider.provider_id)
+    assert provider.binary and "/" not in provider.binary and "\\" not in provider.binary
+    assert all(isinstance(x, str) and x and "\x00" not in x for x in provider.version_args)
+snap = provider_snapshot()
+assert snap["summary"]["registered"] == len(REGISTRY)
+assert snap["policy"]["shell"] is False
+assert snap["policy"]["automatic_install"] is False
+assert snap["policy"]["privileged_actions"] == "root-agent-allowlist-only"
+assert snap["policy"]["selection_model"] == "capability-first"
+assert set(CAPABILITY_GROUPS) == set(snap["capability_groups"])
+assert snap["summary"]["capabilities"] == len(snap["capability_index"])
+for group_name, group in snap["capability_groups"].items():
+    assert 0 <= group["coverage"] <= 100, group_name
+    assert set(group["available_capabilities"]).issubset(set(group["capabilities"]))
+    for provider_id in group["providers"]:
+        assert provider_id in {p.provider_id for p in REGISTRY}
+
+# DNS Center is read-only and bounded. Do not perform internet DNS queries in smoke tests.
+assert RECORD_TYPES == ("A", "AAAA", "NS", "MX", "TXT", "CAA")
+assert MAX_RECORDS_PER_TYPE <= 20
+class _FakeRecord:
+    def to_text(self):
+        return "v=DMARC1; p=reject" + ("x" * 800)
+assert _record_text(_FakeRecord()).startswith("v=DMARC1") and len(_record_text(_FakeRecord())) <= 500
+
+for blocked_ip in ["127.0.0.1", "10.0.0.1", "172.16.0.1", "192.168.1.1", "169.254.1.1", "::1", "fc00::1", "fe80::1"]:
+    assert not _is_public_ip(blocked_ip), f"private/reserved IP accepted: {blocked_ip}"
+assert _is_public_ip("8.8.8.8")
+assert _is_public_ip("2606:4700:4700::1111")
+head = _parse_http_head(b"HTTP/1.1 301 Moved Permanently\r\nServer: nginx\r\nStrict-Transport-Security: max-age=31536000\r\nLocation: https://www.example.com/\r\nContent-Type: text/html\r\n\r\n")
+assert head["status"] == 301 and head["hsts"] is True and head["server"] == "nginx" and head["location"].startswith("https://")
+assert b"health-btn" in (ROOT / "templates" / "sections" / "sites.html").read_bytes()
+
 for bad in ["../etc/passwd", "/etc/passwd", "public/../../etc", "public\\secret", "./public", "public//x"]:
     assert not _safe_rel_request(bad), f"unsafe request path accepted: {bad}"
 assert _safe_rel_request("public/index.php")
@@ -38,7 +78,6 @@ assert _safe_rel_request("", allow_root=True)
 agent_spec = importlib.util.spec_from_file_location("nvp_root_agent", ROOT / "agent" / "root_agent.py")
 agent_mod = importlib.util.module_from_spec(agent_spec)
 agent_spec.loader.exec_module(agent_mod)
-# Agent-level path handling must still reject traversal and backslash tricks; absolute syntax is normalized below the site root.
 for bad in ["../etc/passwd", "public/../../etc", "public\\secret"]:
     try:
         agent_mod._rel_parts(bad)
@@ -68,6 +107,12 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 app = mod.app
 app.config.update(TESTING=True)
+
+@app.get("/api/_test-step-up")
+@step_up_required
+def _test_step_up():
+    return {"ok": True}
+
 client = app.test_client()
 
 r = client.get("/")
@@ -85,16 +130,40 @@ r = client.post("/login", data={"csrf_token": csrf, "username": "admin", "passwo
 assert r.status_code == 302 and r.location.endswith("/")
 r = client.get("/")
 assert r.status_code == 200
-for marker in [b"Docker Center", b"NEXVARY Doctor", b'id="sites"', b'id="databases"', b'id="files"', b'id="deploy"', b'id="wordpress"', b'id="notifications"', b'id="fileNewFile"', b'notification-filter', b'platform-controls.css', b'platform-controls.js', b"nexvary-panel-primary.jpg"]:
+for marker in [b"Docker Center", b"NEXVARY Doctor", b'id="sites"', b'id="databases"', b'id="files"', b'id="deploy"', b'id="wordpress"', b'id="notifications"', b'id="fusion"', b'Fusion Center', b'id="fusionCapabilityGrid"', b'id="dns"', b'DNS Center', b'dns.css', b'dns.js', b'Step-Up Authentication', b'action="/security/step-up"', b'id="fileNewFile"', b'id="healthDialog"', b'notification-filter', b'platform-controls.css', b'platform-controls.js', b'fusion.css', b'fusion.js', b"nexvary-panel-primary.jpg"]:
     assert marker in r.data, marker
 r = client.get("/api/metrics")
 assert r.status_code == 200 and {"cpu", "ram", "disk"}.issubset(r.get_json())
-# CSRF remains enforced on legacy forms and new JSON APIs.
+r = client.get("/api/fusion/providers")
+assert r.status_code == 200 and r.get_json().get("ok") is True and len(r.get_json().get("providers", [])) == len(REGISTRY)
+assert "capability_groups" in r.get_json() and "capability_index" in r.get_json()
+r = client.get("/api/fusion/policy")
+assert r.status_code == 200 and r.get_json()["policy"]["shell"] is False
+r = client.get("/api/site-health?domain=example.com")
+assert r.status_code == 403 and r.get_json().get("ok") is False
+r = client.get("/api/dns/inventory?domain=example.com")
+assert r.status_code == 403 and r.get_json().get("ok") is False
 r = client.post("/sites", data={"domain": "example.com", "kind": "static"})
 assert r.status_code == 403
 r = client.post("/api/file/save", json={"domain": "example.com", "path": "public/a.txt", "content": "x"})
 assert r.status_code == 403
-# Enrollment stores a pending secret server-side, not in Flask's client-side session cookie.
+
+# Sensitive APIs are locked until explicit Step-Up succeeds.
+r = client.get("/api/_test-step-up")
+assert r.status_code == 428
+with client.session_transaction() as sess:
+    csrf = sess["csrf"]
+r = client.post("/security/step-up", data={"csrf_token": csrf, "password": "wrong"}, follow_redirects=False)
+assert r.status_code == 302 and client.get("/api/_test-step-up").status_code == 428
+with client.session_transaction() as sess:
+    csrf = sess["csrf"]
+r = client.post("/security/step-up", data={"csrf_token": csrf, "password": password}, follow_redirects=False)
+assert r.status_code == 302 and client.get("/api/_test-step-up").status_code == 200
+with client.session_transaction() as sess:
+    csrf = sess["csrf"]
+r = client.post("/security/step-up/clear", data={"csrf_token": csrf}, follow_redirects=False)
+assert r.status_code == 302 and client.get("/api/_test-step-up").status_code == 428
+
 with client.session_transaction() as sess:
     csrf = sess["csrf"]
 r = client.post("/2fa/start", data={"csrf_token": csrf}, follow_redirects=False)
@@ -110,5 +179,19 @@ r = client.post("/2fa/enable", data={"csrf_token": csrf, "otp": code}, follow_re
 assert r.status_code == 302
 assert totp_enabled_for("admin")
 
+# Once 2FA is enabled, Step-Up requires both factors.
+with client.session_transaction() as sess:
+    csrf = sess["csrf"]
+bad_code = "000000" if code != "000000" else "000001"
+r = client.post("/security/step-up", data={"csrf_token": csrf, "password": password, "otp": bad_code}, follow_redirects=False)
+assert r.status_code == 302 and client.get("/api/_test-step-up").status_code == 428
+with client.session_transaction() as sess:
+    csrf = sess["csrf"]
+with db() as conn:
+    sec = conn.execute("SELECT totp_secret FROM user_security WHERE username='admin'").fetchone()
+fresh_code = _totp(sec["totp_secret"])
+r = client.post("/security/step-up", data={"csrf_token": csrf, "password": password, "otp": fresh_code}, follow_redirects=False)
+assert r.status_code == 302 and client.get("/api/_test-step-up").status_code == 200
+
 _tmp_ctx.cleanup()
-print("Nexvary Panel platform/security smoke tests: PASS")
+print("Nexvary Panel platform/security/step-up/health/fusion/dns smoke tests: PASS")

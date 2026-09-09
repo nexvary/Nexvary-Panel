@@ -1,0 +1,30 @@
+{% from "macros/icons.html" import icon %}
+<section id="dns" class="workspace-page dns-workspace">
+  <div class="workspace-hero cyan-hero royal-frame">
+    <div class="hero-icon">{{icon('network')}}</div>
+    <div class="hero-copy"><span class="kicker">DNS INTELLIGENCE</span><h2>DNS Center</h2><p>جرد DNS آمن للمواقع المسجلة: A وAAAA وNS وMX وTXT وCAA وDMARC مع TTL وLatency، بدون تعديل سجلات في هذه المرحلة.</p></div>
+    <div class="hero-stats"><div><small>MODE</small><strong>READ ONLY</strong></div><div><small>RECORD TYPES</small><strong>6 + DMARC</strong></div><div><small>WRITE PATH</small><strong>VAULT REQUIRED</strong></div></div>
+  </div>
+
+  <div class="dns-toolbar royal-frame">
+    <div class="dns-selector"><label for="dnsDomain">الموقع</label><select id="dnsDomain"><option value="">اختر موقعًا…</option>{% for s in sites %}<option value="{{s.domain}}">{{s.domain}}</option>{% endfor %}</select></div>
+    <button id="dnsInspect" type="button" class="compact-action">{{icon('search')}} فحص DNS</button>
+    <div class="dns-safety">{{icon('shield')}}<span>لا يتم قبول نطاق عشوائي؛ API يسمح فقط بموقع مسجل وتملكه صلاحية الجلسة.</span></div>
+  </div>
+
+  <div class="dns-summary-grid">
+    <article class="dns-summary-card royal-frame"><small>POPULATED TYPES</small><strong id="dnsPopulated">—</strong><span>من أصل 6 أنواع أساسية</span></article>
+    <article class="dns-summary-card royal-frame"><small>MAIL ROUTING</small><strong id="dnsMxState">—</strong><span>MX presence</span></article>
+    <article class="dns-summary-card royal-frame"><small>DMARC</small><strong id="dnsDmarcState">—</strong><span>Mail policy posture</span></article>
+    <article class="dns-summary-card royal-frame"><small>CONTROL MODE</small><strong>OBSERVE</strong><span>Write adapters disabled</span></article>
+  </div>
+
+  <div id="dnsGrid" class="dns-record-grid">
+    {% for record_type in ['A','AAAA','NS','MX','TXT','CAA'] %}<article class="dns-record-card royal-frame" data-record-type="{{record_type}}"><div class="dns-record-head"><b>{{record_type}}</b><span>WAITING</span></div><div class="dns-record-body"><div class="dns-empty">اختر موقعًا ثم ابدأ الفحص.</div></div><footer><span>TTL —</span><span>LATENCY —</span></footer></article>{% endfor %}
+  </div>
+
+  <div class="dns-mail-panel royal-frame">
+    <div><span>{{icon('shield')}}</span><div><small>MAIL DNS POSTURE</small><h3>DMARC Inspector</h3></div></div>
+    <div id="dnsDmarcRecord" class="dns-dmarc-record">لا توجد نتيجة بعد.</div>
+  </div>
+</section>
