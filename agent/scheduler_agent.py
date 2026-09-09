@@ -67,10 +67,11 @@ def _same_iso_week(a: int, b: int) -> bool:
 
 
 def _due(row, now: int) -> bool:
-    if not row["enabled"]:
-        return False
+    # A Step-Up-protected Run Now request is explicit and may run a paused recurring task.
     if row["run_requested"]:
         return True
+    if not row["enabled"]:
+        return False
     cadence = str(row["cadence"])
     if cadence not in CADENCES:
         return False
