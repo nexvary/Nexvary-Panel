@@ -30,6 +30,17 @@ def _domain_owner(conn, domain: str) -> str | None:
     return str(row["owner"]) if row else None
 
 
+def _owner_role(conn, owner: str) -> str:
+    if owner == "admin":
+        return "admin"
+    row = conn.execute("SELECT role FROM users WHERE username=?", (owner,)).fetchone()
+    return str(row["role"]) if row else "operator"
+
+
+def _owner_feature_allowed(conn, owner: str, feature_id: str) -> bool:
+    return feature_allowed(feature_id, username=owner, role=_owner_role(conn, owner))
+
+
 def _domain_allowed(conn, domain: str) -> tuple[bool, str | None]:
     if not DOMAIN_RE.fullmatch(domain):
         return False, None
@@ -42,8 +53,7 @@ def _domain_allowed(conn, domain: str) -> tuple[bool, str | None]:
 
 
 def _mail_limits(conn, owner: str) -> tuple[int, int]:
-    role = "admin" if owner == "admin" else "operator"
-    package = package_for_user(conn, owner, role)
+    package = package_for_user(conn, owner, _owner_role(conn, owner))
     mailbox_limit = int(package["max_mailboxes"]) if package else 0
     # Forwarders use a bounded derived limit until a dedicated package column lands.
     forwarder_limit = min(100000, max(10, mailbox_limit * 5)) if mailbox_limit else 0
@@ -54,6 +64,43 @@ def _visible_clause() -> tuple[str, tuple]:
     if session.get("role") == "admin":
         return "1=1", ()
     return "owner=?", (str(session.get("user", ""))[:64],)
+
+
+def _available_domains(conn) -> list[dict]:
+    actor = str(session.get("user", ""))[:64]
+    admin = session.get("role") == "admin"
+    candidates: dict[str, str] = {}
+    if admin:
+        for row in conn.execute("SELECT domain,owner FROM sites WHERE enabled=1").fetchall():
+            candidates[str(row["domain"])] = str(row["owner"])
+        for row in conn.execute("SELECT primary_domain,username FROM hosting_accounts WHERE status='active'").fetchall():
+            candidates[str(row["primary_domain"])] = str(row["username"])
+    else:
+        for row in conn.execute("SELECT domain,owner FROM sites WHERE enabled=1 AND owner=?", (actor,)).fetchall():
+            candidates[str(row["domain"])] = actor
+        row = conn.execute("SELECT primary_domain FROM hosting_accounts WHERE username=? AND status='active'", (actor,)).fetchone()
+        if row:
+            candidates[str(row["primary_domain"])] = actor
+    for row in conn.execute("SELECT domain,owner FROM mail_domains").fetchall():
+        owner = str(row["owner"])
+        if admin or owner == actor:
+            candidates[str(row["domain"])] = owner
+    result = []
+    for domain, owner in sorted(candidates.items()):
+        mailbox_limit, forwarder_limit = _mail_limits(conn, owner)
+        mailbox_used = int(conn.execute("SELECT COUNT(*) FROM mailboxes WHERE owner=?", (owner,)).fetchone()[0])
+        forwarder_used = int(conn.execute("SELECT COUNT(*) FROM mail_forwarders WHERE owner=?", (owner,)).fetchone()[0])
+        result.append({
+            "domain": domain,
+            "owner": owner,
+            "email_accounts": _owner_feature_allowed(conn, owner, "email.accounts"),
+            "email_forwarders": _owner_feature_allowed(conn, owner, "email.forwarders"),
+            "mailbox_used": mailbox_used,
+            "mailbox_limit": mailbox_limit,
+            "forwarder_used": forwarder_used,
+            "forwarder_limit": forwarder_limit,
+        })
+    return result
 
 
 def register_mail_routes(app):
@@ -70,10 +117,12 @@ def register_mail_routes(app):
             package = package_for_user(conn, username, role)
             mailbox_limit = int(package["max_mailboxes"]) if package else 0
             forwarder_limit = min(100000, max(10, mailbox_limit * 5)) if mailbox_limit else 0
+            available_domains = _available_domains(conn)
         provider = mail_call({"action": "status"}, timeout=5)
         return jsonify(
             ok=True,
             domains=domains,
+            available_domains=available_domains,
             mailboxes=mailboxes,
             forwarders=forwarders,
             mailbox_limit=mailbox_limit,
@@ -85,8 +134,6 @@ def register_mail_routes(app):
     @role_required("admin", "operator")
     @step_up_required
     def mailbox_create():
-        if not feature_allowed("email.accounts"):
-            return jsonify(ok=False, error="email.accounts is disabled by hosting policy"), 403
         data = request.get_json(silent=True) or {}
         if not isinstance(data, dict):
             return jsonify(ok=False, error="invalid request"), 400
@@ -103,6 +150,8 @@ def register_mail_routes(app):
             allowed, owner = _domain_allowed(conn, domain)
             if not allowed or not owner:
                 return jsonify(ok=False, error="mail domain is not registered in your hosting scope"), 403
+            if not _owner_feature_allowed(conn, owner, "email.accounts"):
+                return jsonify(ok=False, error="email.accounts is disabled by target hosting policy"), 403
             mailbox_limit, _ = _mail_limits(conn, owner)
             used = int(conn.execute("SELECT COUNT(*) FROM mailboxes WHERE owner=?", (owner,)).fetchone()[0])
             if mailbox_limit <= 0 or used >= mailbox_limit:
@@ -130,14 +179,14 @@ def register_mail_routes(app):
     @role_required("admin", "operator")
     @step_up_required
     def mailbox_delete(mailbox_id: int):
-        if not feature_allowed("email.accounts"):
-            return jsonify(ok=False, error="email.accounts is disabled by hosting policy"), 403
         with db() as conn:
             row = conn.execute("SELECT * FROM mailboxes WHERE id=?", (mailbox_id,)).fetchone()
             if not row:
                 return jsonify(ok=False, error="mailbox not found"), 404
             if session.get("role") != "admin" and row["owner"] != session.get("user"):
                 return jsonify(ok=False, error="mailbox is outside your hosting scope"), 403
+            if not _owner_feature_allowed(conn, str(row["owner"]), "email.accounts"):
+                return jsonify(ok=False, error="email.accounts is disabled by target hosting policy"), 403
         address = f"{row['localpart']}@{row['domain']}"
         result = mail_call({"action": "mailbox-delete", "address": address}, timeout=30)
         if not result.get("ok"):
@@ -151,8 +200,6 @@ def register_mail_routes(app):
     @role_required("admin", "operator")
     @step_up_required
     def forwarder_create():
-        if not feature_allowed("email.forwarders"):
-            return jsonify(ok=False, error="email.forwarders is disabled by hosting policy"), 403
         data = request.get_json(silent=True) or {}
         if not isinstance(data, dict):
             return jsonify(ok=False, error="invalid request"), 400
@@ -165,6 +212,8 @@ def register_mail_routes(app):
             allowed, owner = _domain_allowed(conn, domain)
             if not allowed or not owner:
                 return jsonify(ok=False, error="mail domain is not registered in your hosting scope"), 403
+            if not _owner_feature_allowed(conn, owner, "email.forwarders"):
+                return jsonify(ok=False, error="email.forwarders is disabled by target hosting policy"), 403
             _, forwarder_limit = _mail_limits(conn, owner)
             used = int(conn.execute("SELECT COUNT(*) FROM mail_forwarders WHERE owner=?", (owner,)).fetchone()[0])
             if forwarder_limit <= 0 or used >= forwarder_limit:
@@ -192,14 +241,14 @@ def register_mail_routes(app):
     @role_required("admin", "operator")
     @step_up_required
     def forwarder_delete(forwarder_id: int):
-        if not feature_allowed("email.forwarders"):
-            return jsonify(ok=False, error="email.forwarders is disabled by hosting policy"), 403
         with db() as conn:
             row = conn.execute("SELECT * FROM mail_forwarders WHERE id=?", (forwarder_id,)).fetchone()
             if not row:
                 return jsonify(ok=False, error="forwarder not found"), 404
             if session.get("role") != "admin" and row["owner"] != session.get("user"):
                 return jsonify(ok=False, error="forwarder is outside your hosting scope"), 403
+            if not _owner_feature_allowed(conn, str(row["owner"]), "email.forwarders"):
+                return jsonify(ok=False, error="email.forwarders is disabled by target hosting policy"), 403
         source = f"{row['localpart']}@{row['domain']}"
         result = mail_call({"action": "forwarder-delete", "source": source}, timeout=30)
         if not result.get("ok"):
