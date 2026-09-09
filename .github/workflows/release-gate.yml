@@ -26,11 +26,11 @@ jobs:
       - name: Python compile gate
         run: python -m compileall -q app.py panel agent tests
       - name: Shell syntax gate
-        run: bash -n installer/install.sh installer/upgrade.sh agent/nvpctl
+        run: bash -n installer/install.sh installer/upgrade.sh installer/configure-mail.sh agent/nvpctl
       - name: Smoke tests
         env:
           NVP_COOKIE_SECURE: '0'
-        run: python tests/smoke_test.py && python tests/vault_test.py && python tests/integrations_test.py && python tests/provider_backup_test.py && python tests/trust_test.py && python tests/hosting_features_test.py && python tests/schedules_test.py && python tests/accounts_scope_test.py
+        run: python tests/smoke_test.py && python tests/vault_test.py && python tests/integrations_test.py && python tests/provider_backup_test.py && python tests/trust_test.py && python tests/hosting_features_test.py && python tests/schedules_test.py && python tests/accounts_scope_test.py && python tests/mail_policy_test.py
 
   installation-gate:
     name: Ubuntu 24.04 full installer gate
@@ -40,7 +40,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Nexvary Panel on clean runner
         run: sudo bash installer/install.sh
-      - name: Verify services, vault/provider permissions, files and HTTPS login
+      - name: Verify services, permissions, files and HTTPS login
         run: |
           check_service() {
             local svc="$1"
@@ -59,11 +59,15 @@ jobs:
           test -f /opt/nexvary-panel/panel/__init__.py
           test -f /opt/nexvary-panel/panel/routes_accounts.py
           test -f /opt/nexvary-panel/panel/account_schema.py
+          test -f /opt/nexvary-panel/panel/routes_mail.py
+          test -f /opt/nexvary-panel/panel/mail_schema.py
           test -f /opt/nexvary-panel/static/app.css
           test -f /opt/nexvary-panel/static/approved-theme.css
           test -f /opt/nexvary-panel/static/hosting-suite.css
           test -f /opt/nexvary-panel/static/accounts.css
           test -f /opt/nexvary-panel/static/accounts.js
+          test -f /opt/nexvary-panel/static/mail.css
+          test -f /opt/nexvary-panel/static/mail.js
           test -f /opt/nexvary-panel/static/webtools.css
           test -f /opt/nexvary-panel/static/scheduled-tasks.css
           test -f /opt/nexvary-panel/panel/hosting_features.py
@@ -72,12 +76,60 @@ jobs:
           test -f /opt/nexvary-panel-agent/provider_agent.py
           test -f /opt/nexvary-panel-agent/webtools_agent.py
           test -f /opt/nexvary-panel-agent/scheduler_agent.py
+          test -f /opt/nexvary-panel-agent/mail_agent.py
+          test -f /opt/nexvary-panel-agent/mail_backend.py
           test "$(sudo stat -c '%a %U %G' /opt/nexvary-panel-agent/scheduler_agent.py)" = "750 root nexvary-panel"
           test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/credentials)" = "700 root root"
           test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/vault.sock)" = "660 root nexvary-panel"
           test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/provider.sock)" = "660 root nexvary-panel"
           curl -kfsS https://127.0.0.1:8443/login | grep -q 'Nexvary Panel'
           sudo nginx -t
+
+  mail-installation-gate:
+    name: Ubuntu 24.04 Email Stack gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nexvary Panel with Postfix and Dovecot
+        run: sudo bash installer/install.sh --with-mail
+      - name: Verify mail services, socket, configuration and idempotence
+        run: |
+          check_service() {
+            local svc="$1"
+            for i in {1..15}; do
+              if sudo systemctl is-active --quiet "$svc"; then return 0; fi
+              sleep 1
+            done
+            sudo systemctl status "$svc" --no-pager || true
+            sudo journalctl -u "$svc" -n 120 --no-pager || true
+            return 1
+          }
+          for svc in postfix dovecot nexvary-panel-mail; do check_service "$svc"; done
+          test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/mail.sock)" = "660 root nexvary-panel"
+          test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/mail/users)" = "640 root dovecot"
+          test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/mail/domains)" = "640 root postfix"
+          sudo postfix check
+          sudo dovecot -n >/dev/null
+          sudo postconf virtual_mailbox_domains | grep -q '/etc/nexvary-panel/mail/domains'
+          sudo grep -q '/etc/nexvary-panel/mail/users' /etc/dovecot/conf.d/99-nexvary-panel.conf
+          echo 'preserve.example OK' | sudo tee -a /etc/nexvary-panel/mail/domains >/dev/null
+          sudo postmap /etc/nexvary-panel/mail/domains
+          sudo bash installer/configure-mail.sh
+          sudo grep -q '^preserve.example OK$' /etc/nexvary-panel/mail/domains
+          python3 - <<'PY'
+          import json,socket
+          s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
+          s.settimeout(5)
+          s.connect('/run/nexvary-panel/mail.sock')
+          s.sendall(b'{"action":"status"}\n')
+          data=b''
+          while not data.endswith(b'\n'):
+              data+=s.recv(4096)
+          body=json.loads(data)
+          assert body.get('ok') is True, body
+          assert body.get('engine')=='postfix-dovecot', body
+          PY
 
   ui-release-gate:
     name: Real browser UI gate and screenshots
@@ -117,6 +169,7 @@ jobs:
             echo 'NVP_AGENT_SOCK=/tmp/nexvary-panel-ci/missing-agent.sock'
             echo 'NVP_VAULT_SOCK=/tmp/nexvary-panel-ci/missing-vault.sock'
             echo 'NVP_PROVIDER_SOCK=/tmp/nexvary-panel-ci/missing-provider.sock'
+            echo 'NVP_MAIL_SOCK=/tmp/nexvary-panel-ci/missing-mail.sock'
             echo "NVP_TEST_PASSWORD=$TEST_PASSWORD"
           } >> "$GITHUB_ENV"
       - name: Start Nexvary Panel
@@ -127,7 +180,7 @@ jobs:
           cat /tmp/nexvary-panel.log
           exit 1
       - name: UI Release Gate
-        run: node tests/ui_gate.mjs && node tests/backups_ui_gate.mjs && node tests/vault_ui_gate.mjs && node tests/integrations_ui_gate.mjs && node tests/approved_theme_ui_gate.mjs && node tests/internal_workspace_ui_gate.mjs && node tests/hosting_ui_gate.mjs && node tests/schedules_ui_gate.mjs && node tests/accounts_ui_gate.mjs
+        run: node tests/ui_gate.mjs && node tests/backups_ui_gate.mjs && node tests/vault_ui_gate.mjs && node tests/integrations_ui_gate.mjs && node tests/approved_theme_ui_gate.mjs && node tests/internal_workspace_ui_gate.mjs && node tests/hosting_ui_gate.mjs && node tests/schedules_ui_gate.mjs && node tests/accounts_ui_gate.mjs && node tests/mail_ui_gate.mjs
       - name: Upload real UI screenshots
         if: always()
         uses: actions/upload-artifact@v4
