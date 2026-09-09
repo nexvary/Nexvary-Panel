@@ -22,6 +22,7 @@ from .routes_integrations import register_integration_routes
 from .routes_remote_backup import register_remote_backup_routes
 from .routes_hosting import register_hosting_routes
 from .routes_webtools import register_webtools_routes
+from .routes_schedules import register_schedule_routes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -66,4 +67,5 @@ def create_app() -> Flask:
     register_remote_backup_routes(app)
     register_hosting_routes(app)
     register_webtools_routes(app)
+    register_schedule_routes(app)
     return app
