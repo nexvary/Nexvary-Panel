@@ -14,11 +14,11 @@ async function enterPanel(page) {
   await page.locator('input[name="password"]').fill(password);
   await page.locator('button').filter({ hasText: 'دخول آمن' }).click();
   await page.waitForURL(url => url.pathname === '/' || url.pathname === '', { timeout: 15000 });
-  await page.locator('#pageTitle').filter({ hasText: 'لوحة القيادة' }).waitFor({ state: 'visible' });
+  await page.locator('#pageTitle').filter({ hasText: 'الرئيسية' }).waitFor({ state: 'visible' });
 }
 async function assertNoOverflow(page,label){if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error(`${label} overflow`)}
 async function openView(page,id){await page.locator(`#nav a[href="#${id}"]`).click();await page.locator(`#${id}.active-view`).waitFor({state:'visible'});const active=await page.locator('#workspaceStage > section.active-view').count();if(active!==1)throw new Error(`Expected exactly one active workspace, got ${active}`);await assertNoOverflow(page,`${id} desktop`)}
-async function assertRoyalFrame(page, selector, label){const el=page.locator(selector).first();if(await el.count()!==1)throw new Error(`${label} target missing: ${selector}`);const style=await el.evaluate(node=>{const s=getComputedStyle(node);return {border:s.borderColor,borderStyle:s.borderStyle,shadow:s.boxShadow}});if(!style.border||style.borderStyle==='none'||style.border==='rgba(0, 0, 0, 0)')throw new Error(`${label} gold border missing`);if(!style.shadow||style.shadow==='none')throw new Error(`${label} luminous shadow missing`)}
+async function assertRoyalFrame(page, selector, label){const el=page.locator(selector).first();if(await el.count()!==1)throw new Error(`${label} target missing: ${selector}`);const style=await el.evaluate(node=>{const s=getComputedStyle(node);return {border:s.borderColor,borderStyle:s.borderStyle,shadow:s.boxShadow}});if(!style.border||style.borderStyle==='none'||style.border==='rgba(0, 0, 0, 0)')throw new Error(`${label} border missing`);if(!style.shadow||style.shadow==='none')throw new Error(`${label} luminous shadow missing`)}
 
 const browser = await chromium.launch({ headless: true });
 const failures = [];
@@ -28,10 +28,11 @@ await enterPanel(desktop);
 const workspaces=['dashboard','sites','databases','backups','fusion','dns','files','deploy','wordpress','security','services','docker','notifications','users','audit'];
 for (const id of workspaces) if (await desktop.locator(`#${id}`).count() !== 1) throw new Error(`Missing workspace #${id}`);
 if (await desktop.locator('.ui-icon').count() < 45) throw new Error('Original icon system missing or incomplete');
-if (await desktop.locator('.metric-card').count() !== 4) throw new Error('Live telemetry cards missing');
+if (await desktop.locator('.metric-card').count() !== 4) throw new Error('Live resource rows missing');
+if (await desktop.locator('.ref-stat-grid .ref-stat').count() !== 6) throw new Error('Reference summary grid missing');
 if (await desktop.locator('.command-search').count() !== 1) throw new Error('Command search missing');
 if (await desktop.locator('img[src*="nexvary-panel-primary.jpg"]').count() < 2) throw new Error('Approved Nexvary brand icon not integrated into shell/footer');
-for(const asset of ['/static/platform-controls.css','/static/fusion.css','/static/dns.css'])if(await desktop.locator(`link[href="${asset}"]`).count()!==1)throw new Error(`Stylesheet missing: ${asset}`);
+for(const asset of ['/static/platform-controls.css','/static/fusion.css','/static/dns.css','/static/reference-dashboard.css'])if(await desktop.locator(`link[href="${asset}"]`).count()!==1)throw new Error(`Stylesheet missing: ${asset}`);
 for(const asset of ['/static/platform-controls.js','/static/fusion.js','/static/dns.js'])if(await desktop.locator(`script[src="${asset}"]`).count()!==1)throw new Error(`Script missing: ${asset}`);
 if (await desktop.locator('#healthDialog').count() !== 1 || await desktop.locator('#healthReport').count() !== 1 || await desktop.locator('#closeHealth').count() !== 1) throw new Error('Site Health Inspector shell missing');
 if (await desktop.locator('#workspaceStage > section.active-view').count() !== 1) throw new Error('Workspace isolation failed on load');
@@ -39,7 +40,7 @@ if (await desktop.locator('#workspaceStage > section.active-view').count() !== 1
 await assertRoyalFrame(desktop,'.workspace-topbar','Header');
 await assertRoyalFrame(desktop,'#nav a.active','Active navigation item');
 await assertRoyalFrame(desktop,'#workspaceStage > section.active-view','Active workspace page');
-await assertRoyalFrame(desktop,'.metric-card','Dashboard card');
+await assertRoyalFrame(desktop,'.metric-card','Dashboard resource row');
 await assertRoyalFrame(desktop,'#quickCreate','Primary action button');
 await assertRoyalFrame(desktop,'.command-search','Command field');
 await assertRoyalFrame(desktop,'#healthDialog','Site Health dialog');
@@ -127,4 +128,4 @@ await mobile.waitForTimeout(250);
 if(await mobile.locator('#sidebar.open').count())throw new Error('Escape did not close mobile drawer');
 await browser.close();
 if (failures.length) throw new Error(failures.join('\n'));
-console.log('Nexvary Panel 0.6 Fusion Capability/DNS/Step-Up/Site Health/Royal UI Release Gate: PASS');
+console.log('Nexvary Panel 0.6 reference dashboard UI Release Gate: PASS');
