@@ -22,26 +22,28 @@ async function noOverflow(page,label){
 async function open(page,id){
   const nav=page.locator(`#nav a[href="#${id}"]`);
   if(await nav.count()!==1) throw new Error(`Missing navigation entry #${id}`);
-  // This gate validates workspace rendering, not drawer hit-testing. The primary ui_gate
-  // separately opens and clicks the real mobile drawer. DOM click keeps this test stable
-  // when the off-canvas navigation is intentionally outside the mobile viewport.
   await nav.evaluate(el=>el.click());
   await page.locator(`#${id}.active-view`).waitFor({state:'visible'});
+}
+async function onlyVisible(page,id){
+  const visible=await page.locator('#workspaceStage>.workspace-page').evaluateAll(nodes=>nodes.filter(el=>getComputedStyle(el).display!=='none').map(el=>el.id));
+  if(visible.length!==1||visible[0]!==id) throw new Error(`${id}: workspace visibility invariant failed (${visible.join(',')})`);
 }
 
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1600,height:1050}});
 await login(page);
 
-for(const css of ['/static/royal-workspaces.css','/static/royal-workspace-entities.css']){
+for(const css of ['/static/royal-workspaces.css','/static/royal-workspace-entities.css','/static/workspace-visibility.css']){
   if(await page.locator(`link[href="${css}"]`).count()!==1) throw new Error(`Royal workspace stylesheet missing: ${css}`);
 }
 
-const pages=['sites','databases','files','security','backups','users','fusion','integrations','wordpress','deploy','docker','services','dns','notifications','audit','vault'];
+const pages=['hosting','sites','databases','files','security','backups','users','fusion','integrations','wordpress','deploy','docker','services','dns','notifications','audit','vault'];
 const iconColors=[];
 const accentValues=[];
 for(const id of pages){
   await open(page,id);
+  await onlyVisible(page,id);
   const root=page.locator(`#${id}.active-view`);
   const hero=root.locator(':scope > .workspace-hero');
   if(await hero.count()!==1) throw new Error(`${id}: royal workspace hero missing`);
@@ -57,7 +59,7 @@ for(const id of pages){
   iconColors.push(iconStyle.color);
   if(await hero.locator('.hero-stats > div').count()<2) throw new Error(`${id}: operational hero statistics missing`);
   await noOverflow(page,`${id} desktop`);
-  await page.screenshot({path:`${out}/nexvary-panel-0.6-royal-${id}-desktop.png`,fullPage:false});
+  await page.screenshot({path:`${out}/nexvary-panel-0.7-royal-${id}-desktop.png`,fullPage:false});
 }
 
 if(new Set(accentValues).size<7) throw new Error(`Internal workspace accent palette is not diverse enough: ${new Set(accentValues).size} colors`);
@@ -72,13 +74,14 @@ if(c1===c2) throw new Error('Silver / electric-black internal frame alternation 
 
 const mobile=await browser.newPage({viewport:{width:390,height:844}});
 await login(mobile);
-for(const id of ['sites','files','security','backups','dns','fusion']){
+for(const id of ['hosting','sites','files','security','backups','dns','fusion']){
   await open(mobile,id);
+  await onlyVisible(mobile,id);
   const hero=mobile.locator(`#${id}.active-view > .workspace-hero`);
   if(await hero.count()!==1) throw new Error(`${id}: mobile royal hero missing`);
   await noOverflow(mobile,`${id} mobile`);
 }
-await mobile.screenshot({path:`${out}/nexvary-panel-0.6-royal-internal-mobile.png`,fullPage:false});
+await mobile.screenshot({path:`${out}/nexvary-panel-0.7-royal-internal-mobile.png`,fullPage:false});
 
 await browser.close();
-console.log('Nexvary Panel Royal Internal Workspace Gate: PASS');
+console.log('Nexvary Panel 0.7 Royal Internal Workspace Gate: PASS');
