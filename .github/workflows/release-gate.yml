@@ -26,11 +26,11 @@ jobs:
       - name: Python compile gate
         run: python -m compileall -q app.py panel agent tests
       - name: Shell syntax gate
-        run: bash -n installer/install.sh installer/upgrade.sh installer/configure-mail.sh agent/nvpctl
+        run: bash -n installer/install.sh installer/upgrade.sh installer/configure-mail.sh installer/configure-sftp.sh agent/nvpctl
       - name: Smoke tests
         env:
           NVP_COOKIE_SECURE: '0'
-        run: python tests/smoke_test.py && python tests/vault_test.py && python tests/integrations_test.py && python tests/provider_backup_test.py && python tests/trust_test.py && python tests/hosting_features_test.py && python tests/schedules_test.py && python tests/accounts_scope_test.py && python tests/mail_policy_test.py
+        run: python tests/smoke_test.py && python tests/vault_test.py && python tests/integrations_test.py && python tests/provider_backup_test.py && python tests/trust_test.py && python tests/hosting_features_test.py && python tests/schedules_test.py && python tests/accounts_scope_test.py && python tests/mail_policy_test.py && python tests/transfer_policy_test.py
 
   installation-gate:
     name: Ubuntu 24.04 full installer gate
@@ -53,31 +53,13 @@ jobs:
             sudo journalctl -u "$svc" -n 100 --no-pager || true
             return 1
           }
-          for svc in nginx mariadb nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel; do
-            check_service "$svc"
+          for svc in nginx mariadb nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel; do check_service "$svc"; done
+          for file in panel/__init__.py panel/routes_accounts.py panel/account_schema.py panel/routes_mail.py panel/mail_schema.py panel/routes_transfers.py panel/transfer_schema.py static/app.css static/approved-theme.css static/hosting-suite.css static/accounts.css static/accounts.js static/mail.css static/mail.js static/transfers.css static/transfers.js static/webtools.css static/scheduled-tasks.css panel/hosting_features.py; do
+            test -f "/opt/nexvary-panel/$file"
           done
-          test -f /opt/nexvary-panel/panel/__init__.py
-          test -f /opt/nexvary-panel/panel/routes_accounts.py
-          test -f /opt/nexvary-panel/panel/account_schema.py
-          test -f /opt/nexvary-panel/panel/routes_mail.py
-          test -f /opt/nexvary-panel/panel/mail_schema.py
-          test -f /opt/nexvary-panel/static/app.css
-          test -f /opt/nexvary-panel/static/approved-theme.css
-          test -f /opt/nexvary-panel/static/hosting-suite.css
-          test -f /opt/nexvary-panel/static/accounts.css
-          test -f /opt/nexvary-panel/static/accounts.js
-          test -f /opt/nexvary-panel/static/mail.css
-          test -f /opt/nexvary-panel/static/mail.js
-          test -f /opt/nexvary-panel/static/webtools.css
-          test -f /opt/nexvary-panel/static/scheduled-tasks.css
-          test -f /opt/nexvary-panel/panel/hosting_features.py
-          test -f /opt/nexvary-panel-agent/secret_vault.py
-          test -f /opt/nexvary-panel-agent/vault_agent.py
-          test -f /opt/nexvary-panel-agent/provider_agent.py
-          test -f /opt/nexvary-panel-agent/webtools_agent.py
-          test -f /opt/nexvary-panel-agent/scheduler_agent.py
-          test -f /opt/nexvary-panel-agent/mail_agent.py
-          test -f /opt/nexvary-panel-agent/mail_backend.py
+          for file in secret_vault.py vault_agent.py provider_agent.py webtools_agent.py scheduler_agent.py mail_agent.py mail_backend.py transfer_agent.py; do
+            test -f "/opt/nexvary-panel-agent/$file"
+          done
           test "$(sudo stat -c '%a %U %G' /opt/nexvary-panel-agent/scheduler_agent.py)" = "750 root nexvary-panel"
           test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/credentials)" = "700 root root"
           test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/vault.sock)" = "660 root nexvary-panel"
@@ -119,17 +101,80 @@ jobs:
           sudo grep -q '^preserve.example OK$' /etc/nexvary-panel/mail/domains
           sudo -u nexvary-panel python3 - <<'PY'
           import json,socket
-          s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
-          s.settimeout(5)
-          s.connect('/run/nexvary-panel/mail.sock')
-          s.sendall(b'{"action":"status"}\n')
-          data=b''
-          while not data.endswith(b'\n'):
-              data+=s.recv(4096)
-          body=json.loads(data)
-          assert body.get('ok') is True, body
-          assert body.get('engine')=='postfix-dovecot', body
+          s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM); s.settimeout(5); s.connect('/run/nexvary-panel/mail.sock')
+          s.sendall(b'{"action":"status"}\n'); data=b''
+          while not data.endswith(b'\n'): data+=s.recv(4096)
+          body=json.loads(data); assert body.get('ok') is True, body; assert body.get('engine')=='postfix-dovecot', body
           PY
+
+  transfer-installation-gate:
+    name: Ubuntu 24.04 key-only SFTP gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nexvary Panel with SFTP Transfer Center
+        run: sudo bash installer/install.sh --with-sftp
+      - name: Verify provider and real chrooted SFTP session
+        run: |
+          for i in {1..15}; do sudo systemctl is-active --quiet nexvary-panel-transfer && break; sleep 1; done
+          sudo systemctl is-active --quiet ssh
+          sudo systemctl is-active --quiet nexvary-panel-transfer || { sudo systemctl status nexvary-panel-transfer --no-pager; sudo journalctl -u nexvary-panel-transfer -n 120 --no-pager; exit 1; }
+          test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/transfer.sock)" = "660 root nexvary-panel"
+          test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/sftp-keys)" = "700 root root"
+          test "$(sudo stat -c '%a %U %G' /srv/nexvary-sftp)" = "755 root root"
+          sudo sshd -t
+          sudo grep -q '^Match Group nexvary-sftp$' /etc/ssh/sshd_config.d/90-nexvary-sftp.conf
+          sudo grep -q 'ForceCommand internal-sftp -d /site' /etc/ssh/sshd_config.d/90-nexvary-sftp.conf
+          sudo -u nexvary-panel python3 - <<'PY'
+          import json,socket
+          s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM); s.settimeout(5); s.connect('/run/nexvary-panel/transfer.sock')
+          s.sendall(b'{"action":"status"}\n'); data=b''
+          while not data.endswith(b'\n'): data+=s.recv(4096)
+          body=json.loads(data); assert body.get('ok') is True, body; assert body.get('shell') is False, body
+          PY
+          sudo install -d -m 0750 -o www-data -g www-data /var/www/sftp-gate.example
+          echo 'gate' | sudo tee /var/www/sftp-gate.example/index.txt >/dev/null
+          sudo chown www-data:www-data /var/www/sftp-gate.example/index.txt
+          ssh-keygen -q -t ed25519 -N '' -f /tmp/nvp_sftp_key
+          PUB="$(cat /tmp/nvp_sftp_key.pub)"
+          sudo -u nexvary-panel python3 - "$PUB" <<'PY'
+          import json,socket,sys
+          payload={'action':'account-create','system_user':'nvpt_0123456789','domain':'sftp-gate.example','public_key':sys.argv[1]}
+          s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM); s.settimeout(20); s.connect('/run/nexvary-panel/transfer.sock')
+          s.sendall((json.dumps(payload)+'\n').encode()); data=b''
+          while not data.endswith(b'\n'): data+=s.recv(4096)
+          body=json.loads(data); assert body.get('ok') is True, body; assert body.get('shell') is False, body
+          PY
+          getent passwd nvpt_0123456789
+          id -nG nvpt_0123456789 | grep -qw nexvary-sftp
+          sudo mountpoint -q /srv/nexvary-sftp/nvpt_0123456789/site
+          test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/sftp-keys/nvpt_0123456789)" = "600 root root"
+          echo 'uploaded-through-sftp' > /tmp/nvp-upload.txt
+          cat > /tmp/nvp-sftp.batch <<'EOF'
+          pwd
+          ls
+          put /tmp/nvp-upload.txt upload.txt
+          EOF
+          sftp -q -b /tmp/nvp-sftp.batch -i /tmp/nvp_sftp_key -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=8 nvpt_0123456789@127.0.0.1
+          grep -q 'uploaded-through-sftp' /var/www/sftp-gate.example/upload.txt
+          cat > /tmp/nvp-sftp-escape.batch <<'EOF'
+          ls /etc
+          EOF
+          if sftp -q -b /tmp/nvp-sftp-escape.batch -i /tmp/nvp_sftp_key -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=8 nvpt_0123456789@127.0.0.1; then
+            echo 'SFTP chroot escape test unexpectedly succeeded'; exit 1
+          fi
+          sudo -u nexvary-panel python3 - <<'PY'
+          import json,socket
+          payload={'action':'account-delete','system_user':'nvpt_0123456789','domain':'sftp-gate.example'}
+          s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM); s.settimeout(20); s.connect('/run/nexvary-panel/transfer.sock')
+          s.sendall((json.dumps(payload)+'\n').encode()); data=b''
+          while not data.endswith(b'\n'): data+=s.recv(4096)
+          body=json.loads(data); assert body.get('ok') is True, body
+          PY
+          ! getent passwd nvpt_0123456789
+          ! sudo mountpoint -q /srv/nexvary-sftp/nvpt_0123456789/site
+          test ! -e /etc/nexvary-panel/sftp-keys/nvpt_0123456789
 
   ui-release-gate:
     name: Real browser UI gate and screenshots
@@ -170,6 +215,7 @@ jobs:
             echo 'NVP_VAULT_SOCK=/tmp/nexvary-panel-ci/missing-vault.sock'
             echo 'NVP_PROVIDER_SOCK=/tmp/nexvary-panel-ci/missing-provider.sock'
             echo 'NVP_MAIL_SOCK=/tmp/nexvary-panel-ci/missing-mail.sock'
+            echo 'NVP_TRANSFER_SOCK=/tmp/nexvary-panel-ci/missing-transfer.sock'
             echo "NVP_TEST_PASSWORD=$TEST_PASSWORD"
           } >> "$GITHUB_ENV"
       - name: Start Nexvary Panel
@@ -180,7 +226,7 @@ jobs:
           cat /tmp/nexvary-panel.log
           exit 1
       - name: UI Release Gate
-        run: node tests/ui_gate.mjs && node tests/backups_ui_gate.mjs && node tests/vault_ui_gate.mjs && node tests/integrations_ui_gate.mjs && node tests/approved_theme_ui_gate.mjs && node tests/internal_workspace_ui_gate.mjs && node tests/hosting_ui_gate.mjs && node tests/schedules_ui_gate.mjs && node tests/accounts_ui_gate.mjs && node tests/mail_ui_gate.mjs
+        run: node tests/ui_gate.mjs && node tests/backups_ui_gate.mjs && node tests/vault_ui_gate.mjs && node tests/integrations_ui_gate.mjs && node tests/approved_theme_ui_gate.mjs && node tests/internal_workspace_ui_gate.mjs && node tests/hosting_ui_gate.mjs && node tests/schedules_ui_gate.mjs && node tests/accounts_ui_gate.mjs && node tests/mail_ui_gate.mjs && node tests/transfer_ui_gate.mjs
       - name: Upload real UI screenshots
         if: always()
         uses: actions/upload-artifact@v4
