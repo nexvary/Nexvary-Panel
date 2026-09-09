@@ -8,7 +8,7 @@ from flask import jsonify, request, session
 
 from .config import DOMAIN_RE, PASSWORD_RE, USER_RE
 from .core import audit, db, password_hash
-from .security import login_required, role_required, step_up_required
+from .security import role_required, step_up_required
 
 
 def _safe_account(row) -> dict:
@@ -46,7 +46,6 @@ def _package_allowed_for_actor(row) -> bool:
         return False
     if session.get("role") == "admin":
         return True
-    # Resellers may never delegate the administrative/unlimited package.
     return str(row["name"]) != "NEXVARY Unlimited"
 
 
@@ -60,13 +59,14 @@ def register_account_routes(app):
                 rows = conn.execute(
                     """SELECT a.*,p.name AS package_name,u.enabled AS login_enabled
                        FROM hosting_accounts a JOIN hosting_packages p ON p.id=a.package_id
-                       JOIN users u ON u.username=a.username ORDER BY a.id DESC"""
+                       JOIN users u ON u.username=a.username ORDER BY a.created_at DESC,a.username"""
                 ).fetchall()
             else:
                 rows = conn.execute(
                     """SELECT a.*,p.name AS package_name,u.enabled AS login_enabled
                        FROM hosting_accounts a JOIN hosting_packages p ON p.id=a.package_id
-                       JOIN users u ON u.username=a.username WHERE a.reseller_owner=? ORDER BY a.id DESC""",
+                       JOIN users u ON u.username=a.username WHERE a.reseller_owner=?
+                       ORDER BY a.created_at DESC,a.username""",
                     (actor,),
                 ).fetchall()
             packages = [
