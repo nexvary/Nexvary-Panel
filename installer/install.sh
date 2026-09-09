@@ -7,12 +7,14 @@ WITH_DOCKER=0
 WITH_BACKUP_PROVIDERS=0
 WITH_MAIL=0
 WITH_SFTP=0
+WITH_POSTGRES=0
 for arg in "$@"; do
   case "$arg" in
     --with-docker) WITH_DOCKER=1 ;;
     --with-backup-providers) WITH_BACKUP_PROVIDERS=1 ;;
     --with-mail) WITH_MAIL=1 ;;
     --with-sftp) WITH_SFTP=1 ;;
+    --with-postgres) WITH_POSTGRES=1 ;;
     *) echo "Unknown installer option: $arg"; exit 2 ;;
   esac
 done
@@ -29,15 +31,14 @@ if (( WITH_MAIL )); then
   apt-get install -y postfix dovecot-core dovecot-imapd
 fi
 if (( WITH_SFTP )); then apt-get install -y openssh-server acl; fi
+if (( WITH_POSTGRES )); then apt-get install -y postgresql postgresql-client; fi
 
 getent group nexvary-panel >/dev/null || groupadd --system nexvary-panel
 id nexvary-panel >/dev/null 2>&1 || useradd --system --gid nexvary-panel --home /opt/nexvary-panel --shell /usr/sbin/nologin nexvary-panel
 install -d -m 0750 -o nexvary-panel -g nexvary-panel /opt/nexvary-panel /var/lib/nexvary-panel
 install -d -m 0750 -o root -g nexvary-panel /opt/nexvary-panel-agent
-install -d -m 0750 -o root -g root /etc/nexvary-panel
-install -d -m 0750 -o root -g root /etc/nginx/nexvary
-install -d -m 0700 -o root -g root /etc/nexvary-panel/credentials
-install -d -m 0700 -o root -g root /var/backups/nexvary-panel
+install -d -m 0750 -o root -g root /etc/nexvary-panel /etc/nginx/nexvary
+install -d -m 0700 -o root -g root /etc/nexvary-panel/credentials /var/backups/nexvary-panel /var/backups/nexvary-panel/migrations
 install -d -m 0750 -o root -g nexvary-panel /run/nexvary-panel
 cp -a app.py panel requirements.txt templates static VERSION /opt/nexvary-panel/
 python3 -m venv /opt/nexvary-panel/venv
@@ -55,6 +56,7 @@ install -m 0750 -o root -g nexvary-panel agent/scheduler_agent.py /opt/nexvary-p
 install -m 0640 -o root -g root agent/mail_backend.py /opt/nexvary-panel-agent/mail_backend.py
 install -m 0750 -o root -g root agent/mail_agent.py /opt/nexvary-panel-agent/mail_agent.py
 install -m 0750 -o root -g root agent/transfer_agent.py /opt/nexvary-panel-agent/transfer_agent.py
+install -m 0750 -o root -g root agent/hosting_ops_agent.py /opt/nexvary-panel-agent/hosting_ops_agent.py
 rm -f /etc/sudoers.d/nexvary-panel
 
 if [[ ! -f /etc/nexvary-panel/admin.env ]]; then
@@ -85,6 +87,7 @@ install -m 0644 systemd/nexvary-panel-webtools.service /etc/systemd/system/nexva
 install -m 0644 systemd/nexvary-panel-scheduler.service /etc/systemd/system/nexvary-panel-scheduler.service
 install -m 0644 systemd/nexvary-panel-mail.service /etc/systemd/system/nexvary-panel-mail.service
 install -m 0644 systemd/nexvary-panel-transfer.service /etc/systemd/system/nexvary-panel-transfer.service
+install -m 0644 systemd/nexvary-panel-ops.service /etc/systemd/system/nexvary-panel-ops.service
 CERT_DIR=/etc/nexvary-panel/tls
 install -d -m 0700 "$CERT_DIR"
 if [[ ! -f "$CERT_DIR/panel.crt" ]]; then
@@ -122,10 +125,11 @@ ln -sfn /etc/nginx/sites-available/nexvary-panel.conf /etc/nginx/sites-enabled/n
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl daemon-reload
-systemctl enable --now nginx mariadb fail2ban nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel
+systemctl enable --now nginx mariadb fail2ban nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel-ops nexvary-panel
 if (( WITH_DOCKER )); then systemctl enable --now docker; fi
 if (( WITH_MAIL )); then systemctl enable --now nexvary-panel-mail; fi
 if (( WITH_SFTP )); then systemctl enable --now nexvary-panel-transfer; fi
+if (( WITH_POSTGRES )); then systemctl enable --now postgresql; fi
 ufw allow OpenSSH >/dev/null || true
 ufw allow 80/tcp >/dev/null || true
 ufw allow 443/tcp >/dev/null || true
@@ -141,3 +145,4 @@ if (( ! WITH_DOCKER )); then printf 'Docker was not installed. Re-run installer 
 if (( ! WITH_BACKUP_PROVIDERS )); then printf 'restic/rclone were not installed. Re-run installer with --with-backup-providers to enable Fusion remote backup engines.\n'; fi
 if (( ! WITH_MAIL )); then printf 'Postfix/Dovecot were not configured. Re-run installer with --with-mail to enable the local Email Stack.\n'; fi
 if (( ! WITH_SFTP )); then printf 'Key-only SFTP Transfer Center was not configured. Re-run installer with --with-sftp to enable it.\n'; fi
+if (( ! WITH_POSTGRES )); then printf 'PostgreSQL was not installed. Re-run installer with --with-postgres to enable PostgreSQL resources.\n'; fi
