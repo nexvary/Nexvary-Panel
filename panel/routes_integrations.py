@@ -18,8 +18,10 @@ TARGET_TYPES = {
     "restic": {"capability": "encrypted-snapshots", "secret_kind": "restic", "endpoint": "restic-s3"},
     "rclone": {"capability": "cloud-remotes", "secret_kind": "rclone", "endpoint": "rclone-remote"},
     "powerdns": {"capability": "authoritative-dns", "secret_kind": "powerdns", "endpoint": "https-api"},
+    "cloudflare": {"capability": "authoritative-dns", "secret_kind": "cloudflare", "endpoint": "cloudflare-zone"},
 }
 RCLONE_ENDPOINT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}:[^\x00\r\n]{0,300}$")
+CLOUDFLARE_ZONE_RE = re.compile(r"^https://api\.cloudflare\.com/client/v4/zones/[A-Za-z0-9_-]{8,80}/?$")
 
 
 def _valid_name(value: object) -> str:
@@ -68,6 +70,9 @@ def _validate_endpoint(provider: str, value: object) -> str:
     elif provider == "powerdns":
         if not _https_endpoint(value):
             raise ValueError("PowerDNS endpoint must be a public HTTPS API URL")
+    elif provider == "cloudflare":
+        if not CLOUDFLARE_ZONE_RE.fullmatch(value):
+            raise ValueError("Cloudflare endpoint must be the fixed api.cloudflare.com zone URL")
     else:
         raise ValueError("unsupported integration provider")
     return value
@@ -115,7 +120,8 @@ def register_integration_routes(app):
             if not target_type:
                 raise ValueError("unsupported integration provider")
             spec = _provider_spec(provider)
-            if not spec or target_type["capability"] not in spec.capabilities:
+            # Cloudflare is an external HTTPS API provider and intentionally has no local binary.
+            if provider != "cloudflare" and (not spec or target_type["capability"] not in spec.capabilities):
                 raise ValueError("provider capability contract mismatch")
             endpoint = _validate_endpoint(provider, data.get("endpoint"))
             secret_id = str(data.get("secret_id", "")).strip()
@@ -192,10 +198,11 @@ def register_integration_routes(app):
             isinstance(item, dict) and item.get("id") == target["secret_id"] and item.get("kind") == target["secret_kind"]
             for item in vault.get("entries", [])
         ))
-        installed = bool(provider and provider.get("installed"))
-        capability_ok = bool(provider and target["capability"] in provider.get("capabilities", []))
+        external_cloudflare = target["provider"] == "cloudflare"
+        installed = bool(external_cloudflare or (provider and provider.get("installed")))
+        capability_ok = bool(external_cloudflare or (provider and target["capability"] in provider.get("capabilities", [])))
         provider_contract = True
-        contract_note = "No provider-specific execution contract is required for this read-only preflight."
+        contract_note = "External HTTPS DNS provider contract validated syntactically; live calls occur only through the root Ops Agent."
         if target["provider"] == "rclone" and installed and secret_present:
             agent = provider_call({"action": "rclone-preflight", "secret_id": target["secret_id"], "endpoint": target["endpoint"]}, timeout=20)
             provider_contract = bool(agent.get("ok"))
@@ -212,6 +219,6 @@ def register_integration_routes(app):
                 "endpoint_syntax": True,
                 "provider_contract": provider_contract,
             },
-            provider={"id": target["provider"], "version": (provider or {}).get("version", "")},
+            provider={"id": target["provider"], "version": "external-api" if external_cloudflare else (provider or {}).get("version", "")},
             note=contract_note,
         )
