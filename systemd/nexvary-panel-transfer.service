@@ -12,18 +12,13 @@ User=root
 Group=root
 UMask=0077
 NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=full
-ProtectHome=true
-ProtectKernelTunables=true
-ProtectKernelModules=true
-ProtectKernelLogs=true
-ProtectControlGroups=true
 RestrictAddressFamilies=AF_UNIX
 LockPersonality=true
 RestrictRealtime=true
+RestrictSUIDSGID=true
 SystemCallArchitectures=native
-ReadWritePaths=/etc/nexvary-panel /srv/nexvary-sftp /var/www /run/nexvary-panel /etc/ssh /etc/passwd /etc/shadow /etc/group /etc/gshadow
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETGID CAP_SETUID CAP_SYS_ADMIN
+AmbientCapabilities=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETGID CAP_SETUID CAP_SYS_ADMIN
 
 [Install]
 WantedBy=multi-user.target
