@@ -17,6 +17,7 @@ await page.waitForURL(url => url.pathname === '/' || url.pathname === '', { time
 await page.locator('#dashboard.active-view').waitFor({ state: 'visible' });
 
 if (await page.locator('link[href="/static/approved-theme.css"]').count() !== 1) throw new Error('Approved theme stylesheet missing');
+if (await page.locator('link[href="/static/security-intelligence.css"]').count() !== 1) throw new Error('Security intelligence stylesheet missing');
 if (await page.locator('.trust-center-card').count() !== 1) throw new Error('Trust Center card missing');
 const scoreText = (await page.locator('.trust-score > strong').innerText()).replace(/\s/g, '');
 const score = Number.parseInt(scoreText, 10);
@@ -56,8 +57,17 @@ if (silver === electricBlack) throw new Error('Silver and electric-black interna
 
 const shell = await page.locator('#dashboard.active-view').evaluate(el => { const s=getComputedStyle(el); return { width:parseFloat(s.borderTopWidth), color:s.borderTopColor, shadow:s.boxShadow }; });
 if (shell.width < 1 || shell.color === 'rgba(0, 0, 0, 0)' || shell.shadow === 'none') throw new Error('Gold structural frame missing');
-
 if (await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2)) throw new Error('Approved dashboard has horizontal overflow');
 await page.screenshot({ path: `${out}/nexvary-panel-0.6-approved-dashboard-desktop.png`, fullPage: true });
+
+await page.locator('#nav a[href="#services"]').click();
+await page.locator('#services.active-view').waitFor({ state:'visible' });
+if (await page.locator('#services .security-intelligence').count() !== 1) throw new Error('Security Intelligence panel missing');
+if (await page.locator('#services .defense-provider').count() !== 2) throw new Error('CrowdSec/Fail2Ban provider posture cards missing');
+const intelText = await page.locator('#services .security-intelligence').innerText();
+if (!intelText.includes('READ ONLY') || !intelText.includes('CrowdSec') || !intelText.includes('Fail2Ban')) throw new Error('Read-only active-defense policy copy missing');
+if (await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2)) throw new Error('Security Intelligence view has horizontal overflow');
+await page.screenshot({ path: `${out}/nexvary-panel-0.6-security-intelligence-desktop.png`, fullPage: true });
+
 await browser.close();
-console.log('Nexvary Panel approved Royal Control Center UI Gate: PASS');
+console.log('Nexvary Panel approved Royal Control Center + active-defense UI Gate: PASS');
