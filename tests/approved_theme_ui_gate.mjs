@@ -49,8 +49,8 @@ if (!navStyle.family.includes('Noto Kufi Arabic')) throw new Error(`Kufi font st
 if (navStyle.color !== 'rgb(55, 255, 154)') throw new Error(`Sidebar text is not electric green: ${navStyle.color}`);
 if (!navStyle.shadow || navStyle.shadow === 'none') throw new Error('Sidebar electric glow missing');
 
-const expectedOrder=['dashboard','hosting','sites','databases','files','security','backups'];
-const firstLinks=await page.locator('#nav a').evaluateAll(nodes=>nodes.slice(0,7).map(n=>n.getAttribute('href')?.replace('#','')));
+const expectedOrder=['dashboard','hosting','sites','webtools','databases','files','security','backups'];
+const firstLinks=await page.locator('#nav a').evaluateAll(nodes=>nodes.slice(0,8).map(n=>n.getAttribute('href')?.replace('#','')));
 if (JSON.stringify(firstLinks)!==JSON.stringify(expectedOrder)) throw new Error(`Sidebar primary order mismatch: ${firstLinks.join(',')}`);
 const iconColors=await page.evaluate(()=>Array.from(document.querySelectorAll('#nav a .ui-icon')).map(el=>getComputedStyle(el).color));
 if(new Set(iconColors).size<8) throw new Error(`Sidebar icon palette too limited: ${new Set(iconColors).size}`);
