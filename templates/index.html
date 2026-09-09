@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="/static/royal-ornaments.css">
   <link rel="stylesheet" href="/static/royal-workspaces.css">
   <link rel="stylesheet" href="/static/royal-workspace-entities.css">
+  <link rel="stylesheet" href="/static/hosting-suite.css">
   <link rel="stylesheet" href="/static/workspace-visibility.css">
   <link rel="stylesheet" href="/static/security-intelligence.css">
 </head>
@@ -43,6 +44,7 @@
     <nav id="nav" aria-label="لوحة التحكم">
       <span class="nav-label">لوحة التحكم</span>
       <a class="active" href="#dashboard" data-title="الرئيسية" data-subtitle="نظرة تشغيلية موحدة على الخادم والموارد والحماية">{{icon('dashboard')}}<span>الرئيسية</span><em></em></a>
+      <a href="#hosting" data-title="Hosting Suite" data-subtitle="مركز وظائف الاستضافة والحزم والحدود والصلاحيات">{{icon('layers')}}<span>Hosting Suite</span><em></em></a>
       <a href="#sites" data-title="المواقع الإلكترونية" data-subtitle="إدارة المواقع والتطبيقات والـRuntime وNGINX">{{icon('globe')}}<span>المواقع الإلكترونية</span><em></em></a>
       <a href="#databases" data-title="قواعد البيانات" data-subtitle="MariaDB والمستخدمون والربط الآمن بالتطبيقات">{{icon('database')}}<span>قواعد البيانات</span><em></em></a>
       <a href="#files" data-title="الملفات وإدارة المحتوى" data-subtitle="إدارة ملفات المواقع داخل نطاق آمن ومحصور">{{icon('file')}}<span>الملفات وإدارة المحتوى</span><em></em></a>
@@ -82,6 +84,7 @@
     {% with ms=get_flashed_messages(with_categories=true) %}{% for c,m in ms %}<div class="flash {{c}}">{{m}}</div>{% endfor %}{% endwith %}
     <div class="workspace-stage" id="workspaceStage">
       {% include "sections/dashboard.html" %}
+      {% include "sections/hosting.html" %}
       {% include "sections/sites.html" %}
       {% include "sections/databases.html" %}
       {% include "sections/backups.html" %}
@@ -96,7 +99,8 @@
       {% include "sections/services.html" %}
       {% include "sections/docker.html" %}
       {% include "sections/notifications.html" %}
-      {% if role == 'admin' %}{% include "sections/users.html" %}{% endif %}
+      {% if role == 'admin' %}{% include "sections/users.html" %}
+      {% endif %}
       {% include "sections/audit.html" %}
     </div>
     <dialog id="healthDialog" class="health-dialog royal-frame"><div class="panel-head"><div><span class="kicker">SITE HEALTH INSPECTOR</span><h3 id="healthTitle">Health</h3></div><button type="button" id="closeHealth" class="tiny ghost">إغلاق</button></div><div id="healthReport" class="health-report"><div class="health-loading">اختر Health من بطاقة موقع لبدء الفحص.</div></div></dialog>
@@ -111,5 +115,6 @@
 <script src="/static/vault.js"></script>
 <script src="/static/integrations.js"></script>
 <script src="/static/remote-backup.js"></script>
+<script src="/static/hosting-suite.js"></script>
 </body>
 </html>
