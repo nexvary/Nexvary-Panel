@@ -1,0 +1,297 @@
+/* Nexvary Panel — Royal Workspace System
+   Shared visual language for every internal workspace. Dashboard keeps its dedicated reference pass. */
+:root{
+  --rw-gold:#e8bd4f;
+  --rw-gold-soft:rgba(232,189,79,.64);
+  --rw-silver:#8aa6c3;
+  --rw-silver-soft:rgba(155,188,220,.46);
+  --rw-black:#07111e;
+  --rw-electric-black:#0b1b2d;
+  --rw-green:#37ff9a;
+  --rw-cyan:#2ec8ff;
+  --rw-violet:#a65dff;
+  --rw-crimson:#ff4168;
+}
+
+#workspaceStage>.workspace-page:not(#dashboard){
+  --rw-accent:var(--rw-cyan);
+  --rw-accent-rgb:46,200,255;
+  display:grid;
+  gap:12px;
+  padding:12px 0 4px!important;
+  min-height:0!important;
+  background:
+    radial-gradient(circle at 82% 2%,rgba(var(--rw-accent-rgb),.075),transparent 22%),
+    linear-gradient(180deg,rgba(2,8,19,.12),rgba(1,5,13,.03));
+}
+#sites{--rw-accent:#2ec8ff;--rw-accent-rgb:46,200,255}
+#databases{--rw-accent:#a65dff;--rw-accent-rgb:166,93,255}
+#backups{--rw-accent:#37ff9a;--rw-accent-rgb:55,255,154}
+#fusion{--rw-accent:#a65dff;--rw-accent-rgb:166,93,255}
+#integrations{--rw-accent:#35d5ff;--rw-accent-rgb:53,213,255}
+#dns{--rw-accent:#27c7ff;--rw-accent-rgb:39,199,255}
+#vault{--rw-accent:#ffd15d;--rw-accent-rgb:255,209,93}
+#files{--rw-accent:#b86cff;--rw-accent-rgb:184,108,255}
+#deploy{--rw-accent:#45c8ff;--rw-accent-rgb:69,200,255}
+#wordpress{--rw-accent:#58d7ff;--rw-accent-rgb:88,215,255}
+#security{--rw-accent:#37ff9a;--rw-accent-rgb:55,255,154}
+#services{--rw-accent:#26d7ff;--rw-accent-rgb:38,215,255}
+#docker{--rw-accent:#38b7ff;--rw-accent-rgb:56,183,255}
+#notifications{--rw-accent:#ff4d7a;--rw-accent-rgb:255,77,122}
+#users{--rw-accent:#3bd8ff;--rw-accent-rgb:59,216,255}
+#audit{--rw-accent:#dcae55;--rw-accent-rgb:220,174,85}
+
+/* Ceremonial hero shared by every workspace. */
+#workspaceStage>.workspace-page:not(#dashboard)>.workspace-hero{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  min-height:148px;
+  padding:18px 20px!important;
+  display:grid!important;
+  grid-template-columns:76px minmax(280px,1fr) minmax(320px,.9fr);
+  align-items:center;
+  gap:18px;
+  border:1.5px solid rgba(232,189,79,.76)!important;
+  border-radius:11px!important;
+  background:
+    radial-gradient(circle at 82% 35%,rgba(var(--rw-accent-rgb),.22),transparent 25%),
+    radial-gradient(circle at 28% -20%,rgba(114,45,219,.24),transparent 37%),
+    linear-gradient(112deg,#030814 0%,#0b1730 50%,#100a30 78%,#030712 100%)!important;
+  box-shadow:0 0 0 1px rgba(255,238,184,.035) inset,0 0 19px rgba(232,189,79,.13),0 14px 34px rgba(0,0,0,.22)!important;
+}
+#workspaceStage>.workspace-page:not(#dashboard)>.workspace-hero:before{
+  content:"";
+  position:absolute;
+  inset:8px;
+  z-index:-1;
+  pointer-events:none;
+  border:1px solid rgba(232,189,79,.08);
+  border-radius:8px;
+  background:
+    linear-gradient(90deg,rgba(232,189,79,.56),rgba(232,189,79,0)) left top/42px 1px no-repeat,
+    linear-gradient(180deg,rgba(232,189,79,.56),rgba(232,189,79,0)) left top/1px 42px no-repeat,
+    linear-gradient(270deg,rgba(232,189,79,.56),rgba(232,189,79,0)) right bottom/42px 1px no-repeat,
+    linear-gradient(0deg,rgba(232,189,79,.56),rgba(232,189,79,0)) right bottom/1px 42px no-repeat;
+}
+#workspaceStage>.workspace-page:not(#dashboard)>.workspace-hero:after{
+  content:"";
+  position:absolute;
+  width:260px;height:260px;
+  left:-112px;top:-118px;
+  border-radius:50%;
+  border:1px solid rgba(var(--rw-accent-rgb),.16);
+  box-shadow:0 0 40px rgba(var(--rw-accent-rgb),.12),inset 0 0 40px rgba(var(--rw-accent-rgb),.06);
+  pointer-events:none;
+}
+#workspaceStage>.workspace-page:not(#dashboard) .workspace-hero .hero-icon{
+  width:68px!important;height:68px!important;
+  display:grid!important;place-items:center;
+  border-radius:18px!important;
+  color:var(--rw-accent)!important;
+  border:1px solid rgba(232,189,79,.72)!important;
+  background:radial-gradient(circle,rgba(var(--rw-accent-rgb),.22),rgba(4,16,30,.90) 65%)!important;
+  box-shadow:0 0 0 2px rgba(var(--rw-accent-rgb),.09),0 0 22px rgba(var(--rw-accent-rgb),.28),0 0 12px rgba(232,189,79,.12)!important;
+}
+#workspaceStage>.workspace-page:not(#dashboard) .workspace-hero .hero-icon .ui-icon{width:32px!important;height:32px!important}
+#workspaceStage>.workspace-page:not(#dashboard) .hero-copy{min-width:0}
+#workspaceStage>.workspace-page:not(#dashboard) .hero-copy .kicker{color:#ddb757!important;letter-spacing:.16em;text-shadow:0 0 8px rgba(232,189,79,.23)}
+#workspaceStage>.workspace-page:not(#dashboard) .hero-copy h2{
+  margin:4px 0 6px!important;
+  color:#f7fbff!important;
+  font:800 22px/1.45 "Noto Kufi Arabic","Segoe UI",sans-serif!important;
+  text-shadow:0 0 15px rgba(var(--rw-accent-rgb),.16);
+}
+#workspaceStage>.workspace-page:not(#dashboard) .hero-copy p{max-width:760px;margin:0!important;color:#a9b9cb!important;line-height:1.85!important;font-size:11px!important}
+#workspaceStage>.workspace-page:not(#dashboard) .hero-stats{
+  display:grid!important;
+  grid-template-columns:repeat(auto-fit,minmax(92px,1fr));
+  gap:7px!important;
+  align-self:stretch;
+  align-content:center;
+}
+#workspaceStage>.workspace-page:not(#dashboard) .hero-stats>div{
+  min-height:62px;
+  padding:9px 10px!important;
+  display:flex;flex-direction:column;justify-content:center;
+  border:1px solid rgba(151,184,214,.31)!important;
+  border-radius:8px!important;
+  background:linear-gradient(145deg,rgba(7,20,35,.92),rgba(2,8,17,.96))!important;
+  box-shadow:inset 0 0 15px rgba(71,123,180,.05)!important;
+}
+#workspaceStage>.workspace-page:not(#dashboard) .hero-stats>div:nth-child(even){border-color:rgba(13,36,60,.98)!important;box-shadow:0 0 0 1px rgba(102,145,187,.20),inset 0 0 18px rgba(0,0,0,.48)!important}
+#workspaceStage>.workspace-page:not(#dashboard) .hero-stats small{color:#718aa4!important;font-size:7.5px!important;letter-spacing:.12em}
+#workspaceStage>.workspace-page:not(#dashboard) .hero-stats strong{margin-top:4px;color:#eaf6ff!important;font-size:12px!important;text-shadow:0 0 9px rgba(var(--rw-accent-rgb),.18)}
+
+/* Common panels and card system: alternate silver and electric-black inner frames. */
+#workspaceStage>.workspace-page:not(#dashboard) .panel,
+#workspaceStage>.workspace-page:not(#dashboard) .creation-panel,
+#workspaceStage>.workspace-page:not(#dashboard) .content-toolbar,
+#workspaceStage>.workspace-page:not(#dashboard) .application-card,
+#workspaceStage>.workspace-page:not(#dashboard) .posture-card,
+#workspaceStage>.workspace-page:not(#dashboard) .backup-card,
+#workspaceStage>.workspace-page:not(#dashboard) .dns-toolbar,
+#workspaceStage>.workspace-page:not(#dashboard) .dns-summary-card,
+#workspaceStage>.workspace-page:not(#dashboard) .dns-record-card,
+#workspaceStage>.workspace-page:not(#dashboard) .dns-mail-panel,
+#workspaceStage>.workspace-page:not(#dashboard) .fusion-summary-card,
+#workspaceStage>.workspace-page:not(#dashboard) .fusion-toolbar,
+#workspaceStage>.workspace-page:not(#dashboard) .fusion-provider-card,
+#workspaceStage>.workspace-page:not(#dashboard) .fusion-capability-panel,
+#workspaceStage>.workspace-page:not(#dashboard) .fusion-capability-card,
+#workspaceStage>.workspace-page:not(#dashboard) .fusion-policy,
+#workspaceStage>.workspace-page:not(#dashboard) .vault-card,
+#workspaceStage>.workspace-page:not(#dashboard) .integration-card{
+  border-radius:9px!important;
+  border:1px solid rgba(154,188,220,.43)!important;
+  background:
+    linear-gradient(145deg,rgba(6,18,31,.985),rgba(2,8,16,.99))!important;
+  box-shadow:0 0 0 1px rgba(255,255,255,.025) inset,0 0 14px rgba(136,178,220,.08),inset 0 0 18px rgba(59,102,145,.035)!important;
+}
+#workspaceStage>.workspace-page:not(#dashboard) .application-card:nth-child(even),
+#workspaceStage>.workspace-page:not(#dashboard) .posture-card:nth-child(even),
+#workspaceStage>.workspace-page:not(#dashboard) .dns-summary-card:nth-child(even),
+#workspaceStage>.workspace-page:not(#dashboard) .dns-record-card:nth-child(even),
+#workspaceStage>.workspace-page:not(#dashboard) .fusion-summary-card:nth-child(even),
+#workspaceStage>.workspace-page:not(#dashboard) .fusion-provider-card:nth-child(even),
+#workspaceStage>.workspace-page:not(#dashboard) .fusion-capability-card:nth-child(even){
+  border-color:rgba(8,30,51,.98)!important;
+  box-shadow:0 0 0 1px rgba(112,154,194,.25),0 0 15px rgba(var(--rw-accent-rgb),.06),inset 0 0 22px rgba(0,0,0,.70)!important;
+  background:linear-gradient(145deg,#071522,#01060d)!important;
+}
+#workspaceStage>.workspace-page:not(#dashboard) .panel-head,
+#workspaceStage>.workspace-page:not(#dashboard) .creation-head,
+#workspaceStage>.workspace-page:not(#dashboard) .dns-record-head,
+#workspaceStage>.workspace-page:not(#dashboard) .fusion-policy-head{
+  position:relative;
+  padding-bottom:9px!important;
+  border-bottom:1px solid rgba(232,189,79,.15)!important;
+}
+#workspaceStage>.workspace-page:not(#dashboard) .panel-head:after,
+#workspaceStage>.workspace-page:not(#dashboard) .creation-head:after,
+#workspaceStage>.workspace-page:not(#dashboard) .fusion-policy-head:after{
+  content:"◆";
+  margin-inline-start:auto;
+  color:rgba(232,189,79,.61);
+  font-size:7px;
+  text-shadow:0 0 7px rgba(232,189,79,.34);
+}
+#workspaceStage>.workspace-page:not(#dashboard) h3{font-family:"Noto Kufi Arabic","Segoe UI",sans-serif!important}
+#workspaceStage>.workspace-page:not(#dashboard) .kicker{color:#d8b355!important}
+
+/* Dense toolbars and forms. */
+#workspaceStage>.workspace-page:not(#dashboard) .content-toolbar,
+#workspaceStage>.workspace-page:not(#dashboard) .dns-toolbar,
+#workspaceStage>.workspace-page:not(#dashboard) .fusion-toolbar,
+#workspaceStage>.workspace-page:not(#dashboard) .file-toolbar{
+  min-height:54px!important;
+  padding:9px 11px!important;
+  border-color:rgba(232,189,79,.42)!important;
+  background:linear-gradient(90deg,rgba(20,9,54,.82),rgba(5,18,32,.94),rgba(3,10,19,.98))!important;
+  box-shadow:0 0 14px rgba(232,189,79,.07),inset 0 0 16px rgba(var(--rw-accent-rgb),.04)!important;
+}
+#workspaceStage>.workspace-page:not(#dashboard) input,
+#workspaceStage>.workspace-page:not(#dashboard) select,
+#workspaceStage>.workspace-page:not(#dashboard) textarea{
+  border:1px solid rgba(143,177,211,.42)!important;
+  border-radius:7px!important;
+  background:linear-gradient(180deg,#061421,#030b13)!important;
+  color:#eaf4ff!important;
+  box-shadow:inset 0 0 12px rgba(0,0,0,.28),0 0 0 1px rgba(255,255,255,.018)!important;
+}
+#workspaceStage>.workspace-page:not(#dashboard) input:focus,
+#workspaceStage>.workspace-page:not(#dashboard) select:focus,
+#workspaceStage>.workspace-page:not(#dashboard) textarea:focus{
+  border-color:rgba(var(--rw-accent-rgb),.72)!important;
+  box-shadow:0 0 0 2px rgba(var(--rw-accent-rgb),.08),0 0 14px rgba(var(--rw-accent-rgb),.13)!important;
+  outline:none!important;
+}
+#workspaceStage>.workspace-page:not(#dashboard) button:not(.trust-check):not(.notification-filter){
+  border-radius:7px!important;
+}
+#workspaceStage>.workspace-page:not(#dashboard) .primary-create,
+#workspaceStage>.workspace-page:not(#dashboard) .compact-action,
+#workspaceStage>.workspace-page:not(#dashboard) form>button:not(.ghost):not(.danger-action){
+  border:1px solid rgba(232,189,79,.52)!important;
+  background:linear-gradient(135deg,rgba(var(--rw-accent-rgb),.18),rgba(8,21,35,.98))!important;
+  color:#f2f7fb!important;
+  box-shadow:0 0 12px rgba(var(--rw-accent-rgb),.12),inset 0 0 12px rgba(var(--rw-accent-rgb),.04)!important;
+}
+#workspaceStage>.workspace-page:not(#dashboard) .danger-action{border-color:rgba(255,65,104,.52)!important;background:linear-gradient(135deg,rgba(255,65,104,.13),#100810)!important}
+
+/* Workspace layouts: tighter, more editorial, less empty space. */
+#workspaceStage>.workspace-page:not(#dashboard) .workspace-grid{gap:11px!important;align-items:start!important}
+#workspaceStage>.workspace-page:not(#dashboard) .workspace-primary{min-width:0}
+#workspaceStage>.workspace-page:not(#dashboard) .creation-panel{padding:14px!important;position:relative;overflow:hidden}
+#workspaceStage>.workspace-page:not(#dashboard) .creation-panel:before{
+  content:"";position:absolute;inset:0 auto auto 0;width:70px;height:70px;pointer-events:none;
+  border-top:1px solid rgba(232,189,79,.44);border-left:1px solid rgba(232,189,79,.44);border-radius:9px 0 0 0;
+}
+
+/* Sites / applications. */
+#sites .application-grid{gap:9px!important}
+#sites .application-card{padding:12px!important}
+#sites .runtime-icon{border:1px solid rgba(232,189,79,.38)!important;box-shadow:0 0 14px rgba(var(--rw-accent-rgb),.12)!important}
+#sites .application-actions{gap:5px!important}
+#sites .application-actions .icon-action{min-height:36px!important;border:1px solid rgba(118,155,190,.25)!important;background:#061421!important}
+
+/* Security — compact topology and posture cards. */
+#security .security-posture-grid{gap:9px!important}
+#security .posture-card{min-height:84px!important;padding:12px!important}
+#security .posture-card>span{border:1px solid rgba(232,189,79,.36)!important;box-shadow:0 0 14px rgba(var(--rw-accent-rgb),.13)!important}
+#security .trust-flow>div{border:1px solid rgba(139,173,205,.30)!important;background:linear-gradient(145deg,#071523,#020913)!important;box-shadow:inset 0 0 15px rgba(var(--rw-accent-rgb),.035)!important}
+
+/* Files — editor feels like a premium control console. */
+#files .file-manager-grid{gap:10px!important}
+#files .file-browser,#files .file-editor textarea{border-color:rgba(127,163,197,.34)!important;background:#020812!important}
+#files .file-editor textarea{font-family:"Cascadia Code","Consolas",monospace!important;line-height:1.65!important}
+#files .file-actions{padding-top:9px;border-top:1px solid rgba(232,189,79,.12)}
+
+/* Backups. */
+#backups .backup-timeline{gap:8px!important}
+#backups .backup-card{padding:12px!important}
+#backups .backup-icon{color:var(--rw-green)!important;border:1px solid rgba(232,189,79,.34)!important}
+#backups .archive-path{border:1px solid rgba(111,150,187,.23)!important;background:#020a12!important}
+
+/* DNS. */
+#dns .dns-summary-grid,#dns .dns-record-grid{gap:9px!important}
+#dns .dns-summary-card{min-height:90px!important;padding:12px!important}
+#dns .dns-summary-card strong{color:#edf8ff!important;text-shadow:0 0 10px rgba(var(--rw-accent-rgb),.16)}
+#dns .dns-record-card{min-height:180px!important;overflow:hidden}
+#dns .dns-record-head b{color:var(--rw-accent)!important;text-shadow:0 0 9px rgba(var(--rw-accent-rgb),.23)}
+#dns .dns-mail-panel{border-color:rgba(232,189,79,.36)!important}
+
+/* Fusion — provider inventory and capability matrix become the visual centerpiece. */
+#fusion .fusion-summary-grid{gap:9px!important}
+#fusion .fusion-summary-card{min-height:86px!important;padding:11px!important}
+#fusion .fusion-summary-card>span{color:var(--rw-accent)!important;border:1px solid rgba(232,189,79,.32)!important}
+#fusion .fusion-provider-grid,#fusion .fusion-capability-grid{gap:9px!important}
+#fusion .fusion-provider-card,#fusion .fusion-capability-card{padding:11px!important}
+#fusion .fusion-capability-panel,#fusion .fusion-policy{padding:13px!important}
+
+/* Notifications / audit / user inventory. */
+#notifications .notification-list,#audit .audit-list{gap:7px!important}
+#notifications .notification-filter{border:1px solid rgba(126,164,199,.34)!important;background:#071522!important}
+#notifications .notification-filter.active{border-color:rgba(232,189,79,.55)!important;box-shadow:0 0 12px rgba(var(--rw-accent-rgb),.11)!important}
+
+/* Make all page-level royal frames thin and refined; gold is structural, not everywhere. */
+#workspaceStage>.workspace-page:not(#dashboard).active-view{
+  border-color:rgba(232,189,79,.46)!important;
+  box-shadow:0 0 0 1px rgba(255,233,166,.025) inset,0 0 19px rgba(232,189,79,.08)!important;
+}
+
+@media(max-width:1100px){
+  #workspaceStage>.workspace-page:not(#dashboard)>.workspace-hero{grid-template-columns:66px 1fr;min-height:0}
+  #workspaceStage>.workspace-page:not(#dashboard) .hero-stats{grid-column:1/-1;grid-template-columns:repeat(auto-fit,minmax(115px,1fr))}
+}
+@media(max-width:780px){
+  #workspaceStage>.workspace-page:not(#dashboard){gap:9px;padding-top:8px!important}
+  #workspaceStage>.workspace-page:not(#dashboard)>.workspace-hero{grid-template-columns:54px 1fr;padding:13px!important;gap:12px}
+  #workspaceStage>.workspace-page:not(#dashboard) .workspace-hero .hero-icon{width:52px!important;height:52px!important;border-radius:14px!important}
+  #workspaceStage>.workspace-page:not(#dashboard) .workspace-hero .hero-icon .ui-icon{width:25px!important;height:25px!important}
+  #workspaceStage>.workspace-page:not(#dashboard) .hero-copy h2{font-size:17px!important}
+  #workspaceStage>.workspace-page:not(#dashboard) .hero-copy p{font-size:9.5px!important}
+  #workspaceStage>.workspace-page:not(#dashboard) .hero-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px!important}
+  #workspaceStage>.workspace-page:not(#dashboard) .hero-stats>div{min-height:54px;padding:7px!important}
+  #workspaceStage>.workspace-page:not(#dashboard) .panel-head:after,#workspaceStage>.workspace-page:not(#dashboard) .creation-head:after{display:none}
+}
