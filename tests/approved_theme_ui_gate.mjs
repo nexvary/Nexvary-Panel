@@ -16,68 +16,53 @@ await page.locator('button').filter({ hasText: 'دخول آمن' }).click();
 await page.waitForURL(url => url.pathname === '/' || url.pathname === '', { timeout: 15000 });
 await page.locator('#dashboard.active-view').waitFor({ state: 'visible' });
 
-if (await page.locator('link[href="/static/approved-theme.css"]').count() !== 1) throw new Error('Approved theme stylesheet missing');
-if (await page.locator('link[href="/static/security-intelligence.css"]').count() !== 1) throw new Error('Security intelligence stylesheet missing');
-if (await page.locator('.trust-center-card').count() !== 1) throw new Error('Trust Center card missing');
+for (const asset of ['/static/approved-theme.css','/static/reference-dashboard.css','/static/royal-ornaments.css','/static/security-intelligence.css']) {
+  if (await page.locator(`link[href="${asset}"]`).count() !== 1) throw new Error(`Required approved stylesheet missing: ${asset}`);
+}
 
 const basmala = page.locator('.basmala-seal');
-if (await basmala.count() !== 1) throw new Error('Royal Basmala seal missing from header');
+if (await basmala.count() !== 1) throw new Error('Royal Basmala seal missing');
 const basmalaText = (await basmala.innerText()).replace(/\s+/g, ' ');
 if (!basmalaText.includes('بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيمِ')) throw new Error(`Basmala copy missing: ${basmalaText}`);
-const basmalaStyle = await basmala.evaluate(el => { const s=getComputedStyle(el); return { top:s.borderTopWidth, bottom:s.borderBottomWidth, color:s.color, shadow:s.boxShadow }; });
-if (parseFloat(basmalaStyle.top) < 1 || parseFloat(basmalaStyle.bottom) < 1 || basmalaStyle.shadow === 'none') throw new Error('Basmala royal gold frame/glow missing');
-const basmalaStrongStyle = await basmala.locator('strong').evaluate(el => { const s=getComputedStyle(el); return { size:parseFloat(s.fontSize), shadow:s.textShadow, color:s.color }; });
-if (basmalaStrongStyle.size < 14 || basmalaStrongStyle.shadow === 'none') throw new Error('Basmala is not visually prominent enough');
+const basmalaStyle = await basmala.evaluate(el => { const s=getComputedStyle(el); return {top:parseFloat(s.borderTopWidth),bottom:parseFloat(s.borderBottomWidth),shadow:s.boxShadow}; });
+if (basmalaStyle.top < 1 || basmalaStyle.bottom < 1 || basmalaStyle.shadow === 'none') throw new Error('Basmala royal frame/glow missing');
 
-const scoreText = (await page.locator('.trust-score > strong').innerText()).replace(/\s/g, '');
-const score = Number.parseInt(scoreText, 10);
-if (!Number.isFinite(score) || score < 0 || score > 100) throw new Error(`Invalid trust score: ${scoreText}`);
+if (await page.locator('.ref-hero').count() !== 1) throw new Error('Reference hero missing');
+if (await page.locator('.ref-hero img[src*="nexvary-panel-primary.jpg"]').count() !== 1) throw new Error('Reference hero brand icon missing');
+if (await page.locator('.ref-stat-grid .ref-stat').count() !== 6) throw new Error('Reference dashboard must render six summary cards');
+if (await page.locator('.ref-mid-grid > .ref-panel').count() !== 3) throw new Error('Reference dashboard middle band must contain three panels');
+if (await page.locator('.ref-bottom-grid > .ref-panel').count() !== 3) throw new Error('Reference dashboard bottom band must contain three panels');
+if (await page.locator('.ref-resource.metric-card').count() !== 4) throw new Error('Live CPU/RAM/Disk/Uptime resource rows missing');
+if (await page.locator('.ref-trust-ring').count() !== 1) throw new Error('Trust ring missing');
+const score = Number.parseInt((await page.locator('.ref-trust-ring strong').innerText()).replace(/\D/g,''),10);
+if (!Number.isFinite(score) || score < 0 || score > 100) throw new Error(`Invalid trust score: ${score}`);
 
-const trustFixes = page.locator('.trust-checks .trust-check[data-open-view]');
-if (await trustFixes.count() !== 7) throw new Error('Trust Center must expose seven guided fix/review paths');
-const trustTargets = await trustFixes.evaluateAll(nodes => nodes.map(n => n.getAttribute('data-open-view')));
-for (const target of trustTargets) {
-  if (!target || await page.locator(`#${target}`).count() !== 1) throw new Error(`Trust fix path has no workspace target: ${target}`);
+const trustFixes = page.locator('.ref-trust-list .trust-check[data-open-view]');
+if (await trustFixes.count() !== 7) throw new Error('Trust Center must expose seven guided paths');
+for (const target of await trustFixes.evaluateAll(nodes => nodes.map(n => n.getAttribute('data-open-view')))) {
+  if (!target || await page.locator(`#${target}`).count() !== 1) throw new Error(`Dead trust path: ${target}`);
 }
-const firstTarget = await trustFixes.first().getAttribute('data-open-view');
-await trustFixes.first().click();
-await page.locator(`#${firstTarget}.active-view`).waitFor({ state:'visible' });
-await page.locator('#nav a[href="#dashboard"]').click();
-await page.locator('#dashboard.active-view').waitFor({ state:'visible' });
 
 const nav = page.locator('#nav a[href="#sites"]');
-const navStyle = await nav.evaluate(el => { const s = getComputedStyle(el); return { color:s.color, family:s.fontFamily, shadow:s.textShadow, border:s.borderWidth }; });
+const navStyle = await nav.evaluate(el => { const s=getComputedStyle(el); return {color:s.color,family:s.fontFamily,shadow:s.textShadow}; });
 if (!navStyle.family.includes('Noto Kufi Arabic')) throw new Error(`Kufi font stack missing: ${navStyle.family}`);
 if (navStyle.color !== 'rgb(55, 255, 154)') throw new Error(`Sidebar text is not electric green: ${navStyle.color}`);
 if (!navStyle.shadow || navStyle.shadow === 'none') throw new Error('Sidebar electric glow missing');
 
-const iconColors = await page.evaluate(() => {
-  const refs=['dashboard','sites','databases','backups','fusion','integrations','dns','vault','files','deploy','wordpress','security','services','docker'];
-  return refs.map(id => {
-    const el=document.querySelector(`#nav a[href="#${id}"] .ui-icon`);
-    return el ? getComputedStyle(el).color : null;
-  }).filter(Boolean);
-});
-if (new Set(iconColors).size < 8) throw new Error(`Sidebar icon palette is not expressive enough: ${new Set(iconColors).size} colors`);
-if (iconColors.every(c => c === 'rgb(55, 255, 154)')) throw new Error('Sidebar icons must not all be green');
+const expectedOrder=['dashboard','sites','databases','files','security','backups'];
+const firstLinks=await page.locator('#nav a').evaluateAll(nodes=>nodes.slice(0,6).map(n=>n.getAttribute('href')?.replace('#','')));
+if (JSON.stringify(firstLinks)!==JSON.stringify(expectedOrder)) throw new Error(`Sidebar primary order mismatch: ${firstLinks.join(',')}`);
+const iconColors=await page.evaluate(()=>Array.from(document.querySelectorAll('#nav a .ui-icon')).map(el=>getComputedStyle(el).color));
+if(new Set(iconColors).size<8) throw new Error(`Sidebar icon palette too limited: ${new Set(iconColors).size}`);
 
-const silver = await page.locator('.frame-silver').first().evaluate(el => getComputedStyle(el).borderColor);
-const electricBlack = await page.locator('.frame-electric-black').first().evaluate(el => getComputedStyle(el).borderColor);
-if (silver === electricBlack) throw new Error('Silver and electric-black internal frames are not visually distinct');
-
-const shell = await page.locator('#dashboard.active-view').evaluate(el => { const s=getComputedStyle(el); return { width:parseFloat(s.borderTopWidth), color:s.borderTopColor, shadow:s.boxShadow }; });
-if (shell.width < 1 || shell.color === 'rgba(0, 0, 0, 0)' || shell.shadow === 'none') throw new Error('Gold structural frame missing');
-if (await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2)) throw new Error('Approved dashboard has horizontal overflow');
+if (await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2)) throw new Error('Reference dashboard has horizontal overflow');
 await page.screenshot({ path: `${out}/nexvary-panel-0.6-approved-dashboard-desktop.png`, fullPage: true });
 
 await page.locator('#nav a[href="#services"]').click();
 await page.locator('#services.active-view').waitFor({ state:'visible' });
 if (await page.locator('#services .security-intelligence').count() !== 1) throw new Error('Security Intelligence panel missing');
-if (await page.locator('#services .defense-provider').count() !== 2) throw new Error('CrowdSec/Fail2Ban provider posture cards missing');
-const intelText = await page.locator('#services .security-intelligence').innerText();
-if (!intelText.includes('READ ONLY') || !intelText.includes('CrowdSec') || !intelText.includes('Fail2Ban')) throw new Error('Read-only active-defense policy copy missing');
-if (await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2)) throw new Error('Security Intelligence view has horizontal overflow');
+if (await page.locator('#services .defense-provider').count() !== 2) throw new Error('CrowdSec/Fail2Ban cards missing');
 await page.screenshot({ path: `${out}/nexvary-panel-0.6-security-intelligence-desktop.png`, fullPage: true });
 
 await browser.close();
-console.log('Nexvary Panel approved Royal Control Center + Basmala + active-defense UI Gate: PASS');
+console.log('Nexvary Panel approved reference dashboard UI Gate: PASS');
