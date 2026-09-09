@@ -70,6 +70,30 @@ def db() -> sqlite3.Connection:
         FOREIGN KEY(package_id) REFERENCES hosting_packages(id) ON DELETE RESTRICT
       );
       CREATE INDEX IF NOT EXISTS idx_hosting_package_features_package ON hosting_package_features(package_id,enabled);
+
+      CREATE TABLE IF NOT EXISTS site_redirects (
+        id INTEGER PRIMARY KEY,
+        domain TEXT NOT NULL,
+        source_path TEXT NOT NULL,
+        target TEXT NOT NULL,
+        status_code INTEGER NOT NULL DEFAULT 301,
+        owner TEXT NOT NULL DEFAULT 'admin',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        UNIQUE(domain,source_path)
+      );
+      CREATE INDEX IF NOT EXISTS idx_site_redirects_owner_domain ON site_redirects(owner,domain);
+      CREATE TABLE IF NOT EXISTS site_error_pages (
+        id INTEGER PRIMARY KEY,
+        domain TEXT NOT NULL,
+        status_code INTEGER NOT NULL,
+        html TEXT NOT NULL,
+        owner TEXT NOT NULL DEFAULT 'admin',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        UNIQUE(domain,status_code)
+      );
+      CREATE INDEX IF NOT EXISTS idx_site_error_pages_owner_domain ON site_error_pages(owner,domain);
     """)
     _seed_hosting_packages(conn)
     return conn
