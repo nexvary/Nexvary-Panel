@@ -11,9 +11,10 @@ from .security import step_up_active, totp_enabled_for, totp_uri, verify_totp
 
 
 def _trust_posture(*, enabled_2fa: bool, services: dict[str, bool], backups_count: int, disk_percent: float, critical_unread: int) -> dict:
+    active_defense = bool(services.get("crowdsec") or services.get("fail2ban"))
     checks = [
         {"id": "identity", "label": "المصادقة الثنائية", "ok": enabled_2fa, "weight": 20, "view": "security"},
-        {"id": "bruteforce", "label": "حماية محاولات الدخول", "ok": bool(services.get("fail2ban")), "weight": 15, "view": "services"},
+        {"id": "active-defense", "label": "الدفاع النشط ضد الهجمات", "ok": active_defense, "weight": 15, "view": "services"},
         {"id": "core", "label": "الخدمات الأساسية", "ok": bool(services.get("nginx") and services.get("mariadb")), "weight": 15, "view": "services"},
         {"id": "backup", "label": "نقطة استعادة متاحة", "ok": backups_count > 0, "weight": 15, "view": "backups"},
         {"id": "capacity", "label": "سعة القرص آمنة", "ok": disk_percent < 90, "weight": 10, "view": "services"},
@@ -89,7 +90,7 @@ def register_auth_routes(app):
             "uptime_h": round((time.time() - psutil.boot_time()) / 3600, 1),
             "disk_free": disk.free,
         }
-        services = {name: service(name) for name in ["nginx", "mariadb", "fail2ban", "ssh", "docker"]}
+        services = {name: service(name) for name in ["nginx", "mariadb", "crowdsec", "fail2ban", "ssh", "docker"]}
         enabled = bool(sec and sec["totp_enabled"])
         pending_secret = str(sec["totp_secret"]) if sec and not sec["totp_enabled"] else ""
         trust_posture = _trust_posture(
