@@ -1,16 +1,98 @@
 {% from "macros/icons.html" import icon %}
-<section id="dashboard" class="workspace-page dashboard-section approved-dashboard">
-  <div class="dashboard-intro royal-frame approved-hero"><div><span class="kicker">NEXVARY CONTROL CENTER</span><h2>لوحة تحكم تشغيلية موحدة</h2><p>مراقبة الموارد، الحماية، الخدمات والتطبيقات من مساحة واحدة.</p></div><div class="telemetry-badge"><span class="signal-bars"><i></i><i></i><i></i><i></i></span><div><small>LIVE TELEMETRY</small><b>ACTIVE</b></div></div></div>
-  <div class="grid metrics electric-metrics">
-    <article class="metric-card metric-cyan frame-silver"><div class="metric-top"><span class="metric-icon">{{icon('cpu')}}</span><span class="metric-state"><i></i>LIVE</span></div><div class="metric-copy"><label>CPU PROCESSOR</label><strong id="cpu">{{metrics.cpu}}<sup>%</sup></strong><small>استخدام المعالج اللحظي</small></div><progress id="cpuBar" max="100" value="{{metrics.cpu}}"></progress><span class="metric-glow"></span></article>
-    <article class="metric-card metric-violet frame-electric-black"><div class="metric-top"><span class="metric-icon">{{icon('ram')}}</span><span class="metric-state"><i></i>LIVE</span></div><div class="metric-copy"><label>MEMORY / RAM</label><strong id="ram">{{metrics.ram}}<sup>%</sup></strong><small>استخدام الذاكرة الحالية</small></div><progress id="ramBar" max="100" value="{{metrics.ram}}"></progress><span class="metric-glow"></span></article>
-    <article class="metric-card metric-green frame-silver"><div class="metric-top"><span class="metric-icon">{{icon('disk')}}</span><span class="metric-state"><i></i>STORAGE</span></div><div class="metric-copy"><label>DISK STORAGE</label><strong id="disk">{{metrics.disk}}<sup>%</sup></strong><small>{{metrics.disk_free|bytes}} مساحة متاحة</small></div><progress id="diskBar" max="100" value="{{metrics.disk}}"></progress><span class="metric-glow"></span></article>
-    <article class="metric-card metric-gold frame-electric-black"><div class="metric-top"><span class="metric-icon">{{icon('clock')}}</span><span class="metric-state"><i></i>UPTIME</span></div><div class="metric-copy"><label>SERVER UPTIME</label><strong>{{metrics.uptime_h}}<sup>h</sup></strong><small>استمرارية تشغيل الخادم</small></div><div class="load-strip"><span>LOAD AVERAGE</span><b>{{'%.2f'|format(metrics.load)}}</b></div><span class="metric-glow"></span></article>
+<section id="dashboard" class="workspace-page dashboard-section approved-dashboard reference-dashboard">
+  <div class="ref-hero">
+    <div class="ref-brand">
+      <img src="/static/brand/nexvary-panel-primary.jpg" alt="Nexvary Panel">
+      <div class="ref-brand-copy">
+        <h2>Nexvary Panel</h2>
+        <p>إدارة خوادمك ومواقعك بكل قوة وأمان</p>
+        <small>PEOPLE &nbsp;|&nbsp; TECHNOLOGY &nbsp;|&nbsp; IDEAS &nbsp;|&nbsp; A SAFER WORLD</small>
+      </div>
+    </div>
+    <div class="ref-world" aria-hidden="true">
+      <span class="orbit"></span><span class="orbit o2"></span>
+      <div class="orb"></div>
+      <i class="node n1"></i><i class="node n2"></i><i class="node n3"></i><i class="node n4"></i>
+    </div>
+    <div class="ref-motto">
+      <strong>أداء أعلى ..<br>أمان أقوى ..<br>لمستقبل أكثر إشراقًا</strong>
+      <small>SECURE TODAY,<br>PROTECT TOMORROW</small>
+    </div>
   </div>
-  <div class="dashboard-command-grid approved-command-grid">
-    <article class="panel trust-center-card frame-gold"><div class="panel-head"><div><span class="kicker">TRUST CENTER</span><h3>درجة الأمان التشغيلية</h3><p>مؤشر داخلي شفاف مبني على ضوابط اللوحة وحالة الخادم.</p></div><button type="button" class="mini-link" data-open-view="security">التفاصيل {{icon('chevron')}}</button></div><div class="trust-score {{trust_posture.level}}"><span class="trust-shield">{{icon('shield')}}</span><strong>{{trust_posture.score}}<small>/100</small></strong><div><b>{{trust_posture.passed}} / {{trust_posture.total}} ضوابط ناجحة</b><progress max="100" value="{{trust_posture.score}}"></progress></div></div><div class="trust-checks">{% for check in trust_posture.checks %}<button type="button" class="trust-check {{'pass' if check.ok else 'warn'}}" data-open-view="{{check.view}}" title="فتح مسار المعالجة: {{check.label}}"><span>{{'✓' if check.ok else '!'}}</span><b>{{check.label}}</b><small>{{check.weight}} نقطة · {{'مراجعة' if check.ok else 'إصلاح'}}</small>{{icon('chevron','trust-chevron')}}</button>{% endfor %}</div><div class="trust-note">هذا المؤشر تشغيلي داخل Nexvary Panel وليس بديلاً عن تدقيق أمني مستقل. لا يُنفذ أي تغيير بصلاحيات مرتفعة تلقائيًا.</div></article>
-    <article class="panel infrastructure-map frame-electric-black"><div class="panel-head"><div><span class="kicker">INFRASTRUCTURE MAP</span><h3>الخدمات والبنية التحتية</h3><p>قراءة مباشرة للخدمات التي يعتمد عليها الخادم.</p></div><button type="button" class="mini-link" data-open-view="services">Operations {{icon('chevron')}}</button></div><div class="infra-core"><div class="server-core-node"><span>{{icon('server')}}</span><b>NEXVARY NODE</b><small>Control Plane</small><i></i></div><div class="infra-lines"></div><div class="infra-services">{% for n,s in services.items() %}<div class="infra-service {{'up' if s else 'down'}}"><span>{% if n=='nginx' %}{{icon('globe')}}{% elif n=='mariadb' %}{{icon('database')}}{% elif n=='docker' %}{{icon('docker')}}{% elif n=='fail2ban' %}{{icon('shield')}}{% else %}{{icon('activity')}}{% endif %}</span><div><b>{{n}}</b><small>{{'ACTIVE' if s else 'STOPPED / ABSENT'}}</small></div><i></i></div>{% endfor %}</div></div></article>
-    <article class="panel quick-actions command-card frame-silver"><div class="panel-head"><div><span class="kicker">QUICK ACTIONS</span><h3>إجراءات سريعة</h3><p>انتقل مباشرة إلى مساحة العمل المطلوبة.</p></div><span class="shortcut-key">WORKSPACES</span></div><div class="quick-grid electric-actions"><button type="button" data-open-view="sites" data-focus="true"><span class="quick-icon cyan">{{icon('plus')}}</span><div><b>تطبيق جديد</b><small>Website / App</small></div>{{icon('chevron','arrow')}}</button><button type="button" data-open-view="backups"><span class="quick-icon gold">{{icon('backup')}}</span><div><b>نسخة احتياطية</b><small>Recovery Vault</small></div>{{icon('chevron','arrow')}}</button><button type="button" data-open-view="docker"><span class="quick-icon cyan">{{icon('docker')}}</span><div><b>Docker Center</b><small>Containers</small></div>{{icon('chevron','arrow')}}</button>{% if role == 'admin' %}<button type="button" data-open-view="vault"><span class="quick-icon gold">{{icon('key')}}</span><div><b>Secret Vault</b><small>Credentials</small></div>{{icon('chevron','arrow')}}</button>{% else %}<button type="button" data-open-view="security"><span class="quick-icon gold">{{icon('shield')}}</span><div><b>مركز الأمان</b><small>SSL + Trust</small></div>{{icon('chevron','arrow')}}</button>{% endif %}<button type="button" data-open-view="dns"><span class="quick-icon violet">{{icon('network')}}</span><div><b>DNS Center</b><small>Inventory</small></div>{{icon('chevron','arrow')}}</button>{% if role == 'admin' %}<button type="button" data-open-view="integrations"><span class="quick-icon violet">{{icon('layers')}}</span><div><b>Integration Targets</b><small>Fusion</small></div>{{icon('chevron','arrow')}}</button>{% else %}<button type="button" data-open-view="databases"><span class="quick-icon violet">{{icon('database')}}</span><div><b>قواعد البيانات</b><small>MariaDB</small></div>{{icon('chevron','arrow')}}</button>{% endif %}</div></article>
+
+  <div class="ref-stat-grid" aria-label="ملخص النظام">
+    <button type="button" class="ref-stat sites" data-open-view="sites"><span class="ref-stat-icon">{{icon('globe')}}</span><span class="ref-stat-copy"><label>المواقع الإلكترونية</label><strong>{{sites|length}}</strong><small>مواقع وتطبيقات تحت الإدارة</small></span></button>
+    <button type="button" class="ref-stat db" data-open-view="databases"><span class="ref-stat-icon">{{icon('database')}}</span><span class="ref-stat-copy"><label>قواعد البيانات</label><strong>{{databases|length}}</strong><small>قواعد MariaDB المسجلة</small></span></button>
+    <button type="button" class="ref-stat security" data-open-view="security"><span class="ref-stat-icon">{{icon('shield')}}</span><span class="ref-stat-copy"><label>مستوى الأمان</label><strong>{{trust_posture.score}}%</strong><small>{{trust_posture.passed}} من {{trust_posture.total}} ضوابط ناجحة</small></span></button>
+    <button type="button" class="ref-stat backup" data-open-view="backups"><span class="ref-stat-icon">{{icon('backup')}}</span><span class="ref-stat-copy"><label>النسخ الاحتياطية</label><strong>{{backups|length}}</strong><small>Restore Points متاحة</small></span></button>
+    <button type="button" class="ref-stat users" data-open-view="{{'users' if role == 'admin' else 'security'}}"><span class="ref-stat-icon">{{icon('users')}}</span><span class="ref-stat-copy"><label>المستخدمون</label><strong>{{users|length if role == 'admin' else 1}}</strong><small>{{'حسابات وصلاحيات اللوحة' if role == 'admin' else 'الحساب الحالي'}}</small></span></button>
+    <button type="button" class="ref-stat apps" data-open-view="wordpress"><span class="ref-stat-icon">{{icon('layers')}}</span><span class="ref-stat-copy"><label>التطبيقات</label><strong>{{wordpress_instances|length}}</strong><small>WordPress Instances المسجلة</small></span></button>
   </div>
-  <div class="dashboard-bottom-grid"><article class="panel fleet-summary frame-electric-black"><div class="panel-head"><div><span class="kicker">MANAGED RESOURCES</span><h3>الموارد المدارة</h3></div></div><div class="summary-tiles"><button data-open-view="sites"><span class="cyan">{{icon('sites')}}</span><strong>{{sites|length}}</strong><small>Applications</small></button><button data-open-view="databases"><span class="violet">{{icon('database')}}</span><strong>{{databases|length}}</strong><small>Databases</small></button><button data-open-view="backups"><span class="green">{{icon('backup')}}</span><strong>{{backups|length}}</strong><small>Restore Points</small></button></div></article><article class="panel recent-activity frame-silver"><div class="panel-head"><div><span class="kicker">RECENT ACTIVITY</span><h3>آخر العمليات</h3></div><button type="button" class="mini-link" data-open-view="audit">السجل {{icon('chevron')}}</button></div><div class="activity-list">{% for a in audits[:5] %}<div><span class="activity-icon">{{icon('audit')}}</span><div><b>{{a.action}}</b><small>{{a.actor}} · {{a.ts|when}}</small></div></div>{% else %}<div class="empty">لا يوجد نشاط مسجل بعد.</div>{% endfor %}</div></article></div>
+
+  <div class="ref-mid-grid">
+    <article class="panel ref-panel ref-resources">
+      <div class="ref-panel-title"><h3>استخدام موارد السيرفر</h3><button type="button" class="mini-link" data-open-view="services">التفاصيل {{icon('chevron')}}</button></div>
+      <div class="ref-resource-list">
+        <div class="ref-resource cpu metric-card"><span>{{icon('cpu')}}</span><b>CPU</b><progress id="cpuBar" max="100" value="{{metrics.cpu}}"></progress><em id="cpu">{{metrics.cpu}}%</em></div>
+        <div class="ref-resource ram metric-card"><span>{{icon('ram')}}</span><b>RAM</b><progress id="ramBar" max="100" value="{{metrics.ram}}"></progress><em id="ram">{{metrics.ram}}%</em></div>
+        <div class="ref-resource disk metric-card"><span>{{icon('disk')}}</span><b>Disk</b><progress id="diskBar" max="100" value="{{metrics.disk}}"></progress><em id="disk">{{metrics.disk}}%</em></div>
+        <div class="ref-resource metric-card"><span>{{icon('clock')}}</span><b>Uptime</b><progress max="100" value="100"></progress><em>{{metrics.uptime_h}}h</em></div>
+      </div>
+    </article>
+
+    <article class="panel ref-panel ref-activity-chart">
+      <div class="ref-panel-title"><h3>النشاط التشغيلي</h3><small>LIVE SYSTEM ACTIVITY</small></div>
+      <div class="ref-chart-wrap">
+        <div class="ref-chart" aria-label="مخطط بصري للنشاط التشغيلي">
+          <svg viewBox="0 0 520 170" preserveAspectRatio="none" role="img" aria-label="مؤشر النشاط">
+            <defs><linearGradient id="activityFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a748ff" stop-opacity=".38"/><stop offset="1" stop-color="#a748ff" stop-opacity="0"/></linearGradient></defs>
+            <path class="area" d="M0,133 C48,141 73,119 112,111 C154,103 182,78 223,89 C263,100 285,122 326,94 C365,68 394,59 425,70 C462,81 486,47 520,42 L520,170 L0,170 Z"/>
+            <path class="line" d="M0,133 C48,141 73,119 112,111 C154,103 182,78 223,89 C263,100 285,122 326,94 C365,68 394,59 425,70 C462,81 486,47 520,42"/>
+            <circle class="dot" cx="112" cy="111" r="3"/><circle class="dot" cx="223" cy="89" r="3"/><circle class="dot" cx="326" cy="94" r="3"/><circle class="dot" cx="425" cy="70" r="3"/><circle class="dot" cx="520" cy="42" r="3"/>
+          </svg>
+        </div>
+        <div class="ref-chart-stats">
+          <div><small>عمليات مسجلة</small><strong>{{audits|length}}</strong><b>Audit Log</b></div>
+          <div><small>Deployments</small><strong>{{deployments|length}}</strong><b>Tracked</b></div>
+          <div><small>Load Average</small><strong>{{'%.2f'|format(metrics.load)}}</strong><b>Live</b></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel ref-panel ref-services">
+      <div class="ref-panel-title"><h3>حالة الخدمات</h3><small>{{'جميع الخدمات الأساسية تعمل' if services.get('nginx') and services.get('mariadb') else 'توجد خدمة تحتاج مراجعة'}}</small></div>
+      <div class="ref-service-list">
+        {% for n,s in services.items() %}<button type="button" class="ref-service {{'' if s else 'down'}}" data-open-view="services"><i></i><b>{{n}}</b><span>{{'متصل' if s else 'متوقف'}}</span></button>{% endfor %}
+      </div>
+    </article>
+  </div>
+
+  <div class="ref-bottom-grid">
+    <article class="panel ref-panel ref-recent">
+      <div class="ref-panel-title"><h3>آخر الأنشطة</h3><button type="button" class="mini-link" data-open-view="audit">عرض الكل</button></div>
+      <div class="ref-activity">
+        {% for a in audits[:6] %}<button type="button" class="ref-activity-row" data-open-view="audit"><span>{{icon('audit')}}</span><div><b>{{a.action}}</b><small>{{a.actor}}</small></div><time>{{a.ts|when}}</time></button>{% else %}<div class="empty">لا يوجد نشاط مسجل بعد.</div>{% endfor %}
+      </div>
+    </article>
+
+    <article class="panel ref-panel trust-center-card ref-trust">
+      <div class="ref-panel-title"><h3>مركز الثقة والأمان</h3><button type="button" class="mini-link" data-open-view="security">التفاصيل {{icon('chevron')}}</button></div>
+      <div class="ref-trust-body">
+        <div class="ref-trust-ring" style="--score:{{trust_posture.score}}"><div><strong>{{trust_posture.score}}%</strong><small>مستوى الأمان</small><b>{{'ممتاز' if trust_posture.score >= 90 else 'جيد' if trust_posture.score >= 75 else 'يحتاج مراجعة'}}</b></div></div>
+        <div class="ref-trust-list trust-checks">{% for check in trust_posture.checks %}<button type="button" class="trust-check {{'pass' if check.ok else 'warn'}}" data-open-view="{{check.view}}" title="فتح مسار المعالجة: {{check.label}}"><span>{{'✓' if check.ok else '!'}}</span><b>{{check.label}}</b></button>{% endfor %}</div>
+      </div>
+    </article>
+
+    <article class="panel ref-panel ref-quick">
+      <div class="ref-panel-title"><h3>إجراءات سريعة</h3><small>SHORTCUTS</small></div>
+      <div class="ref-quick-grid">
+        <button type="button" data-open-view="sites" data-focus="true"><span>{{icon('plus')}}</span><div><b>إضافة موقع جديد</b><small>Website / App</small></div></button>
+        <button type="button" data-open-view="databases"><span>{{icon('database')}}</span><div><b>إنشاء قاعدة بيانات</b><small>MariaDB</small></div></button>
+        <button type="button" data-open-view="backups"><span>{{icon('backup')}}</span><div><b>إنشاء نسخة احتياطية</b><small>Recovery Vault</small></div></button>
+        <button type="button" data-open-view="files"><span>{{icon('file')}}</span><div><b>إدارة الملفات</b><small>Safe File Manager</small></div></button>
+        <button type="button" data-open-view="wordpress"><span>{{icon('layers')}}</span><div><b>إدارة التطبيقات</b><small>WordPress</small></div></button>
+        <button type="button" data-open-view="services"><span>{{icon('activity')}}</span><div><b>مراقبة السيرفر</b><small>NEXVARY Doctor</small></div></button>
+      </div>
+    </article>
+  </div>
 </section>
