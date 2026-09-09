@@ -8,6 +8,7 @@ from .hosting_features import FEATURES
 DEFAULT_ACCOUNT_FEATURES = {
     "files.file_manager", "files.disk_usage", "files.backups", "files.backup_wizard", "files.git",
     "domains.domains", "domains.redirects", "domains.zone_editor",
+    "email.accounts", "email.forwarders", "email.deliverability",
     "databases.mariadb", "databases.wizard",
     "metrics.visitors", "metrics.errors", "metrics.bandwidth", "metrics.resource_usage",
     "security.ssl_tls", "security.two_factor", "security.ssl_status",
