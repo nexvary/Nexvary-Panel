@@ -103,7 +103,7 @@ jobs:
           cat /tmp/nexvary-panel.log
           exit 1
       - name: UI Release Gate
-        run: node tests/ui_gate.mjs
+        run: node tests/ui_gate.mjs && node tests/vault_ui_gate.mjs
       - name: Upload real UI screenshots
         if: always()
         uses: actions/upload-artifact@v4
