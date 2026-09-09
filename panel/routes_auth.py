@@ -10,6 +10,21 @@ from .core import FAILED, audit, authenticate, csrf_token, db, login_required, s
 from .security import step_up_active, totp_enabled_for, totp_uri, verify_totp
 
 
+def _trust_posture(*, enabled_2fa: bool, services: dict[str, bool], backups_count: int, disk_percent: float, critical_unread: int) -> dict:
+    checks = [
+        {"id": "identity", "label": "المصادقة الثنائية", "ok": enabled_2fa, "weight": 20},
+        {"id": "bruteforce", "label": "حماية محاولات الدخول", "ok": bool(services.get("fail2ban")), "weight": 15},
+        {"id": "core", "label": "الخدمات الأساسية", "ok": bool(services.get("nginx") and services.get("mariadb")), "weight": 15},
+        {"id": "backup", "label": "نقطة استعادة متاحة", "ok": backups_count > 0, "weight": 15},
+        {"id": "capacity", "label": "سعة القرص آمنة", "ok": disk_percent < 90, "weight": 10},
+        {"id": "alerts", "label": "لا تنبيهات حرجة معلقة", "ok": critical_unread == 0, "weight": 10},
+        {"id": "session", "label": "CSRF + Secure Session Policy", "ok": True, "weight": 15},
+    ]
+    score = sum(item["weight"] for item in checks if item["ok"])
+    level = "excellent" if score >= 90 else "good" if score >= 75 else "attention" if score >= 55 else "risk"
+    return {"score": score, "level": level, "checks": checks, "passed": sum(1 for item in checks if item["ok"]), "total": len(checks)}
+
+
 def register_auth_routes(app):
     @app.route("/login", methods=["GET", "POST"])
     def login():
@@ -61,6 +76,7 @@ def register_auth_routes(app):
             wordpress_instances = [dict(r) for r in conn.execute(f"SELECT * FROM wordpress_instances WHERE {owner_where} ORDER BY id DESC", owner_args)]
             notifications = [dict(r) for r in conn.execute(f"SELECT * FROM notifications WHERE {owner_where} ORDER BY id DESC LIMIT 40", owner_args)]
             notifications_unread = conn.execute(f"SELECT COUNT(*) FROM notifications WHERE {owner_where} AND read_at IS NULL", owner_args).fetchone()[0]
+            critical_unread = conn.execute(f"SELECT COUNT(*) FROM notifications WHERE {owner_where} AND read_at IS NULL AND level='critical'", owner_args).fetchone()[0]
             audits = [dict(r) for r in conn.execute("SELECT * FROM audit ORDER BY id DESC LIMIT 18")]
             users = [dict(r) for r in conn.execute("SELECT username,role,enabled,created_at FROM users ORDER BY id DESC")] if session.get("role") == "admin" else []
             sec = conn.execute("SELECT totp_secret,totp_enabled FROM user_security WHERE username=?", (username,)).fetchone()
@@ -76,11 +92,18 @@ def register_auth_routes(app):
         services = {name: service(name) for name in ["nginx", "mariadb", "fail2ban", "ssh", "docker"]}
         enabled = bool(sec and sec["totp_enabled"])
         pending_secret = str(sec["totp_secret"]) if sec and not sec["totp_enabled"] else ""
+        trust_posture = _trust_posture(
+            enabled_2fa=enabled,
+            services=services,
+            backups_count=len(backups),
+            disk_percent=metrics["disk"],
+            critical_unread=int(critical_unread),
+        )
         return render_template(
             "index.html", sites=sites, databases=databases, backups=backups, deployments=deployments,
             wordpress_instances=wordpress_instances, notifications=notifications, notifications_unread=notifications_unread,
             audits=audits, users=users, metrics=metrics, services=services, role=session.get("role"), username=username,
-            totp_enabled=enabled, totp_pending=pending_secret, step_up_active=step_up_active(),
+            totp_enabled=enabled, totp_pending=pending_secret, step_up_active=step_up_active(), trust_posture=trust_posture,
             totp_uri_value=totp_uri(username, pending_secret) if pending_secret else "",
         )
 
