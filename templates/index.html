@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="/static/dns.css">
   <link rel="stylesheet" href="/static/vault.css">
   <link rel="stylesheet" href="/static/integrations.css">
+  <link rel="stylesheet" href="/static/remote-backup.css">
 </head>
 <body>
 <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div><div class="noise"></div>
@@ -37,7 +38,7 @@
       <a class="active" href="#dashboard" data-title="لوحة القيادة" data-subtitle="نظرة تشغيلية موحدة على الخادم والموارد والحماية">{{icon('dashboard')}}<span>لوحة القيادة</span><em></em></a>
       <a href="#sites" data-title="المواقع والتطبيقات" data-subtitle="إدارة التطبيقات والـRuntime وNGINX والحالة والسجلات">{{icon('sites')}}<span>المواقع والتطبيقات</span><em></em></a>
       <a href="#databases" data-title="قواعد البيانات" data-subtitle="MariaDB، المستخدمون والربط الآمن بالتطبيقات">{{icon('database')}}<span>قواعد البيانات</span><em></em></a>
-      <a href="#backups" data-title="خزنة النسخ الاحتياطي" data-subtitle="نسخ المواقع وقواعد البيانات وسجل نقاط الاستعادة">{{icon('backup')}}<span>النسخ الاحتياطي</span><em></em></a>
+      <a href="#backups" data-title="خزنة النسخ الاحتياطي" data-subtitle="Restore Points محلية وEncrypted Remote Copies عبر Fusion">{{icon('backup')}}<span>النسخ الاحتياطي</span><em></em></a>
       <span class="nav-label nav-gap">PLATFORM</span>
       <a href="#fusion" data-title="Nexvary Fusion Center" data-subtitle="اكتشاف وربط مزودي Edge وSecurity وBackup وContainers وDNS ضمن Capability/Policy Engine موحد">{{icon('layers')}}<span>Fusion Center</span><em></em></a>
       {% if role == 'admin' %}<a href="#integrations" data-title="Integration Targets" data-subtitle="ربط القدرات بالمزود وEndpoint وSecret Reference مع Preflight محلي">{{icon('layers')}}<span>Integration Targets</span><em></em></a>{% endif %}
@@ -99,5 +100,6 @@
 <script src="/static/dns.js"></script>
 <script src="/static/vault.js"></script>
 <script src="/static/integrations.js"></script>
+<script src="/static/remote-backup.js"></script>
 </body>
 </html>
