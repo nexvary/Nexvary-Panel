@@ -1,0 +1,29 @@
+[Unit]
+Description=Nexvary Panel SFTP Transfer Agent
+After=network.target ssh.service
+Requires=ssh.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/transfer_agent.py
+Restart=on-failure
+RestartSec=2
+User=root
+Group=root
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+ReadWritePaths=/etc/nexvary-panel /srv/nexvary-sftp /var/www /run/nexvary-panel /etc/ssh /etc/passwd /etc/shadow /etc/group /etc/gshadow
+
+[Install]
+WantedBy=multi-user.target
