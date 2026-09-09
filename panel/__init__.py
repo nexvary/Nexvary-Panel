@@ -19,6 +19,7 @@ from .routes_fusion import register_fusion_routes
 from .routes_dns import register_dns_routes
 from .routes_vault import register_vault_routes
 from .routes_integrations import register_integration_routes
+from .routes_remote_backup import register_remote_backup_routes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -60,4 +61,5 @@ def create_app() -> Flask:
     register_dns_routes(app)
     register_vault_routes(app)
     register_integration_routes(app)
+    register_remote_backup_routes(app)
     return app
