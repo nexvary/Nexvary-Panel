@@ -52,7 +52,6 @@ with tempfile.TemporaryDirectory(prefix='nvp-advanced-ops-') as tmp:
     r=client.get('/api/advanced/status');assert r.status_code==200,r.data
     body=r.get_json();assert body['provider']['online'] is True and body['php_versions']==['8.3','8.4']
 
-    # DNS is always preview-first and scope-bound.
     r=client.post('/api/advanced/dns/preview',json={'domain':'example.test','operation':'create','record_type':'A','record_name':'www.example.test','record_value':'203.0.113.10','ttl':300},headers={'X-CSRF-Token':csrf})
     assert r.status_code==200,r.data;change_id=r.get_json()['change']['id']
     assert not any(c.get('action')=='dns-apply' for c in calls)
@@ -64,25 +63,21 @@ with tempfile.TemporaryDirectory(prefix='nvp-advanced-ops-') as tmp:
     r=client.post(f'/api/advanced/dns/{change_id}/rollback',headers={'X-CSRF-Token':csrf});assert r.status_code==200,r.data
     r=client.post('/api/advanced/dns/preview',json={'domain':'example.test','operation':'create','record_type':'A','record_name':'outside.test','record_value':'203.0.113.10'},headers={'X-CSRF-Token':csrf});assert r.status_code==400,r.data
 
-    # SSL and PHP are scoped and policy-backed.
     r=client.post('/api/advanced/ssl/issue',json={'domain':'example.test','email':'admin@example.test'},headers={'X-CSRF-Token':csrf});assert r.status_code==200,r.data
     r=client.post('/api/advanced/php',json={'domain':'example.test','version':'8.3'},headers={'X-CSRF-Token':csrf});assert r.status_code==200,r.data
     with db() as conn:assert conn.execute("SELECT version FROM php_runtime_assignments WHERE domain='example.test'").fetchone()['version']=='8.3'
 
-    # PostgreSQL is opt-in through Feature Manager; secret must never enter SQLite metadata.
     r=client.post('/api/advanced/postgres',json={'site_domain':'example.test','db_name':'pgdemo','db_user':'pguser','password':'VeryStrongPass_2026'},headers={'X-CSRF-Token':csrf});assert r.status_code==403,r.data
     with db() as conn:conn.execute("INSERT INTO hosting_package_features(package_id,feature_id,enabled,updated_at) VALUES(?,?,1,?) ON CONFLICT(package_id,feature_id) DO UPDATE SET enabled=1,updated_at=excluded.updated_at",(pid,'databases.postgresql',now))
     r=client.post('/api/advanced/postgres',json={'site_domain':'example.test','db_name':'pgdemo','db_user':'pguser','password':'VeryStrongPass_2026'},headers={'X-CSRF-Token':csrf});assert r.status_code==201,r.data
     with db() as conn:
         pg=conn.execute("SELECT * FROM postgres_resources WHERE db_name='pgdemo'").fetchone();assert pg and 'password' not in pg.keys()
-        dump=' '.join(str(x) for row in conn.execute("SELECT action,details FROM audit ORDER BY id").fetchall() for x in row)
+        dump=' '.join(str(x) for row in conn.execute("SELECT action,detail FROM audit ORDER BY id").fetchall() for x in row)
         assert 'VeryStrongPass_2026' not in dump
 
-    # Migration bundle records only safe metadata; restore stays owned.
     r=client.post('/api/advanced/migrations/export',json={'domain':'example.test','db_name':''},headers={'X-CSRF-Token':csrf});assert r.status_code==201,r.data;bundle_id=r.get_json()['id']
     r=client.post(f'/api/advanced/migrations/{bundle_id}/restore',json={'db_name':''},headers={'X-CSRF-Token':csrf});assert r.status_code==200,r.data
 
-    # Server controls remain admin-only.
     r=client.post('/api/advanced/services',json={'name':'nginx','operation':'restart'},headers={'X-CSRF-Token':csrf});assert r.status_code==403,r.data
     r=client.post('/api/advanced/fleet',json={'name':'bad-local','endpoint':'https://127.0.0.1'},headers={'X-CSRF-Token':csrf});assert r.status_code==403,r.data
 
