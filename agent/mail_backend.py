@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import grp
 import os
 import pwd
 import re
@@ -33,6 +34,28 @@ def _safe_file(path: Path) -> None:
         raise RuntimeError("unsafe-mail-config-boundary")
 
 
+def _service_group(path: Path) -> int:
+    name = "dovecot" if path == USERS_FILE else "postfix"
+    return int(grp.getgrnam(name).gr_gid)
+
+
+def _atomic_write(path: Path, text: str, mode: int = 0o640) -> None:
+    MAIL_CONFIG.mkdir(parents=True, exist_ok=True)
+    if MAIL_CONFIG.is_symlink():
+        raise RuntimeError("unsafe-mail-config-boundary")
+    _safe_file(path)
+    tmp = path.with_name(path.name + ".tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, mode)
+    try:
+        os.write(fd, text.encode("utf-8"))
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    os.chmod(tmp, mode)
+    os.chown(tmp, 0, _service_group(path))
+    os.replace(tmp, path)
+
+
 def _read_map(path: Path) -> dict[str, str]:
     _safe_file(path)
     if not path.exists():
@@ -49,20 +72,28 @@ def _read_map(path: Path) -> dict[str, str]:
 
 
 def _write_map(path: Path, values: dict[str, str], mode: int = 0o640) -> None:
-    MAIL_CONFIG.mkdir(parents=True, exist_ok=True)
-    if MAIL_CONFIG.is_symlink():
-        raise RuntimeError("unsafe-mail-config-boundary")
-    _safe_file(path)
-    tmp = path.with_name(path.name + ".tmp")
     text = "".join(f"{key} {values[key]}\n" for key in sorted(values))
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, mode)
-    try:
-        os.write(fd, text.encode("utf-8"))
-        os.fsync(fd)
-    finally:
-        os.close(fd)
-    os.chmod(tmp, mode)
-    os.replace(tmp, path)
+    _atomic_write(path, text, mode)
+
+
+def _read_users() -> dict[str, str]:
+    _safe_file(USERS_FILE)
+    if not USERS_FILE.exists():
+        return {}
+    out: dict[str, str] = {}
+    for raw in USERS_FILE.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, sep, value = line.partition(":")
+        if sep and key and value:
+            out[key] = value
+    return out
+
+
+def _write_users(values: dict[str, str]) -> None:
+    text = "".join(f"{key}:{values[key]}\n" for key in sorted(values))
+    _atomic_write(USERS_FILE, text, 0o640)
 
 
 def _hash_password(password: str) -> str:
@@ -82,6 +113,10 @@ def _postmap(path: Path) -> None:
     proc = subprocess.run(["postmap", str(path)], capture_output=True, text=True, timeout=15, check=False)
     if proc.returncode != 0:
         raise RuntimeError("mail-map-validation-failed")
+    db_path = Path(str(path) + ".db")
+    if db_path.exists() and not db_path.is_symlink():
+        os.chown(db_path, 0, grp.getgrnam("postfix").gr_gid)
+        os.chmod(db_path, 0o640)
 
 
 def _reload() -> None:
@@ -90,6 +125,9 @@ def _reload() -> None:
     check = subprocess.run(["postfix", "check"], capture_output=True, text=True, timeout=20, check=False)
     if check.returncode != 0:
         raise RuntimeError("postfix-validation-failed")
+    dove = subprocess.run(["dovecot", "-n"], capture_output=True, text=True, timeout=20, check=False)
+    if dove.returncode != 0:
+        raise RuntimeError("dovecot-validation-failed")
     for svc in ("postfix", "dovecot"):
         proc = subprocess.run(["systemctl", "reload", svc], capture_output=True, text=True, timeout=20, check=False)
         if proc.returncode != 0:
@@ -107,6 +145,8 @@ def provider_status() -> dict:
         return {"ok": False, "error": "mail-provider-not-installed"}
     try:
         _vmail_identity()
+        grp.getgrnam("postfix")
+        grp.getgrnam("dovecot")
     except KeyError:
         return {"ok": False, "error": "mail-provider-not-configured"}
     active = {}
@@ -122,15 +162,16 @@ def mailbox_upsert(address: str, password: str) -> dict:
     localpart, domain = _address(address)
     if not provider_status().get("ok"):
         return {"ok": False, "error": "mail-provider-unavailable"}
-    users = _read_map(USERS_FILE)
+    users = _read_users()
     domains = _read_map(DOMAINS_FILE)
     boxes = _read_map(VMAILBOX_FILE)
     aliases = _read_map(VIRTUAL_FILE)
-    users[address.lower()] = _hash_password(password)
+    key = address.lower()
+    users[key] = _hash_password(password)
     domains[domain] = "OK"
-    boxes[address.lower()] = f"{domain}/{localpart}/"
-    aliases.pop(address.lower(), None)
-    _write_map(USERS_FILE, users, 0o640)
+    boxes[key] = f"{domain}/{localpart}/"
+    aliases.pop(key, None)
+    _write_users(users)
     _write_map(DOMAINS_FILE, domains, 0o640)
     _write_map(VMAILBOX_FILE, boxes, 0o640)
     _write_map(VIRTUAL_FILE, aliases, 0o640)
@@ -143,19 +184,19 @@ def mailbox_upsert(address: str, password: str) -> dict:
     os.chmod(domain_dir, 0o750)
     os.chmod(mailbox_dir, 0o700)
     _reload()
-    return {"ok": True, "address": address.lower()}
+    return {"ok": True, "address": key}
 
 
 def mailbox_delete(address: str) -> dict:
     localpart, domain = _address(address)
-    users = _read_map(USERS_FILE)
+    users = _read_users()
     domains = _read_map(DOMAINS_FILE)
     boxes = _read_map(VMAILBOX_FILE)
     aliases = _read_map(VIRTUAL_FILE)
     key = address.lower()
     users.pop(key, None)
     boxes.pop(key, None)
-    _write_map(USERS_FILE, users, 0o640)
+    _write_users(users)
     _write_map(DOMAINS_FILE, domains, 0o640)
     _write_map(VMAILBOX_FILE, boxes, 0o640)
     _write_map(VIRTUAL_FILE, aliases, 0o640)
@@ -170,7 +211,7 @@ def mailbox_delete(address: str) -> dict:
 
 
 def forwarder_upsert(source: str, destination: str) -> dict:
-    localpart, domain = _address(source)
+    _, domain = _address(source)
     _address(destination)
     if not provider_status().get("ok"):
         return {"ok": False, "error": "mail-provider-unavailable"}
