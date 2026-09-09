@@ -100,11 +100,38 @@
 .approved-dashboard .metric-gold .metric-icon{color:#ffd15c}
 
 .approved-hero{
-  padding:15px 20px!important;
+  position:relative;
+  overflow:hidden;
+  min-height:110px;
+  padding:15px 150px 15px 20px!important;
   margin-bottom:12px;
   background:
     radial-gradient(circle at 25% 50%,rgba(17,101,255,.16),transparent 24%),
     linear-gradient(110deg,rgba(4,13,31,.98),rgba(24,10,69,.86),rgba(3,12,27,.98))!important;
+}
+.approved-hero:after{
+  content:"";
+  position:absolute;
+  right:24px;
+  top:50%;
+  width:92px;
+  height:92px;
+  transform:translateY(-50%);
+  border-radius:50%;
+  background:url('/static/brand/nexvary-panel-primary.jpg') center/cover no-repeat;
+  border:1px solid rgba(232,189,79,.65);
+  box-shadow:0 0 24px rgba(35,123,255,.28),0 0 18px rgba(232,189,79,.13);
+  opacity:.96;
+}
+.approved-hero:before{
+  content:"SECURE TODAY · PROTECT TOMORROW";
+  position:absolute;
+  right:130px;
+  bottom:13px;
+  color:rgba(232,189,79,.72);
+  font-size:9px;
+  letter-spacing:.16em;
+  pointer-events:none;
 }
 .approved-hero h2{font-size:clamp(20px,2vw,30px);margin:3px 0 5px;color:#fff}
 
@@ -113,9 +140,11 @@
   display:grid!important;
   grid-template-columns:minmax(270px,.82fr) minmax(360px,1.25fr) minmax(280px,.93fr)!important;
   gap:12px!important;
-  align-items:stretch;
+  align-items:start!important;
 }
-.approved-command-grid>.panel{min-width:0}
+.approved-command-grid>.panel{min-width:0;min-height:0!important;height:auto!important}
+.approved-command-grid .quick-grid{align-content:start!important}
+.approved-command-grid .infra-core{min-height:255px!important}
 
 .trust-center-card{padding:16px!important;background:linear-gradient(155deg,rgba(5,19,28,.98),rgba(6,12,26,.98))!important}
 .trust-score{display:grid;grid-template-columns:68px auto 1fr;align-items:center;gap:12px;padding:13px;border:1px solid rgba(217,224,234,.42);border-radius:14px;background:linear-gradient(110deg,rgba(2,9,16,.92),rgba(7,23,31,.88));margin:10px 0}
@@ -147,6 +176,12 @@
 .electric-actions button:nth-child(even),
 .infra-service:nth-child(even){border-color:rgba(33,50,69,.96)!important;box-shadow:0 0 9px rgba(22,89,173,.08)!important}
 
+/* Dense control-room rhythm: no decorative empty height. */
+.approved-dashboard .dashboard-bottom-grid{align-items:start!important;grid-auto-rows:auto!important}
+.approved-dashboard .dashboard-bottom-grid>.panel{min-height:0!important;height:auto!important}
+.approved-dashboard .activity-list{max-height:260px;overflow:auto}
+.approved-dashboard .fleet-summary,.approved-dashboard .recent-activity{align-self:start!important}
+
 @media(max-width:1180px){
   .approved-command-grid{grid-template-columns:1fr 1fr!important}
   .trust-center-card{grid-column:1/-1}
@@ -156,4 +191,6 @@
   .trust-center-card{grid-column:auto}
   .trust-score{grid-template-columns:56px auto 1fr}
   .trust-shield{width:50px;height:50px}
+  .approved-hero{padding:14px!important;min-height:0}
+  .approved-hero:after,.approved-hero:before{display:none}
 }
