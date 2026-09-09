@@ -10,6 +10,7 @@ from flask import Flask
 from .account_schema import ensure_account_schema
 from .mail_schema import ensure_mail_schema
 from .transfer_schema import ensure_transfer_schema
+from .ops_schema import ensure_ops_schema
 from .config import VERSION
 from .core import csrf_guard, csrf_token, ensure_schema_columns
 from .routes_auth import register_auth_routes
@@ -29,6 +30,7 @@ from .routes_schedules import register_schedule_routes
 from .routes_accounts import register_account_routes
 from .routes_mail import register_mail_routes
 from .routes_transfers import register_transfer_routes
+from .routes_advanced_ops import register_advanced_ops_routes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -47,6 +49,7 @@ def create_app() -> Flask:
     ensure_account_schema()
     ensure_mail_schema()
     ensure_transfer_schema()
+    ensure_ops_schema()
     app.before_request(csrf_guard)
     app.jinja_env.globals.update(csrf_token=csrf_token, panel_version=VERSION)
 
@@ -80,4 +83,5 @@ def create_app() -> Flask:
     register_account_routes(app)
     register_mail_routes(app)
     register_transfer_routes(app)
+    register_advanced_ops_routes(app)
     return app
