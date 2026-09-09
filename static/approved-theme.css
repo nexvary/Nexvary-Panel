@@ -97,5 +97,114 @@
 
 .approved-dashboard .dashboard-bottom-grid{align-items:start!important;grid-auto-rows:auto!important}.approved-dashboard .dashboard-bottom-grid>.panel{min-height:0!important;height:auto!important}.approved-dashboard .activity-list{max-height:260px;overflow:auto}.approved-dashboard .fleet-summary,.approved-dashboard .recent-activity{align-self:start!important}
 
-@media(max-width:1180px){.approved-command-grid{grid-template-columns:1fr 1fr!important}.trust-center-card{grid-column:1/-1}}
-@media(max-width:780px){.approved-command-grid{grid-template-columns:1fr!important}.trust-center-card{grid-column:auto}.trust-score{grid-template-columns:56px auto 1fr}.trust-shield{width:50px;height:50px}.approved-hero{padding:14px!important;min-height:0}.approved-hero:after,.approved-hero:before{display:none}.trust-checks .trust-check{grid-template-columns:23px 1fr 18px}.trust-checks small{display:none}}
+/* Royal Basmala header seal — deliberately prominent, ornamental and readable. */
+.workspace-topbar{
+  position:relative;
+  display:grid!important;
+  grid-template-columns:minmax(270px,1fr) minmax(300px,auto) minmax(270px,1fr)!important;
+  align-items:center!important;
+  gap:18px!important;
+  padding:12px 18px 13px!important;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 50% -120%,rgba(118,49,255,.34),transparent 52%),
+    linear-gradient(180deg,rgba(28,8,71,.96),rgba(6,14,31,.97))!important;
+}
+.workspace-topbar:before{
+  content:"";
+  position:absolute;
+  inset:4px;
+  pointer-events:none;
+  border-radius:15px;
+  border:1px solid rgba(232,189,79,.13);
+  background:
+    linear-gradient(90deg,transparent 0 4%,rgba(232,189,79,.2) 4.2% 4.35%,transparent 4.5% 95.5%,rgba(232,189,79,.2) 95.65% 95.8%,transparent 96% 100%);
+}
+.workspace-topbar .topbar-title{justify-self:start;z-index:1}
+.workspace-topbar .top-tools{justify-self:end;z-index:1}
+.basmala-seal{
+  position:relative;
+  z-index:2;
+  direction:rtl;
+  display:grid;
+  grid-template-columns:50px auto 50px;
+  align-items:center;
+  gap:10px;
+  min-width:320px;
+  padding:7px 12px;
+  color:#ffe5a0;
+  text-align:center;
+  border-top:1px solid rgba(255,216,115,.72);
+  border-bottom:1px solid rgba(255,216,115,.72);
+  background:radial-gradient(circle at 50% 50%,rgba(101,38,204,.22),rgba(1,8,20,.08) 72%);
+  box-shadow:0 0 20px rgba(232,189,79,.08),inset 0 0 18px rgba(119,47,255,.08);
+}
+.basmala-seal:before,.basmala-seal:after{
+  content:"◆";
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%) rotate(45deg);
+  color:#ffd56e;
+  font-size:8px;
+  text-shadow:0 0 8px rgba(255,205,84,.8);
+}
+.basmala-seal:before{right:-3px}.basmala-seal:after{left:-3px}
+.basmala-seal>div{display:grid;place-items:center;line-height:1.1}
+.basmala-seal small{
+  display:block;
+  height:22px;
+  font-family:"Amiri","Noto Naskh Arabic","Traditional Arabic",serif;
+  font-size:28px;
+  line-height:20px;
+  color:#ffd66f;
+  text-shadow:0 0 11px rgba(255,205,86,.48),0 0 22px rgba(120,51,255,.18);
+}
+.basmala-seal strong{
+  display:block;
+  margin-top:3px;
+  font-family:"Amiri","Noto Naskh Arabic","Traditional Arabic",serif;
+  font-size:18px;
+  font-weight:700;
+  white-space:nowrap;
+  color:#fff1bd;
+  text-shadow:0 0 9px rgba(255,214,105,.3),0 2px 0 rgba(0,0,0,.45);
+}
+.basmala-seal i{
+  display:block;
+  margin-top:5px;
+  font-family:"Noto Kufi Arabic","Noto Sans Arabic",Tahoma,sans-serif;
+  font-style:normal;
+  font-size:7px;
+  font-weight:800;
+  letter-spacing:.12em;
+  color:rgba(126,255,190,.78);
+  text-shadow:0 0 8px rgba(55,255,154,.2);
+}
+.basmala-wing{position:relative;height:16px;opacity:.92}
+.basmala-wing:before,.basmala-wing:after{content:"";position:absolute;left:0;right:0;top:7px;height:1px;background:linear-gradient(90deg,transparent,#e8bd4f 30%,#ffe59b 50%,#e8bd4f 70%,transparent);box-shadow:0 0 7px rgba(232,189,79,.28)}
+.basmala-wing:after{top:3px;left:14px;right:14px;transform:scaleX(.72);opacity:.56}
+.basmala-wing-right{transform:rotate(180deg)}
+
+/* Denser real dashboard: remove legacy decorative minimum height. */
+#dashboard.approved-dashboard{min-height:0!important;height:auto!important;padding-bottom:10px!important}
+#dashboard.approved-dashboard.active-view{min-height:0!important}
+#dashboard.approved-dashboard .panel{align-self:start}
+
+@media(max-width:1380px){
+  .workspace-topbar{grid-template-columns:minmax(230px,1fr) minmax(250px,auto) minmax(230px,1fr)!important;gap:10px!important}
+  .basmala-seal{min-width:270px;grid-template-columns:28px auto 28px;padding-inline:8px}
+  .basmala-seal strong{font-size:15px}.basmala-seal small{font-size:24px}
+  .workspace-topbar .command-search{width:200px!important}
+}
+@media(max-width:1120px){
+  .workspace-topbar{grid-template-columns:1fr auto!important}
+  .basmala-seal{grid-column:1/-1;grid-row:1;justify-self:center;width:min(520px,82%)}
+  .workspace-topbar .topbar-title{grid-column:1;grid-row:2}.workspace-topbar .top-tools{grid-column:2;grid-row:2}
+}
+@media(max-width:780px){
+  .approved-command-grid{grid-template-columns:1fr!important}.trust-center-card{grid-column:auto}.trust-score{grid-template-columns:56px auto 1fr}.trust-shield{width:50px;height:50px}.approved-hero{padding:14px!important;min-height:0}.approved-hero:after,.approved-hero:before{display:none}.trust-checks .trust-check{grid-template-columns:23px 1fr 18px}.trust-checks small{display:none}
+  .workspace-topbar{display:flex!important;flex-wrap:wrap!important;padding:9px 10px 11px!important}
+  .basmala-seal{order:-1;width:100%;min-width:0;grid-template-columns:22px 1fr 22px;padding:6px 8px}
+  .basmala-seal strong{font-size:14px}.basmala-seal small{font-size:22px}.basmala-seal i{font-size:6px}
+  .workspace-topbar .topbar-title{flex:1 1 180px}.workspace-topbar .top-tools{flex:1 1 100%;justify-content:space-between}
+}
