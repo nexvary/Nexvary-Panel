@@ -96,6 +96,22 @@ def _write_users(values: dict[str, str]) -> None:
     _atomic_write(USERS_FILE, text, 0o640)
 
 
+def _snapshot() -> dict[str, dict[str, str]]:
+    return {
+        "users": _read_users(),
+        "domains": _read_map(DOMAINS_FILE),
+        "boxes": _read_map(VMAILBOX_FILE),
+        "aliases": _read_map(VIRTUAL_FILE),
+    }
+
+
+def _write_state(state: dict[str, dict[str, str]]) -> None:
+    _write_users(state["users"])
+    _write_map(DOMAINS_FILE, state["domains"])
+    _write_map(VMAILBOX_FILE, state["boxes"])
+    _write_map(VIRTUAL_FILE, state["aliases"])
+
+
 def _hash_password(password: str) -> str:
     if not isinstance(password, str) or not 14 <= len(password) <= 128 or "\x00" in password or "\n" in password:
         raise ValueError("invalid-password")
@@ -134,6 +150,15 @@ def _reload() -> None:
             raise RuntimeError("mail-service-reload-failed")
 
 
+def _rollback(snapshot: dict[str, dict[str, str]]) -> None:
+    _write_state(snapshot)
+    try:
+        _reload()
+    except Exception:
+        # The durable source maps are restored even if the service itself is unavailable.
+        pass
+
+
 def _vmail_identity() -> tuple[int, int]:
     account = pwd.getpwnam("vmail")
     return int(account.pw_uid), int(account.pw_gid)
@@ -162,51 +187,63 @@ def mailbox_upsert(address: str, password: str) -> dict:
     localpart, domain = _address(address)
     if not provider_status().get("ok"):
         return {"ok": False, "error": "mail-provider-unavailable"}
-    users = _read_users()
-    domains = _read_map(DOMAINS_FILE)
-    boxes = _read_map(VMAILBOX_FILE)
-    aliases = _read_map(VIRTUAL_FILE)
+    snapshot = _snapshot()
+    state = {name: dict(values) for name, values in snapshot.items()}
     key = address.lower()
-    users[key] = _hash_password(password)
-    domains[domain] = "OK"
-    boxes[key] = f"{domain}/{localpart}/"
-    aliases.pop(key, None)
-    _write_users(users)
-    _write_map(DOMAINS_FILE, domains, 0o640)
-    _write_map(VMAILBOX_FILE, boxes, 0o640)
-    _write_map(VIRTUAL_FILE, aliases, 0o640)
+    state["users"][key] = _hash_password(password)
+    state["domains"][domain] = "OK"
+    state["boxes"][key] = f"{domain}/{localpart}/"
+    state["aliases"].pop(key, None)
     uid, gid = _vmail_identity()
     domain_dir = MAIL_ROOT / domain
     mailbox_dir = domain_dir / localpart
-    mailbox_dir.mkdir(parents=True, exist_ok=True)
-    os.chown(domain_dir, uid, gid)
-    os.chown(mailbox_dir, uid, gid)
-    os.chmod(domain_dir, 0o750)
-    os.chmod(mailbox_dir, 0o700)
-    _reload()
+    existed = mailbox_dir.exists()
+    try:
+        _write_state(state)
+        mailbox_dir.mkdir(parents=True, exist_ok=True)
+        os.chown(domain_dir, uid, gid)
+        os.chown(mailbox_dir, uid, gid)
+        os.chmod(domain_dir, 0o750)
+        os.chmod(mailbox_dir, 0o700)
+        _reload()
+    except Exception:
+        _rollback(snapshot)
+        if not existed and mailbox_dir.exists() and mailbox_dir.is_dir() and not mailbox_dir.is_symlink():
+            shutil.rmtree(mailbox_dir, ignore_errors=True)
+            try:
+                domain_dir.rmdir()
+            except OSError:
+                pass
+        raise
     return {"ok": True, "address": key}
 
 
 def mailbox_delete(address: str) -> dict:
     localpart, domain = _address(address)
-    users = _read_users()
-    domains = _read_map(DOMAINS_FILE)
-    boxes = _read_map(VMAILBOX_FILE)
-    aliases = _read_map(VIRTUAL_FILE)
+    snapshot = _snapshot()
+    state = {name: dict(values) for name, values in snapshot.items()}
     key = address.lower()
-    users.pop(key, None)
-    boxes.pop(key, None)
-    _write_users(users)
-    _write_map(DOMAINS_FILE, domains, 0o640)
-    _write_map(VMAILBOX_FILE, boxes, 0o640)
-    _write_map(VIRTUAL_FILE, aliases, 0o640)
+    state["users"].pop(key, None)
+    state["boxes"].pop(key, None)
     source = MAIL_ROOT / domain / localpart
-    if source.exists() and source.is_dir() and not source.is_symlink():
-        quarantine = MAIL_ROOT / ".deleted"
-        quarantine.mkdir(parents=True, exist_ok=True)
-        target = quarantine / f"{int(time.time())}-{domain}-{localpart}"
-        source.rename(target)
-    _reload()
+    quarantine_target: Path | None = None
+    try:
+        _write_state(state)
+        if source.exists() and source.is_dir() and not source.is_symlink():
+            quarantine = MAIL_ROOT / ".deleted"
+            quarantine.mkdir(parents=True, exist_ok=True)
+            uid, gid = _vmail_identity()
+            os.chown(quarantine, uid, gid)
+            os.chmod(quarantine, 0o700)
+            quarantine_target = quarantine / f"{int(time.time())}-{domain}-{localpart}"
+            source.rename(quarantine_target)
+        _reload()
+    except Exception:
+        _rollback(snapshot)
+        if quarantine_target and quarantine_target.exists() and not source.exists():
+            source.parent.mkdir(parents=True, exist_ok=True)
+            quarantine_target.rename(source)
+        raise
     return {"ok": True, "address": key, "data": "quarantined"}
 
 
@@ -215,28 +252,32 @@ def forwarder_upsert(source: str, destination: str) -> dict:
     _address(destination)
     if not provider_status().get("ok"):
         return {"ok": False, "error": "mail-provider-unavailable"}
-    domains = _read_map(DOMAINS_FILE)
-    boxes = _read_map(VMAILBOX_FILE)
-    aliases = _read_map(VIRTUAL_FILE)
-    if source.lower() in boxes:
+    snapshot = _snapshot()
+    state = {name: dict(values) for name, values in snapshot.items()}
+    key = source.lower()
+    if key in state["boxes"]:
         return {"ok": False, "error": "source-is-a-mailbox"}
-    domains[domain] = "OK"
-    aliases[source.lower()] = destination.lower()
-    _write_map(DOMAINS_FILE, domains, 0o640)
-    _write_map(VMAILBOX_FILE, boxes, 0o640)
-    _write_map(VIRTUAL_FILE, aliases, 0o640)
-    _reload()
-    return {"ok": True, "source": source.lower(), "destination": destination.lower()}
+    state["domains"][domain] = "OK"
+    state["aliases"][key] = destination.lower()
+    try:
+        _write_state(state)
+        _reload()
+    except Exception:
+        _rollback(snapshot)
+        raise
+    return {"ok": True, "source": key, "destination": destination.lower()}
 
 
 def forwarder_delete(source: str) -> dict:
     _address(source)
-    domains = _read_map(DOMAINS_FILE)
-    boxes = _read_map(VMAILBOX_FILE)
-    aliases = _read_map(VIRTUAL_FILE)
-    aliases.pop(source.lower(), None)
-    _write_map(DOMAINS_FILE, domains, 0o640)
-    _write_map(VMAILBOX_FILE, boxes, 0o640)
-    _write_map(VIRTUAL_FILE, aliases, 0o640)
-    _reload()
-    return {"ok": True, "source": source.lower()}
+    snapshot = _snapshot()
+    state = {name: dict(values) for name, values in snapshot.items()}
+    key = source.lower()
+    state["aliases"].pop(key, None)
+    try:
+        _write_state(state)
+        _reload()
+    except Exception:
+        _rollback(snapshot)
+        raise
+    return {"ok": True, "source": key}
