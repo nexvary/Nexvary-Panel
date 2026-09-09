@@ -14,14 +14,18 @@ if (( WITH_DOCKER )); then apt-get install -y docker.io; fi
 cp -a app.py panel requirements.txt templates static VERSION /opt/nexvary-panel/
 chown -R nexvary-panel:nexvary-panel /opt/nexvary-panel
 /opt/nexvary-panel/venv/bin/pip install -r /opt/nexvary-panel/requirements.txt
+install -d -m 0750 -o root -g nexvary-panel /opt/nexvary-panel-agent /run/nexvary-panel
+install -d -m 0700 -o root -g root /etc/nexvary-panel/credentials /var/backups/nexvary-panel
 install -m 0755 agent/nvpctl /usr/local/sbin/nvpctl
 install -m 0750 -o root -g root agent/root_agent.py /opt/nexvary-panel-agent/root_agent.py
+install -m 0640 -o root -g root agent/secret_vault.py /opt/nexvary-panel-agent/secret_vault.py
+install -m 0750 -o root -g root agent/vault_agent.py /opt/nexvary-panel-agent/vault_agent.py
 install -m 0644 systemd/nexvary-panel.service /etc/systemd/system/nexvary-panel.service
 install -m 0644 systemd/nexvary-panel-agent.service /etc/systemd/system/nexvary-panel-agent.service
-install -d -m 0700 -o root -g root /var/backups/nexvary-panel
+install -m 0644 systemd/nexvary-panel-vault.service /etc/systemd/system/nexvary-panel-vault.service
 systemctl daemon-reload
-systemctl enable --now mariadb fail2ban nginx
+systemctl enable --now mariadb fail2ban nginx nexvary-panel-vault
 if (( WITH_DOCKER )); then systemctl enable --now docker; fi
-systemctl restart nexvary-panel-agent nexvary-panel
+systemctl restart nexvary-panel-agent nexvary-panel-vault nexvary-panel
 nginx -t
-printf '\nNexvary Panel %s upgrade complete. Existing admin credentials and SQLite data were preserved.\n' "$PANEL_VERSION"
+printf '\nNexvary Panel %s upgrade complete. Existing admin credentials, Secret Vault and SQLite data were preserved.\n' "$PANEL_VERSION"
