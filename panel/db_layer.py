@@ -37,8 +37,60 @@ def db() -> sqlite3.Connection:
         UNIQUE(owner,name)
       );
       CREATE INDEX IF NOT EXISTS idx_integration_targets_owner ON integration_targets(owner,provider,capability);
+
+      CREATE TABLE IF NOT EXISTS hosting_packages (
+        id INTEGER PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        disk_mb INTEGER NOT NULL DEFAULT 10240,
+        bandwidth_mb INTEGER NOT NULL DEFAULT 102400,
+        max_sites INTEGER NOT NULL DEFAULT 10,
+        max_databases INTEGER NOT NULL DEFAULT 10,
+        max_mailboxes INTEGER NOT NULL DEFAULT 20,
+        max_ftp_accounts INTEGER NOT NULL DEFAULT 5,
+        max_cron_jobs INTEGER NOT NULL DEFAULT 10,
+        max_subdomains INTEGER NOT NULL DEFAULT 20,
+        max_backups INTEGER NOT NULL DEFAULT 20,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS hosting_package_features (
+        package_id INTEGER NOT NULL,
+        feature_id TEXT NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY(package_id,feature_id),
+        FOREIGN KEY(package_id) REFERENCES hosting_packages(id) ON DELETE CASCADE
+      );
+      CREATE TABLE IF NOT EXISTS user_hosting_package (
+        username TEXT PRIMARY KEY,
+        package_id INTEGER NOT NULL,
+        assigned_at INTEGER NOT NULL,
+        FOREIGN KEY(package_id) REFERENCES hosting_packages(id) ON DELETE RESTRICT
+      );
+      CREATE INDEX IF NOT EXISTS idx_hosting_package_features_package ON hosting_package_features(package_id,enabled);
     """)
+    _seed_hosting_packages(conn)
     return conn
+
+
+def _seed_hosting_packages(conn: sqlite3.Connection) -> None:
+    now = int(time.time())
+    conn.execute(
+        """INSERT OR IGNORE INTO hosting_packages(
+             name,description,disk_mb,bandwidth_mb,max_sites,max_databases,max_mailboxes,max_ftp_accounts,
+             max_cron_jobs,max_subdomains,max_backups,enabled,created_at,updated_at
+           ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        ("NEXVARY Core", "Safe default hosting package", 10240, 102400, 10, 10, 20, 5, 10, 20, 20, 1, now, now),
+    )
+    conn.execute(
+        """INSERT OR IGNORE INTO hosting_packages(
+             name,description,disk_mb,bandwidth_mb,max_sites,max_databases,max_mailboxes,max_ftp_accounts,
+             max_cron_jobs,max_subdomains,max_backups,enabled,created_at,updated_at
+           ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        ("NEXVARY Unlimited", "Administrative/unlimited control package", 1048576, 10485760, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 1, now, now),
+    )
 
 
 def ensure_schema_columns() -> None:
@@ -75,7 +127,6 @@ def notify(level: str, title: str, detail: str = "", source: str = "system", own
     owner = (owner or actor or "admin")[:64]
     now = int(time.time())
     with db() as conn:
-        # Suppress identical noisy alerts for ten minutes.
         recent = conn.execute("SELECT 1 FROM notifications WHERE owner=? AND source=? AND title=? AND created_at>? LIMIT 1",
                               (owner, source[:40], title[:120], now - 600)).fetchone()
         if recent:
