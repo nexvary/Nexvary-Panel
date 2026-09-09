@@ -30,7 +30,7 @@ jobs:
       - name: Smoke tests
         env:
           NVP_COOKIE_SECURE: '0'
-        run: python tests/smoke_test.py && python tests/vault_test.py
+        run: python tests/smoke_test.py && python tests/vault_test.py && python tests/integrations_test.py
 
   installation-gate:
     name: Ubuntu 24.04 full installer gate
@@ -103,7 +103,7 @@ jobs:
           cat /tmp/nexvary-panel.log
           exit 1
       - name: UI Release Gate
-        run: node tests/ui_gate.mjs && node tests/vault_ui_gate.mjs
+        run: node tests/ui_gate.mjs && node tests/vault_ui_gate.mjs && node tests/integrations_ui_gate.mjs
       - name: Upload real UI screenshots
         if: always()
         uses: actions/upload-artifact@v4
