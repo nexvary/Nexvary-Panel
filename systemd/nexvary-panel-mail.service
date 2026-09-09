@@ -1,0 +1,28 @@
+[Unit]
+Description=Nexvary Panel Mail Provider Agent
+After=network.target postfix.service dovecot.service
+Wants=postfix.service dovecot.service
+ConditionPathExists=/opt/nexvary-panel-agent/mail_agent.py
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/nexvary-panel-agent
+ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/mail_agent.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/etc/nexvary-panel/mail /var/mail/vhosts /run/nexvary-panel
+RestrictAddressFamilies=AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
