@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="/static/hosting-suite.css">
   <link rel="stylesheet" href="/static/accounts.css">
   <link rel="stylesheet" href="/static/mail.css">
+  <link rel="stylesheet" href="/static/transfers.css">
   <link rel="stylesheet" href="/static/webtools.css">
   <link rel="stylesheet" href="/static/scheduled-tasks.css">
   <link rel="stylesheet" href="/static/workspace-visibility.css">
@@ -52,6 +53,7 @@
       {% if role in ['admin','reseller'] %}<a href="#accounts" data-title="الحسابات والموزعون" data-subtitle="Hosting Accounts والحزم وحدود Reseller ضمن Scope آمن">{{icon('users')}}<span>الحسابات والموزعون</span><em></em></a>{% endif %}
       {% if role != 'reseller' %}
       <a href="#mail" data-title="البريد الإلكتروني" data-subtitle="Mailboxes وForwarders وحالة Postfix/Dovecot ضمن Quota الحزمة">{{icon('mail')}}<span>البريد الإلكتروني</span><em></em></a>
+      <a href="#transfers" data-title="نقل الملفات" data-subtitle="SFTP بمفاتيح عامة فقط وChroot مستقل لكل موقع">{{icon('network')}}<span>نقل الملفات SFTP</span><em></em></a>
       <a href="#sites" data-title="المواقع الإلكترونية" data-subtitle="إدارة المواقع والتطبيقات والـRuntime وNGINX">{{icon('globe')}}<span>المواقع الإلكترونية</span><em></em></a>
       <a href="#webtools" data-title="أدوات الويب" data-subtitle="Redirects وصفحات الأخطاء وإحصاءات الزوار والباندويدث">{{icon('activity')}}<span>أدوات الويب</span><em></em></a>
       <a href="#schedules" data-title="المهام المجدولة" data-subtitle="Scheduled Tasks آمنة للنسخ والنشر بدون Shell خام">{{icon('activity')}}<span>المهام المجدولة</span><em></em></a>
@@ -102,6 +104,7 @@
       {% if role in ['admin','reseller'] %}{% include "sections/accounts.html" %}{% endif %}
       {% if role != 'reseller' %}
       {% include "sections/mail.html" %}
+      {% include "sections/transfers.html" %}
       {% include "sections/sites.html" %}
       {% include "sections/webtools.html" %}
       {% include "sections/schedules.html" %}
@@ -137,6 +140,7 @@
 <script src="/static/hosting-suite.js"></script>
 <script src="/static/accounts.js"></script>
 <script src="/static/mail.js"></script>
+<script src="/static/transfers.js"></script>
 <script src="/static/webtools.js"></script>
 <script src="/static/scheduled-tasks.js"></script>
 </body>
