@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="/static/platform-controls.css">
   <link rel="stylesheet" href="/static/fusion.css">
   <link rel="stylesheet" href="/static/dns.css">
+  <link rel="stylesheet" href="/static/vault.css">
 </head>
 <body>
 <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div><div class="noise"></div>
@@ -39,6 +40,7 @@
       <span class="nav-label nav-gap">PLATFORM</span>
       <a href="#fusion" data-title="Nexvary Fusion Center" data-subtitle="اكتشاف وربط مزودي Edge وSecurity وBackup وContainers وDNS ضمن Capability/Policy Engine موحد">{{icon('layers')}}<span>Fusion Center</span><em></em></a>
       <a href="#dns" data-title="DNS Center" data-subtitle="جرد DNS وMail posture للمواقع المسجلة قبل تمكين مزودي الكتابة">{{icon('network')}}<span>DNS Center</span><em></em></a>
+      {% if role == 'admin' %}<a href="#vault" data-title="Secret Vault" data-subtitle="تخزين root-only لمفاتيح DNS والنسخ الاحتياطي والتكاملات مع Step-Up Authentication">{{icon('key')}}<span>Secret Vault</span><em></em></a>{% endif %}
       <a href="#files" data-title="مدير الملفات" data-subtitle="إدارة ملفات المواقع داخل نطاق آمن ومحصور">{{icon('file')}}<span>مدير الملفات</span><em></em></a>
       <a href="#deploy" data-title="Git Deploy" data-subtitle="نشر مستودعات موثوقة إلى التطبيقات بدون Shell مفتوح">{{icon('git')}}<span>Git Deploy</span><em></em></a>
       <a href="#wordpress" data-title="WordPress Manager" data-subtitle="تهيئة WordPress وفحص حالته لكل موقع PHP">{{icon('wordpress')}}<span>WordPress Manager</span><em></em></a>
@@ -72,6 +74,7 @@
       {% include "sections/backups.html" %}
       {% include "sections/fusion.html" %}
       {% include "sections/dns.html" %}
+      {% if role == 'admin' %}{% include "sections/vault.html" %}{% endif %}
       {% include "sections/files.html" %}
       {% include "sections/deploy.html" %}
       {% include "sections/wordpress.html" %}
@@ -91,5 +94,6 @@
 <script src="/static/platform-controls.js"></script>
 <script src="/static/fusion.js"></script>
 <script src="/static/dns.js"></script>
+<script src="/static/vault.js"></script>
 </body>
 </html>
