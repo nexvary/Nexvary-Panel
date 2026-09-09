@@ -30,7 +30,7 @@ jobs:
       - name: Smoke tests
         env:
           NVP_COOKIE_SECURE: '0'
-        run: python tests/smoke_test.py
+        run: python tests/smoke_test.py && python tests/vault_test.py
 
   installation-gate:
     name: Ubuntu 24.04 full installer gate
