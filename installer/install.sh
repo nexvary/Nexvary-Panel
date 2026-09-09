@@ -5,10 +5,12 @@ set -euo pipefail
 [[ "${ID:-}" =~ ^(ubuntu|debian)$ ]] || { echo 'Supported: Ubuntu / Debian'; exit 2; }
 WITH_DOCKER=0
 WITH_BACKUP_PROVIDERS=0
+WITH_MAIL=0
 for arg in "$@"; do
   case "$arg" in
     --with-docker) WITH_DOCKER=1 ;;
     --with-backup-providers) WITH_BACKUP_PROVIDERS=1 ;;
+    --with-mail) WITH_MAIL=1 ;;
     *) echo "Unknown installer option: $arg"; exit 2 ;;
   esac
 done
@@ -18,6 +20,12 @@ apt-get update
 apt-get install -y nginx python3 python3-venv python3-pip openssl certbot python3-certbot-nginx fail2ban ufw php-fpm mariadb-server nodejs ca-certificates curl rsync git
 if (( WITH_DOCKER )); then apt-get install -y docker.io; fi
 if (( WITH_BACKUP_PROVIDERS )); then apt-get install -y restic rclone; fi
+if (( WITH_MAIL )); then
+  MAILNAME="$(hostname -f 2>/dev/null || hostname)"
+  echo "postfix postfix/mailname string ${MAILNAME}" | debconf-set-selections
+  echo 'postfix postfix/main_mailer_type select Internet Site' | debconf-set-selections
+  apt-get install -y postfix dovecot-core dovecot-imapd
+fi
 
 getent group nexvary-panel >/dev/null || groupadd --system nexvary-panel
 id nexvary-panel >/dev/null 2>&1 || useradd --system --gid nexvary-panel --home /opt/nexvary-panel --shell /usr/sbin/nologin nexvary-panel
@@ -41,6 +49,8 @@ install -m 0750 -o root -g root agent/provider_agent.py /opt/nexvary-panel-agent
 install -m 0640 -o root -g root agent/webtools.py /opt/nexvary-panel-agent/webtools.py
 install -m 0750 -o root -g root agent/webtools_agent.py /opt/nexvary-panel-agent/webtools_agent.py
 install -m 0750 -o root -g nexvary-panel agent/scheduler_agent.py /opt/nexvary-panel-agent/scheduler_agent.py
+install -m 0640 -o root -g root agent/mail_backend.py /opt/nexvary-panel-agent/mail_backend.py
+install -m 0750 -o root -g root agent/mail_agent.py /opt/nexvary-panel-agent/mail_agent.py
 rm -f /etc/sudoers.d/nexvary-panel
 
 if [[ ! -f /etc/nexvary-panel/admin.env ]]; then
@@ -69,11 +79,16 @@ install -m 0644 systemd/nexvary-panel-vault.service /etc/systemd/system/nexvary-
 install -m 0644 systemd/nexvary-panel-provider.service /etc/systemd/system/nexvary-panel-provider.service
 install -m 0644 systemd/nexvary-panel-webtools.service /etc/systemd/system/nexvary-panel-webtools.service
 install -m 0644 systemd/nexvary-panel-scheduler.service /etc/systemd/system/nexvary-panel-scheduler.service
+install -m 0644 systemd/nexvary-panel-mail.service /etc/systemd/system/nexvary-panel-mail.service
 CERT_DIR=/etc/nexvary-panel/tls
 install -d -m 0700 "$CERT_DIR"
 if [[ ! -f "$CERT_DIR/panel.crt" ]]; then
   openssl req -x509 -newkey rsa:3072 -nodes -days 825 -subj "/CN=Nexvary Panel" -keyout "$CERT_DIR/panel.key" -out "$CERT_DIR/panel.crt" >/dev/null 2>&1
   chmod 0600 "$CERT_DIR/panel.key"
+fi
+
+if (( WITH_MAIL )); then
+  bash installer/configure-mail.sh
 fi
 
 cat > /etc/nginx/sites-available/nexvary-panel.conf <<EOF
@@ -105,11 +120,18 @@ nginx -t
 systemctl daemon-reload
 systemctl enable --now nginx mariadb fail2ban nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel
 if (( WITH_DOCKER )); then systemctl enable --now docker; fi
+if (( WITH_MAIL )); then systemctl enable --now nexvary-panel-mail; fi
 ufw allow OpenSSH >/dev/null || true
 ufw allow 80/tcp >/dev/null || true
 ufw allow 443/tcp >/dev/null || true
 ufw allow 8443/tcp >/dev/null || true
+if (( WITH_MAIL )); then
+  ufw allow 25/tcp >/dev/null || true
+  ufw allow 587/tcp >/dev/null || true
+  ufw allow 993/tcp >/dev/null || true
+fi
 
 printf '\nNexvary Panel %s installed.\nOpen: https://SERVER_IP:8443\nUser: admin\nPassword: %s\n\nInitial TLS is self-signed. Assign a panel hostname before replacing it with a trusted certificate.\n' "$PANEL_VERSION" "$PASS"
 if (( ! WITH_DOCKER )); then printf 'Docker was not installed. Re-run installer with --with-docker if you want Docker Center.\n'; fi
 if (( ! WITH_BACKUP_PROVIDERS )); then printf 'restic/rclone were not installed. Re-run installer with --with-backup-providers to enable Fusion remote backup engines.\n'; fi
+if (( ! WITH_MAIL )); then printf 'Postfix/Dovecot were not configured. Re-run installer with --with-mail to enable the local Email Stack.\n'; fi
