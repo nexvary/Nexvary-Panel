@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import ipaddress
 import re
+import sqlite3
 import time
 from urllib.parse import urlsplit
 
 from flask import jsonify, request, session
 
 from .core import audit, db, notify
+from .provider_client import provider_call
 from .providers import REGISTRY, provider_snapshot
 from .security import role_required, step_up_required
 from .vault_client import vault_call
@@ -141,10 +143,8 @@ def register_integration_routes(app):
                     (name, provider, target_type["capability"], endpoint, target_type["secret_kind"], secret_id, owner, now, now),
                 )
                 row = conn.execute("SELECT * FROM integration_targets WHERE id=?", (cur.lastrowid,)).fetchone()
-        except Exception as exc:
-            if "UNIQUE" in str(exc).upper():
-                return jsonify(ok=False, error="target name already exists"), 409
-            raise
+        except sqlite3.IntegrityError:
+            return jsonify(ok=False, error="target name already exists"), 409
         audit("integration-target-create", f"provider={provider} name={name} secret_ref={target_type['secret_kind']}:{secret_id}")
         notify("ok", "Integration target created", f"{provider}:{name}", "fusion", owner=owner)
         return jsonify(ok=True, target=_safe_target(row)), 201
@@ -194,7 +194,13 @@ def register_integration_routes(app):
         ))
         installed = bool(provider and provider.get("installed"))
         capability_ok = bool(provider and target["capability"] in provider.get("capabilities", []))
-        ready = bool(target["enabled"] and installed and capability_ok and secret_present)
+        provider_contract = True
+        contract_note = "No provider-specific execution contract is required for this read-only preflight."
+        if target["provider"] == "rclone" and installed and secret_present:
+            agent = provider_call({"action": "rclone-preflight", "secret_id": target["secret_id"], "endpoint": target["endpoint"]}, timeout=20)
+            provider_contract = bool(agent.get("ok"))
+            contract_note = "rclone crypt-over-S3 contract verified by Provider Agent." if provider_contract else str(agent.get("error", "provider contract failed"))[:300]
+        ready = bool(target["enabled"] and installed and capability_ok and secret_present and provider_contract)
         return jsonify(
             ok=True,
             ready=ready,
@@ -204,7 +210,8 @@ def register_integration_routes(app):
                 "capability_contract": capability_ok,
                 "credential_present": secret_present,
                 "endpoint_syntax": True,
+                "provider_contract": provider_contract,
             },
             provider={"id": target["provider"], "version": (provider or {}).get("version", "")},
-            note="Preflight is local-only: no provider network request is executed.",
+            note=contract_note,
         )
