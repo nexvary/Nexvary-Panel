@@ -76,6 +76,12 @@ with tempfile.TemporaryDirectory() as tmp:
     except ValueError:
         pass
 
+# UI wiring is static-gated even when CI has no real restore points to render.
+backup_template = (ROOT / "templates" / "sections" / "backups.html").read_bytes()
+index_template = (ROOT / "templates" / "index.html").read_bytes()
+assert b"remote-backup-slot" in backup_template and b"LOCAL + FUSION" in backup_template
+assert b"/static/remote-backup.css" in index_template and b"/static/remote-backup.js" in index_template
+
 # Web action is Step-Up protected before target/backup lookup or provider execution.
 _tmp = tempfile.TemporaryDirectory()
 tmp = _tmp.name
