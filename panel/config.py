@@ -4,7 +4,11 @@ import os
 import re
 from pathlib import Path
 
-VERSION = "0.6.0"
+ROOT = Path(__file__).resolve().parents[1]
+try:
+    VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip() or "0.7.0"
+except OSError:
+    VERSION = "0.7.0"
 APP_DIR = Path(os.environ.get("NVP_DATA_DIR", "/var/lib/nexvary-panel"))
 DB_PATH = Path(os.environ.get("NVP_DB_PATH", str(APP_DIR / "panel.db")))
 ADMIN_FILE = Path(os.environ.get("NVP_ADMIN_FILE", "/etc/nexvary-panel/admin.env"))
