@@ -1,21 +1,22 @@
 /* Nexvary Panel — Royal Workspace entity refinements */
-/* High-specificity palette overrides keep each workspace visually expressive. */
-#workspaceStage>#sites{--rw-accent:#2ec8ff;--rw-accent-rgb:46,200,255}
-#workspaceStage>#databases{--rw-accent:#a65dff;--rw-accent-rgb:166,93,255}
-#workspaceStage>#files{--rw-accent:#c06cff;--rw-accent-rgb:192,108,255}
-#workspaceStage>#security{--rw-accent:#37ff9a;--rw-accent-rgb:55,255,154}
-#workspaceStage>#backups{--rw-accent:#47f3aa;--rw-accent-rgb:71,243,170}
-#workspaceStage>#users{--rw-accent:#30d9ff;--rw-accent-rgb:48,217,255}
-#workspaceStage>#fusion{--rw-accent:#b35cff;--rw-accent-rgb:179,92,255}
-#workspaceStage>#integrations{--rw-accent:#35d5ff;--rw-accent-rgb:53,213,255}
-#workspaceStage>#wordpress{--rw-accent:#5fd6ff;--rw-accent-rgb:95,214,255}
-#workspaceStage>#deploy{--rw-accent:#438dff;--rw-accent-rgb:67,141,255}
-#workspaceStage>#docker{--rw-accent:#2496ed;--rw-accent-rgb:36,150,237}
-#workspaceStage>#services{--rw-accent:#4cf0dd;--rw-accent-rgb:76,240,221}
-#workspaceStage>#dns{--rw-accent:#20baff;--rw-accent-rgb:32,186,255}
-#workspaceStage>#notifications{--rw-accent:#ff4168;--rw-accent-rgb:255,65,104}
-#workspaceStage>#audit{--rw-accent:#e8bd4f;--rw-accent-rgb:232,189,79}
-#workspaceStage>#vault{--rw-accent:#ffd15d;--rw-accent-rgb:255,209,93}
+/* Authoritative palette overrides. The !important custom properties intentionally beat
+   the generic :not(#dashboard) defaults so every workspace keeps its own identity. */
+#workspaceStage>#sites.workspace-page{--rw-accent:#2ec8ff!important;--rw-accent-rgb:46,200,255!important}
+#workspaceStage>#databases.workspace-page{--rw-accent:#a65dff!important;--rw-accent-rgb:166,93,255!important}
+#workspaceStage>#files.workspace-page{--rw-accent:#c06cff!important;--rw-accent-rgb:192,108,255!important}
+#workspaceStage>#security.workspace-page{--rw-accent:#37ff9a!important;--rw-accent-rgb:55,255,154!important}
+#workspaceStage>#backups.workspace-page{--rw-accent:#47f3aa!important;--rw-accent-rgb:71,243,170!important}
+#workspaceStage>#users.workspace-page{--rw-accent:#30d9ff!important;--rw-accent-rgb:48,217,255!important}
+#workspaceStage>#fusion.workspace-page{--rw-accent:#b35cff!important;--rw-accent-rgb:179,92,255!important}
+#workspaceStage>#integrations.workspace-page{--rw-accent:#35d5ff!important;--rw-accent-rgb:53,213,255!important}
+#workspaceStage>#wordpress.workspace-page{--rw-accent:#5fd6ff!important;--rw-accent-rgb:95,214,255!important}
+#workspaceStage>#deploy.workspace-page{--rw-accent:#438dff!important;--rw-accent-rgb:67,141,255!important}
+#workspaceStage>#docker.workspace-page{--rw-accent:#2496ed!important;--rw-accent-rgb:36,150,237!important}
+#workspaceStage>#services.workspace-page{--rw-accent:#4cf0dd!important;--rw-accent-rgb:76,240,221!important}
+#workspaceStage>#dns.workspace-page{--rw-accent:#20baff!important;--rw-accent-rgb:32,186,255!important}
+#workspaceStage>#notifications.workspace-page{--rw-accent:#ff4168!important;--rw-accent-rgb:255,65,104!important}
+#workspaceStage>#audit.workspace-page{--rw-accent:#e8bd4f!important;--rw-accent-rgb:232,189,79!important}
+#workspaceStage>#vault.workspace-page{--rw-accent:#ffd15d!important;--rw-accent-rgb:255,209,93!important}
 
 #databases .database-grid,#users .user-card-grid,#services .services-grid{gap:9px!important}
 #databases .database-card,#users .user-access-card,#services .service-card,#audit .audit-event-card,#notifications .notification-row,#docker #dockerList>*:not(.empty-state){
