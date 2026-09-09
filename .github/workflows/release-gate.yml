@@ -30,7 +30,7 @@ jobs:
       - name: Smoke tests
         env:
           NVP_COOKIE_SECURE: '0'
-        run: python tests/smoke_test.py && python tests/vault_test.py && python tests/integrations_test.py && python tests/provider_backup_test.py && python tests/trust_test.py && python tests/hosting_features_test.py
+        run: python tests/smoke_test.py && python tests/vault_test.py && python tests/integrations_test.py && python tests/provider_backup_test.py && python tests/trust_test.py && python tests/hosting_features_test.py && python tests/schedules_test.py
 
   installation-gate:
     name: Ubuntu 24.04 full installer gate
@@ -47,15 +47,22 @@ jobs:
           sudo systemctl is-active --quiet nexvary-panel-agent
           sudo systemctl is-active --quiet nexvary-panel-vault
           sudo systemctl is-active --quiet nexvary-panel-provider || { sudo systemctl status nexvary-panel-provider --no-pager; sudo journalctl -u nexvary-panel-provider -n 80 --no-pager; exit 1; }
+          sudo systemctl is-active --quiet nexvary-panel-webtools || { sudo systemctl status nexvary-panel-webtools --no-pager; sudo journalctl -u nexvary-panel-webtools -n 80 --no-pager; exit 1; }
+          sudo systemctl is-active --quiet nexvary-panel-scheduler || { sudo systemctl status nexvary-panel-scheduler --no-pager; sudo journalctl -u nexvary-panel-scheduler -n 80 --no-pager; exit 1; }
           sudo systemctl is-active --quiet nexvary-panel
           test -f /opt/nexvary-panel/panel/__init__.py
           test -f /opt/nexvary-panel/static/app.css
           test -f /opt/nexvary-panel/static/approved-theme.css
           test -f /opt/nexvary-panel/static/hosting-suite.css
+          test -f /opt/nexvary-panel/static/webtools.css
+          test -f /opt/nexvary-panel/static/scheduled-tasks.css
           test -f /opt/nexvary-panel/panel/hosting_features.py
           test -f /opt/nexvary-panel-agent/secret_vault.py
           test -f /opt/nexvary-panel-agent/vault_agent.py
           test -f /opt/nexvary-panel-agent/provider_agent.py
+          test -f /opt/nexvary-panel-agent/webtools_agent.py
+          test -f /opt/nexvary-panel-agent/scheduler_agent.py
+          test "$(sudo stat -c '%a %U %G' /opt/nexvary-panel-agent/scheduler_agent.py)" = "750 root nexvary-panel"
           test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/credentials)" = "700 root root"
           test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/vault.sock)" = "660 root nexvary-panel"
           test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/provider.sock)" = "660 root nexvary-panel"
@@ -110,7 +117,7 @@ jobs:
           cat /tmp/nexvary-panel.log
           exit 1
       - name: UI Release Gate
-        run: node tests/ui_gate.mjs && node tests/backups_ui_gate.mjs && node tests/vault_ui_gate.mjs && node tests/integrations_ui_gate.mjs && node tests/approved_theme_ui_gate.mjs && node tests/internal_workspace_ui_gate.mjs && node tests/hosting_ui_gate.mjs
+        run: node tests/ui_gate.mjs && node tests/backups_ui_gate.mjs && node tests/vault_ui_gate.mjs && node tests/integrations_ui_gate.mjs && node tests/approved_theme_ui_gate.mjs && node tests/internal_workspace_ui_gate.mjs && node tests/hosting_ui_gate.mjs && node tests/schedules_ui_gate.mjs
       - name: Upload real UI screenshots
         if: always()
         uses: actions/upload-artifact@v4
