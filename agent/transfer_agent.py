@@ -139,8 +139,45 @@ def _mount_target(system_user: str) -> Path:
     return CHROOT_BASE / system_user / "site"
 
 
+def _mount_unit(path: Path) -> str:
+    proc = _run(["systemd-escape", "--path", "--suffix=mount", str(path)], timeout=10)
+    unit = proc.stdout.strip()
+    if not unit.endswith(".mount") or len(unit) > 240:
+        raise RuntimeError("invalid-transfer-mount-unit")
+    return unit
+
+
 def _is_mountpoint(path: Path) -> bool:
-    return subprocess.run(["mountpoint", "-q", "--", str(path)], env=ENV, check=False).returncode == 0
+    try:
+        unit = _mount_unit(path)
+    except Exception:
+        return False
+    proc = subprocess.run(["systemctl", "is-active", unit], capture_output=True, text=True, timeout=8, env=ENV, check=False)
+    return proc.stdout.strip() == "active"
+
+
+def _mount_site(site: Path, target: Path) -> None:
+    if _is_mountpoint(target):
+        return
+    # systemd-mount asks PID 1 to create the bind mount in the host mount namespace.
+    # This is required because the Transfer Agent itself is filesystem-namespaced/hardened.
+    _run(["systemd-mount", "--no-block", "--collect", "--bind", str(site), str(target)], timeout=20)
+    unit = _mount_unit(target)
+    for _ in range(20):
+        proc = subprocess.run(["systemctl", "is-active", unit], capture_output=True, text=True, timeout=5, env=ENV, check=False)
+        if proc.stdout.strip() == "active":
+            return
+        import time
+        time.sleep(0.2)
+    raise RuntimeError("transfer-mount-did-not-activate")
+
+
+def _unmount_site(target: Path) -> None:
+    if not _is_mountpoint(target):
+        return
+    _run(["systemd-mount", "--umount", str(target)], timeout=20)
+    unit = _mount_unit(target)
+    subprocess.run(["systemctl", "reset-failed", unit], capture_output=True, text=True, timeout=8, env=ENV, check=False)
 
 
 def _apply_acl(system_user: str, site: Path) -> None:
@@ -164,12 +201,11 @@ def _ensure_mount(system_user: str, domain: str) -> None:
         os.chown(path, 0, 0)
         os.chmod(path, 0o755)
     _apply_acl(system_user, site)
-    if not _is_mountpoint(target):
-        _run(["mount", "--bind", "--", str(site), str(target)], timeout=20)
+    _mount_site(site, target)
 
 
 def provider_status() -> dict:
-    required = ["sshd", "mount", "mountpoint", "setfacl", "useradd", "userdel"]
+    required = ["sshd", "systemd-mount", "systemd-escape", "systemctl", "setfacl", "useradd", "userdel"]
     if any(shutil.which(name) is None for name in required):
         return {"ok": False, "error": "sftp-provider-not-installed"}
     try:
@@ -202,8 +238,10 @@ def account_create(system_user: str, domain: str, public_key: str) -> dict:
         _ensure_mount(system_user, domain)
     except Exception:
         target = _mount_target(system_user)
-        if target.exists() and _is_mountpoint(target):
-            subprocess.run(["umount", "--", str(target)], env=ENV, capture_output=True, timeout=15, check=False)
+        try:
+            _unmount_site(target)
+        except Exception:
+            pass
         try:
             _remove_acl(system_user, _site_root(domain))
         except Exception:
@@ -234,8 +272,7 @@ def account_delete(system_user: str, domain: str) -> dict:
     if tracked != domain:
         return {"ok": False, "error": "transfer-domain-mismatch"}
     target = _mount_target(system_user)
-    if target.exists() and _is_mountpoint(target):
-        _run(["umount", "--", str(target)], timeout=20)
+    _unmount_site(target)
     try:
         _remove_acl(system_user, _site_root(domain))
     except ValueError:
