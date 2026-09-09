@@ -117,7 +117,7 @@ jobs:
           sudo postmap /etc/nexvary-panel/mail/domains
           sudo bash installer/configure-mail.sh
           sudo grep -q '^preserve.example OK$' /etc/nexvary-panel/mail/domains
-          python3 - <<'PY'
+          sudo -u nexvary-panel python3 - <<'PY'
           import json,socket
           s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
           s.settimeout(5)
