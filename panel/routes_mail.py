@@ -7,7 +7,7 @@ from flask import jsonify, request, session
 
 from .config import DOMAIN_RE, PASSWORD_RE
 from .core import audit, db
-from .hosting_policy import feature_allowed, package_for_user
+from .hosting_policy import enabled_features, package_for_user
 from .mail_client import mail_call
 from .security import role_required, step_up_required
 
@@ -38,7 +38,10 @@ def _owner_role(conn, owner: str) -> str:
 
 
 def _owner_feature_allowed(conn, owner: str, feature_id: str) -> bool:
-    return feature_allowed(feature_id, username=owner, role=_owner_role(conn, owner))
+    role = _owner_role(conn, owner)
+    package = package_for_user(conn, owner, role)
+    package_id = int(package["id"]) if package else None
+    return feature_id in enabled_features(conn, package_id, role)
 
 
 def _domain_allowed(conn, domain: str) -> tuple[bool, str | None]:
@@ -55,7 +58,6 @@ def _domain_allowed(conn, domain: str) -> tuple[bool, str | None]:
 def _mail_limits(conn, owner: str) -> tuple[int, int]:
     package = package_for_user(conn, owner, _owner_role(conn, owner))
     mailbox_limit = int(package["max_mailboxes"]) if package else 0
-    # Forwarders use a bounded derived limit until a dedicated package column lands.
     forwarder_limit = min(100000, max(10, mailbox_limit * 5)) if mailbox_limit else 0
     return mailbox_limit, forwarder_limit
 
