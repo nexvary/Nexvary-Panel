@@ -24,6 +24,7 @@
   <link rel="stylesheet" href="/static/royal-workspaces.css">
   <link rel="stylesheet" href="/static/royal-workspace-entities.css">
   <link rel="stylesheet" href="/static/hosting-suite.css">
+  <link rel="stylesheet" href="/static/accounts.css">
   <link rel="stylesheet" href="/static/webtools.css">
   <link rel="stylesheet" href="/static/scheduled-tasks.css">
   <link rel="stylesheet" href="/static/workspace-visibility.css">
@@ -47,6 +48,8 @@
       <span class="nav-label">لوحة التحكم</span>
       <a class="active" href="#dashboard" data-title="الرئيسية" data-subtitle="نظرة تشغيلية موحدة على الخادم والموارد والحماية">{{icon('dashboard')}}<span>الرئيسية</span><em></em></a>
       <a href="#hosting" data-title="Hosting Suite" data-subtitle="مركز وظائف الاستضافة والحزم والحدود والصلاحيات">{{icon('layers')}}<span>Hosting Suite</span><em></em></a>
+      {% if role in ['admin','reseller'] %}<a href="#accounts" data-title="الحسابات والموزعون" data-subtitle="Hosting Accounts والحزم وحدود Reseller ضمن Scope آمن">{{icon('users')}}<span>الحسابات والموزعون</span><em></em></a>{% endif %}
+      {% if role != 'reseller' %}
       <a href="#sites" data-title="المواقع الإلكترونية" data-subtitle="إدارة المواقع والتطبيقات والـRuntime وNGINX">{{icon('globe')}}<span>المواقع الإلكترونية</span><em></em></a>
       <a href="#webtools" data-title="أدوات الويب" data-subtitle="Redirects وصفحات الأخطاء وإحصاءات الزوار والباندويدث">{{icon('activity')}}<span>أدوات الويب</span><em></em></a>
       <a href="#schedules" data-title="المهام المجدولة" data-subtitle="Scheduled Tasks آمنة للنسخ والنشر بدون Shell خام">{{icon('activity')}}<span>المهام المجدولة</span><em></em></a>
@@ -69,6 +72,11 @@
       <a href="#notifications" data-title="التنبيهات" data-subtitle="تنبيهات الصحة والأمان والاستعادة والنشر">{{icon('bell')}}<span>التنبيهات</span>{% if notifications_unread %}<strong class="nav-badge" aria-label="{{notifications_unread}} تنبيه غير مقروء">{{notifications_unread if notifications_unread < 100 else '99+'}}</strong>{% endif %}<em></em></a>
       <a href="#audit" data-title="السجلات والأنشطة" data-subtitle="تسلسل زمني لكل العمليات الإدارية المهمة">{{icon('audit')}}<span>السجلات والأنشطة</span><em></em></a>
       {% if role == 'admin' %}<a href="#vault" data-title="الإعدادات والأسرار" data-subtitle="Secret Vault root-only لمفاتيح DNS والنسخ والتكاملات">{{icon('key')}}<span>الإعدادات والأسرار</span><em></em></a>{% endif %}
+      {% else %}
+      <a href="#security" data-title="الأمن والحماية" data-subtitle="2FA وStep-Up لحماية عمليات الموزع">{{icon('shield')}}<span>الأمن والحماية</span><em></em></a>
+      <a href="#notifications" data-title="التنبيهات" data-subtitle="تنبيهات الحسابات والعمليات الخاصة بالموزع">{{icon('bell')}}<span>التنبيهات</span>{% if notifications_unread %}<strong class="nav-badge">{{notifications_unread if notifications_unread < 100 else '99+'}}</strong>{% endif %}<em></em></a>
+      <a href="#audit" data-title="السجلات والأنشطة" data-subtitle="عملياتك الإدارية فقط">{{icon('audit')}}<span>السجلات والأنشطة</span><em></em></a>
+      {% endif %}
     </nav>
     <div class="sidebar-bottom">
       <div class="account-chip"><span class="avatar">{{username[:1]|upper}}</span><div><b>{{username}}</b><small>{{role|upper}} ACCOUNT</small></div><span class="account-state"></span></div>
@@ -89,6 +97,8 @@
     <div class="workspace-stage" id="workspaceStage">
       {% include "sections/dashboard.html" %}
       {% include "sections/hosting.html" %}
+      {% if role in ['admin','reseller'] %}{% include "sections/accounts.html" %}{% endif %}
+      {% if role != 'reseller' %}
       {% include "sections/sites.html" %}
       {% include "sections/webtools.html" %}
       {% include "sections/schedules.html" %}
@@ -101,11 +111,12 @@
       {% include "sections/files.html" %}
       {% include "sections/deploy.html" %}
       {% include "sections/wordpress.html" %}
-      {% include "sections/security.html" %}
       {% include "sections/services.html" %}
       {% include "sections/docker.html" %}
-      {% include "sections/notifications.html" %}
       {% if role == 'admin' %}{% include "sections/users.html" %}{% endif %}
+      {% endif %}
+      {% include "sections/security.html" %}
+      {% include "sections/notifications.html" %}
       {% include "sections/audit.html" %}
     </div>
     <dialog id="healthDialog" class="health-dialog royal-frame"><div class="panel-head"><div><span class="kicker">SITE HEALTH INSPECTOR</span><h3 id="healthTitle">Health</h3></div><button type="button" id="closeHealth" class="tiny ghost">إغلاق</button></div><div id="healthReport" class="health-report"><div class="health-loading">اختر Health من بطاقة موقع لبدء الفحص.</div></div></dialog>
@@ -121,6 +132,7 @@
 <script src="/static/integrations.js"></script>
 <script src="/static/remote-backup.js"></script>
 <script src="/static/hosting-suite.js"></script>
+<script src="/static/accounts.js"></script>
 <script src="/static/webtools.js"></script>
 <script src="/static/scheduled-tasks.js"></script>
 </body>
