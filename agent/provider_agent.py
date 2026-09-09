@@ -23,6 +23,7 @@ MAX_REQUEST_BYTES = 32 * 1024
 MAX_OUTPUT = 5000
 DOMAIN_RE = re.compile(r"^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$")
 REMOTE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+BACKUP_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,220}\.tar\.gz$")
 
 
 def _reply(conn: socket.socket, payload: dict) -> None:
@@ -45,11 +46,26 @@ def _run(args: list[str], timeout: int = 900) -> dict:
                 "XDG_CACHE_HOME": "/tmp/nexvary-provider-cache",
             },
         )
-    except (OSError, subprocess.SubprocessError) as exc:
-        return {"ok": False, "error": f"provider execution failed: {exc}"}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "provider operation timed out", "code": "provider-timeout"}
+    except (OSError, subprocess.SubprocessError):
+        return {"ok": False, "error": "provider execution failed", "code": "provider-exec-failed"}
     if proc.returncode:
-        return {"ok": False, "error": (proc.stderr or proc.stdout or "provider operation failed")[-MAX_OUTPUT:]}
+        # Do not return provider stderr/stdout to the web tier: CLIs may echo endpoints or provider details.
+        return {"ok": False, "error": f"provider operation failed (exit {proc.returncode})", "code": "provider-command-failed"}
     return {"ok": True, "output": (proc.stdout or "")[-MAX_OUTPUT:]}
+
+
+def _validate_vault_boundary() -> None:
+    """Provider Agent is a read-only Vault consumer; it must never chmod/create the Vault."""
+    try:
+        st = os.lstat(VAULT.base)
+    except OSError as exc:
+        raise RuntimeError("Secret Vault directory is unavailable") from exc
+    if not stat.S_ISDIR(st.st_mode) or stat.S_ISLNK(st.st_mode):
+        raise RuntimeError("Secret Vault boundary is invalid")
+    if st.st_uid != 0 or stat.S_IMODE(st.st_mode) & 0o077:
+        raise RuntimeError("Secret Vault ownership or permissions are unsafe")
 
 
 def _split_remote(value: str) -> tuple[str, str]:
@@ -83,7 +99,7 @@ def _publicish_https(value: str) -> bool:
 def _rclone_contract(secret_id: str, endpoint: str) -> dict:
     config_path = VAULT.credential_path(secret_id, "rclone")
     st = os.lstat(config_path)
-    if not stat.S_ISREG(st.st_mode) or stat.S_IMODE(st.st_mode) & 0o077:
+    if not stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode) or stat.S_IMODE(st.st_mode) & 0o077:
         raise ValueError("rclone credential permissions are unsafe")
     remote_name, remote_path = _split_remote(endpoint)
     parser = configparser.ConfigParser(interpolation=None, strict=True)
@@ -132,8 +148,8 @@ def _backup_file(domain: str, archive: str) -> Path:
         resolved = path.resolve(strict=True)
     except OSError as exc:
         raise ValueError("backup archive not found") from exc
-    if resolved.parent != expected or not resolved.name.endswith(".tar.gz"):
-        raise ValueError("backup archive is outside the allowed vault")
+    if resolved.parent != expected or not BACKUP_NAME_RE.fullmatch(resolved.name):
+        raise ValueError("backup archive is outside the allowed vault or has an unsafe name")
     st = os.lstat(resolved)
     if not stat.S_ISREG(st.st_mode) or stat.S_ISLNK(st.st_mode):
         raise ValueError("backup archive must be a regular file")
@@ -217,7 +233,7 @@ def handle(req: dict) -> dict:
 
 
 def main() -> None:
-    VAULT.ensure()
+    _validate_vault_boundary()
     SOCK.parent.mkdir(parents=True, exist_ok=True)
     if SOCK.exists() or SOCK.is_symlink():
         SOCK.unlink()
