@@ -1,0 +1,55 @@
+{% from "macros/icons.html" import icon %}
+<section id="mail" class="view workspace-page">
+  <div class="workspace-hero mail-hero royal-frame">
+    <div class="hero-icon">{{icon('mail')}}</div>
+    <div class="hero-copy">
+      <span class="kicker">NEXVARY EMAIL CENTER</span>
+      <h2>البريد الإلكتروني</h2>
+      <p>Mailboxes وForwarders عبر Postfix/Dovecot Provider مع Quota وStep-Up وAudit. كلمات المرور لا تُحفظ داخل قاعدة بيانات اللوحة.</p>
+    </div>
+    <div class="hero-stats">
+      <div><small>PROVIDER</small><strong id="mailProviderState">CHECKING</strong><span id="mailProviderEngine">Postfix / Dovecot</span></div>
+      <div><small>MAILBOXES</small><strong id="mailboxUsage">—</strong><span>package quota</span></div>
+      <div><small>FORWARDERS</small><strong id="forwarderUsage">—</strong><span>bounded quota</span></div>
+    </div>
+  </div>
+
+  <div id="mailNotice" class="mail-notice royal-frame">جاري فحص Mail Provider…</div>
+
+  <div class="mail-create-grid">
+    <article class="panel royal-frame frame-silver">
+      <div class="panel-head"><div><span class="kicker">CREATE MAILBOX</span><h3>صندوق بريد جديد</h3></div><span class="mail-chip">STEP-UP</span></div>
+      <form id="mailboxForm" class="mail-form">
+        <label>النطاق<select id="mailboxDomain" required><option value="">جاري تحميل النطاقات…</option></select></label>
+        <label>اسم البريد<input id="mailboxLocalpart" maxlength="64" required placeholder="info"></label>
+        <label>كلمة المرور<input id="mailboxPassword" type="password" minlength="14" maxlength="128" autocomplete="new-password" required></label>
+        <label>الحصة MB<input id="mailboxQuota" type="number" min="64" max="102400" value="1024" required></label>
+        <div class="mail-policy-note">Password transient: تُرسل عبر Unix socket إلى Mail Agent لإنشاء Hash مخصص لـDovecot ولا تُكتب في SQLite أو Audit.</div>
+        <button class="primary royal-action" type="submit">{{icon('plus')}} إنشاء Mailbox</button>
+      </form>
+    </article>
+
+    <article class="panel royal-frame frame-electric-black">
+      <div class="panel-head"><div><span class="kicker">CREATE FORWARDER</span><h3>تحويل بريد</h3></div><span class="mail-chip">FORWARD ONLY</span></div>
+      <form id="forwarderForm" class="mail-form">
+        <label>النطاق<select id="forwarderDomain" required><option value="">جاري تحميل النطاقات…</option></select></label>
+        <label>العنوان المصدر<input id="forwarderLocalpart" maxlength="64" required placeholder="sales"></label>
+        <label>الوجهة<input id="forwarderDestination" type="email" maxlength="320" required placeholder="destination@example.net"></label>
+        <div class="mail-policy-note">التحويل الحالي Forward-only. إذا كان المصدر Mailbox موجودًا، يرفض Provider التحويل لتجنب فقد النسخة المحلية بشكل غير مقصود.</div>
+        <button class="primary royal-action" type="submit">{{icon('plus')}} إنشاء Forwarder</button>
+      </form>
+    </article>
+  </div>
+
+  <div class="mail-inventory-grid">
+    <article class="panel royal-frame frame-electric-black">
+      <div class="panel-head"><div><span class="kicker">MAILBOX INVENTORY</span><h3>صناديق البريد</h3></div><button type="button" id="mailRefresh" class="tiny ghost">تحديث</button></div>
+      <div id="mailboxList" class="mail-list"><div class="empty-state">جاري التحميل…</div></div>
+    </article>
+    <article class="panel royal-frame frame-silver">
+      <div class="panel-head"><div><span class="kicker">FORWARDER INVENTORY</span><h3>التحويلات</h3></div><span class="mail-chip">AUDITED</span></div>
+      <div id="forwarderList" class="mail-list"><div class="empty-state">جاري التحميل…</div></div>
+    </article>
+  </div>
+  <div id="mailStatus" class="mail-status" role="status"></div>
+</section>
