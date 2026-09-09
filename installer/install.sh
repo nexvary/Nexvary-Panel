@@ -24,6 +24,7 @@ id nexvary-panel >/dev/null 2>&1 || useradd --system --gid nexvary-panel --home 
 install -d -m 0750 -o nexvary-panel -g nexvary-panel /opt/nexvary-panel /var/lib/nexvary-panel
 install -d -m 0750 -o root -g nexvary-panel /opt/nexvary-panel-agent
 install -d -m 0750 -o root -g root /etc/nexvary-panel
+install -d -m 0750 -o root -g root /etc/nginx/nexvary
 install -d -m 0700 -o root -g root /etc/nexvary-panel/credentials
 install -d -m 0700 -o root -g root /var/backups/nexvary-panel
 install -d -m 0750 -o root -g nexvary-panel /run/nexvary-panel
@@ -37,6 +38,8 @@ install -m 0750 -o root -g root agent/root_agent.py /opt/nexvary-panel-agent/roo
 install -m 0640 -o root -g root agent/secret_vault.py /opt/nexvary-panel-agent/secret_vault.py
 install -m 0750 -o root -g root agent/vault_agent.py /opt/nexvary-panel-agent/vault_agent.py
 install -m 0750 -o root -g root agent/provider_agent.py /opt/nexvary-panel-agent/provider_agent.py
+install -m 0640 -o root -g root agent/webtools.py /opt/nexvary-panel-agent/webtools.py
+install -m 0750 -o root -g root agent/webtools_agent.py /opt/nexvary-panel-agent/webtools_agent.py
 rm -f /etc/sudoers.d/nexvary-panel
 
 if [[ ! -f /etc/nexvary-panel/admin.env ]]; then
@@ -63,6 +66,7 @@ install -m 0644 systemd/nexvary-panel.service /etc/systemd/system/nexvary-panel.
 install -m 0644 systemd/nexvary-panel-agent.service /etc/systemd/system/nexvary-panel-agent.service
 install -m 0644 systemd/nexvary-panel-vault.service /etc/systemd/system/nexvary-panel-vault.service
 install -m 0644 systemd/nexvary-panel-provider.service /etc/systemd/system/nexvary-panel-provider.service
+install -m 0644 systemd/nexvary-panel-webtools.service /etc/systemd/system/nexvary-panel-webtools.service
 CERT_DIR=/etc/nexvary-panel/tls
 install -d -m 0700 "$CERT_DIR"
 if [[ ! -f "$CERT_DIR/panel.crt" ]]; then
@@ -97,7 +101,7 @@ ln -sfn /etc/nginx/sites-available/nexvary-panel.conf /etc/nginx/sites-enabled/n
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl daemon-reload
-systemctl enable --now nginx mariadb fail2ban nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel
+systemctl enable --now nginx mariadb fail2ban nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel
 if (( WITH_DOCKER )); then systemctl enable --now docker; fi
 ufw allow OpenSSH >/dev/null || true
 ufw allow 80/tcp >/dev/null || true
