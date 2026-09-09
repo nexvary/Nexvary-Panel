@@ -1,0 +1,91 @@
+{% from "macros/icons.html" import icon %}
+<section id="advancedops" class="view workspace-page">
+  <div class="workspace-hero advancedops-hero royal-frame">
+    <div class="hero-icon">{{icon('layers')}}</div>
+    <div class="hero-copy">
+      <span class="kicker">NEXVARY ADVANCED HOSTING OPS</span>
+      <h2>عمليات الاستضافة المتقدمة</h2>
+      <p>DNS Writes وSSL Lifecycle وMail Deliverability وPHP وPostgreSQL وMigration وService Control وFleet ضمن Agent محدود الأوامر، Step-Up وAudit.</p>
+    </div>
+    <div class="hero-stats">
+      <div><small>OPS AGENT</small><strong id="advProviderState">CHECKING</strong><span>allowlisted socket</span></div>
+      <div><small>CAPABILITIES</small><strong id="advCapabilityCount">—</strong><span>live providers</span></div>
+      <div><small>MANAGED SITES</small><strong id="advSiteCount">—</strong><span>scoped</span></div>
+    </div>
+  </div>
+
+  <div id="advNotice" class="adv-notice royal-frame">جاري قراءة حالة Advanced Ops…</div>
+
+  <div class="adv-grid">
+    <article class="panel royal-frame frame-silver adv-card" id="advDnsCard">
+      <div class="panel-head"><div><span class="kicker">JUMP 3 · DNS WRITES</span><h3>DNS Apply / Rollback</h3></div><span class="adv-chip">PREVIEW FIRST</span></div>
+      {% if role == 'admin' %}
+      <div class="adv-inline">
+        <select id="dnsBindDomain"><option value="">اختر نطاقًا</option></select>
+        <input id="dnsBindTarget" inputmode="numeric" placeholder="DNS Target ID">
+        <button id="dnsBindBtn" type="button" class="tiny ghost">ربط Zone</button>
+      </div>
+      {% endif %}
+      <form id="dnsChangeForm" class="adv-form">
+        <select id="dnsDomain" required><option value="">اختر نطاقًا مربوطًا</option></select>
+        <select id="dnsOperation"><option value="create">CREATE</option><option value="update">UPDATE</option><option value="delete">DELETE</option></select>
+        <select id="dnsType"><option>A</option><option>AAAA</option><option>CNAME</option><option>TXT</option><option>MX</option></select>
+        <input id="dnsName" placeholder="@ أو host.example.com" required>
+        <input id="dnsValue" placeholder="Record value" required>
+        <input id="dnsRecordId" placeholder="Provider Record ID للتحديث/الحذف">
+        <div class="adv-inline"><input id="dnsTtl" type="number" min="60" max="86400" value="300"><input id="dnsPriority" type="number" min="0" max="65535" value="0"></div>
+        <button class="primary royal-action" type="submit">معاينة التغيير</button>
+      </form>
+      <div id="dnsPreview" class="adv-result">لا توجد معاينة.</div>
+    </article>
+
+    <article class="panel royal-frame frame-electric-black adv-card" id="advSslCard">
+      <div class="panel-head"><div><span class="kicker">JUMP 4 · SSL LIFECYCLE</span><h3>AutoSSL / Renew</h3></div><span class="adv-chip">CERTBOT</span></div>
+      <div class="adv-form">
+        <select id="sslDomain"><option value="">اختر موقعًا</option></select>
+        <input id="sslEmail" type="email" placeholder="admin@example.com">
+        <div class="adv-inline"><button id="sslStatusBtn" type="button" class="tiny ghost">الحالة</button><button id="sslIssueBtn" type="button" class="primary royal-action">إصدار</button><button id="sslRenewBtn" type="button" class="tiny ghost">تجديد</button></div>
+      </div>
+      <pre id="sslResult" class="adv-result">اختر نطاقًا لفحص الشهادة.</pre>
+    </article>
+
+    <article class="panel royal-frame frame-silver adv-card" id="advMailOpsCard">
+      <div class="panel-head"><div><span class="kicker">JUMP 5 · MAIL OPS</span><h3>Queue & Deliverability</h3></div><span class="adv-chip">POSTFIX + DNS</span></div>
+      <select id="deliverDomain"><option value="">اختر نطاقًا</option></select>
+      <div class="adv-inline"><button id="deliverCheckBtn" type="button" class="tiny ghost">فحص MX/SPF/DMARC</button>{% if role == 'admin' %}<button id="mailQueueBtn" type="button" class="tiny ghost">Mail Queue</button><button id="mailFlushBtn" type="button" class="tiny danger">Flush Queue</button>{% endif %}</div>
+      <div id="deliverResult" class="adv-result">لم يبدأ الفحص.</div>
+    </article>
+
+    <article class="panel royal-frame frame-electric-black adv-card" id="advPhpCard">
+      <div class="panel-head"><div><span class="kicker">JUMP 6 · PHP RUNTIME</span><h3>PHP Version Manager</h3></div><span class="adv-chip">NGINX VALIDATED</span></div>
+      <div class="adv-form"><select id="phpDomain"><option value="">اختر موقع PHP</option></select><select id="phpVersion"><option value="">اكتشاف الإصدارات…</option></select><button id="phpApplyBtn" type="button" class="primary royal-action">تطبيق Runtime</button></div>
+      <div id="phpResult" class="adv-result">يتم تطبيق التغيير فقط إذا نجح nginx -t.</div>
+    </article>
+
+    <article class="panel royal-frame frame-silver adv-card" id="advPostgresCard">
+      <div class="panel-head"><div><span class="kicker">JUMP 7 · POSTGRESQL</span><h3>PostgreSQL Resources</h3></div><span class="adv-chip">NO PASSWORD STORAGE</span></div>
+      <form id="postgresForm" class="adv-form"><select id="pgDomain"><option value="">اختر موقعًا</option></select><input id="pgDb" placeholder="database_name" required><input id="pgUser" placeholder="database_user" required><input id="pgPassword" type="password" minlength="14" maxlength="128" autocomplete="new-password" placeholder="كلمة مرور مؤقتة" required><button class="primary royal-action" type="submit">إنشاء PostgreSQL</button></form>
+      <div id="postgresList" class="adv-list"><div class="empty-state">لا توجد موارد.</div></div>
+    </article>
+
+    <article class="panel royal-frame frame-electric-black adv-card" id="advMigrationCard">
+      <div class="panel-head"><div><span class="kicker">JUMP 8 · MIGRATION</span><h3>Migration Bundles</h3></div><span class="adv-chip">SHA256 + ROLLBACK</span></div>
+      <div class="adv-form"><select id="migrationDomain"><option value="">اختر موقعًا</option></select><input id="migrationDb" placeholder="MariaDB name (اختياري)"><button id="migrationExportBtn" type="button" class="primary royal-action">إنشاء Bundle</button></div>
+      <div id="migrationList" class="adv-list"><div class="empty-state">لا توجد Bundles.</div></div>
+    </article>
+
+    {% if role == 'admin' %}
+    <article class="panel royal-frame frame-silver adv-card" id="advServicesCard">
+      <div class="panel-head"><div><span class="kicker">JUMP 9 · WHM CONTROLS</span><h3>Service Control</h3></div><span class="adv-chip">ALLOWLIST ONLY</span></div>
+      <div id="serviceList" class="adv-list"><div class="empty-state">جاري تحميل الخدمات…</div></div>
+    </article>
+
+    <article class="panel royal-frame frame-electric-black adv-card" id="advFleetCard">
+      <div class="panel-head"><div><span class="kicker">JUMP 10 · FLEET</span><h3>Fleet / Cluster Foundation</h3></div><span class="adv-chip">HTTPS ONLY</span></div>
+      <form id="fleetForm" class="adv-form"><input id="fleetName" maxlength="64" placeholder="Node name" required><input id="fleetEndpoint" type="url" placeholder="https://node.example.com" required><button class="primary royal-action" type="submit">إضافة Node</button></form>
+      <div id="fleetList" class="adv-list"><div class="empty-state">لا توجد Nodes.</div></div>
+    </article>
+    {% endif %}
+  </div>
+  <div id="advStatus" class="adv-status" role="status"></div>
+</section>
