@@ -12,13 +12,13 @@ from .security import step_up_active, totp_enabled_for, totp_uri, verify_totp
 
 def _trust_posture(*, enabled_2fa: bool, services: dict[str, bool], backups_count: int, disk_percent: float, critical_unread: int) -> dict:
     checks = [
-        {"id": "identity", "label": "المصادقة الثنائية", "ok": enabled_2fa, "weight": 20},
-        {"id": "bruteforce", "label": "حماية محاولات الدخول", "ok": bool(services.get("fail2ban")), "weight": 15},
-        {"id": "core", "label": "الخدمات الأساسية", "ok": bool(services.get("nginx") and services.get("mariadb")), "weight": 15},
-        {"id": "backup", "label": "نقطة استعادة متاحة", "ok": backups_count > 0, "weight": 15},
-        {"id": "capacity", "label": "سعة القرص آمنة", "ok": disk_percent < 90, "weight": 10},
-        {"id": "alerts", "label": "لا تنبيهات حرجة معلقة", "ok": critical_unread == 0, "weight": 10},
-        {"id": "session", "label": "CSRF + Secure Session Policy", "ok": True, "weight": 15},
+        {"id": "identity", "label": "المصادقة الثنائية", "ok": enabled_2fa, "weight": 20, "view": "security"},
+        {"id": "bruteforce", "label": "حماية محاولات الدخول", "ok": bool(services.get("fail2ban")), "weight": 15, "view": "services"},
+        {"id": "core", "label": "الخدمات الأساسية", "ok": bool(services.get("nginx") and services.get("mariadb")), "weight": 15, "view": "services"},
+        {"id": "backup", "label": "نقطة استعادة متاحة", "ok": backups_count > 0, "weight": 15, "view": "backups"},
+        {"id": "capacity", "label": "سعة القرص آمنة", "ok": disk_percent < 90, "weight": 10, "view": "services"},
+        {"id": "alerts", "label": "لا تنبيهات حرجة معلقة", "ok": critical_unread == 0, "weight": 10, "view": "notifications"},
+        {"id": "session", "label": "CSRF + Secure Session Policy", "ok": True, "weight": 15, "view": "security"},
     ]
     score = sum(item["weight"] for item in checks if item["ok"])
     level = "excellent" if score >= 90 else "good" if score >= 75 else "attention" if score >= 55 else "risk"
