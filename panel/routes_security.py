@@ -17,6 +17,9 @@ from .security import (
 )
 
 
+SELF_ROLES = ("admin", "reseller", "operator", "viewer")
+
+
 def _pending_secret(username: str) -> str:
     with db() as conn:
         row = conn.execute("SELECT totp_secret,totp_enabled FROM user_security WHERE username=?", (username,)).fetchone()
@@ -25,7 +28,7 @@ def _pending_secret(username: str) -> str:
 
 def register_security_routes(app):
     @app.post("/security/step-up")
-    @role_required("admin", "operator", "viewer")
+    @role_required(*SELF_ROLES)
     def security_step_up():
         now = int(time.time())
         locked_until = int(session.get("step_up_locked_until", 0) or 0)
@@ -52,7 +55,7 @@ def register_security_routes(app):
         return redirect(url_for("home") + "#security")
 
     @app.post("/security/step-up/clear")
-    @role_required("admin", "operator", "viewer")
+    @role_required(*SELF_ROLES)
     def security_step_up_clear():
         if step_up_active():
             audit("step-up-cleared")
@@ -61,7 +64,7 @@ def register_security_routes(app):
         return redirect(url_for("home") + "#security")
 
     @app.post("/2fa/start")
-    @role_required("admin", "operator", "viewer")
+    @role_required(*SELF_ROLES)
     def two_factor_start():
         username = session.get("user", "")
         if totp_enabled_for(username):
@@ -79,7 +82,7 @@ def register_security_routes(app):
         return redirect(url_for("home") + "#security")
 
     @app.post("/2fa/enable")
-    @role_required("admin", "operator", "viewer")
+    @role_required(*SELF_ROLES)
     def two_factor_enable():
         username = session.get("user", "")
         secret = _pending_secret(username)
@@ -97,7 +100,7 @@ def register_security_routes(app):
         return redirect(url_for("home") + "#security")
 
     @app.post("/2fa/cancel")
-    @role_required("admin", "operator", "viewer")
+    @role_required(*SELF_ROLES)
     def two_factor_cancel():
         username = session.get("user", "")
         with db() as conn:
@@ -106,7 +109,7 @@ def register_security_routes(app):
         return redirect(url_for("home") + "#security")
 
     @app.post("/2fa/disable")
-    @role_required("admin", "operator", "viewer")
+    @role_required(*SELF_ROLES)
     def two_factor_disable():
         username = session.get("user", "")
         code = request.form.get("otp", "").strip()
