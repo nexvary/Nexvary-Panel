@@ -94,6 +94,26 @@ def db() -> sqlite3.Connection:
         UNIQUE(domain,status_code)
       );
       CREATE INDEX IF NOT EXISTS idx_site_error_pages_owner_domain ON site_error_pages(owner,domain);
+
+      CREATE TABLE IF NOT EXISTS scheduled_tasks (
+        id INTEGER PRIMARY KEY,
+        owner TEXT NOT NULL DEFAULT 'admin',
+        domain TEXT NOT NULL,
+        task_type TEXT NOT NULL,
+        cadence TEXT NOT NULL,
+        hour_utc INTEGER NOT NULL DEFAULT 0,
+        minute_utc INTEGER NOT NULL DEFAULT 0,
+        weekday_utc INTEGER NOT NULL DEFAULT 0,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        run_requested INTEGER NOT NULL DEFAULT 0,
+        last_run INTEGER NOT NULL DEFAULT 0,
+        last_status TEXT NOT NULL DEFAULT 'never',
+        last_detail TEXT NOT NULL DEFAULT '',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_owner ON scheduled_tasks(owner,enabled);
+      CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_due ON scheduled_tasks(enabled,run_requested,cadence);
     """)
     _seed_hosting_packages(conn)
     return conn
