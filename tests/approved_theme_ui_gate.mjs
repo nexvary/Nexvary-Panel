@@ -22,6 +22,18 @@ const scoreText = (await page.locator('.trust-score > strong').innerText()).repl
 const score = Number.parseInt(scoreText, 10);
 if (!Number.isFinite(score) || score < 0 || score > 100) throw new Error(`Invalid trust score: ${scoreText}`);
 
+const trustFixes = page.locator('.trust-checks .trust-check[data-open-view]');
+if (await trustFixes.count() !== 7) throw new Error('Trust Center must expose seven guided fix/review paths');
+const trustTargets = await trustFixes.evaluateAll(nodes => nodes.map(n => n.getAttribute('data-open-view')));
+for (const target of trustTargets) {
+  if (!target || await page.locator(`#${target}`).count() !== 1) throw new Error(`Trust fix path has no workspace target: ${target}`);
+}
+const firstTarget = await trustFixes.first().getAttribute('data-open-view');
+await trustFixes.first().click();
+await page.locator(`#${firstTarget}.active-view`).waitFor({ state:'visible' });
+await page.locator('#nav a[href="#dashboard"]').click();
+await page.locator('#dashboard.active-view').waitFor({ state:'visible' });
+
 const nav = page.locator('#nav a[href="#sites"]');
 const navStyle = await nav.evaluate(el => { const s = getComputedStyle(el); return { color:s.color, family:s.fontFamily, shadow:s.textShadow, border:s.borderWidth }; });
 if (!navStyle.family.includes('Noto Kufi Arabic')) throw new Error(`Kufi font stack missing: ${navStyle.family}`);
