@@ -1,0 +1,115 @@
+/* Nexvary Panel 0.6 — Royal Ornament refinement
+   Keeps the interface operational while giving the approved reference more visual depth. */
+
+body{
+  background:
+    radial-gradient(circle at 74% -8%,rgba(57,19,139,.30),transparent 34%),
+    radial-gradient(circle at 14% 18%,rgba(12,92,184,.13),transparent 27%),
+    radial-gradient(circle at 62% 90%,rgba(0,109,105,.06),transparent 24%),
+    linear-gradient(155deg,#02050d 0%,#071020 46%,#02040b 100%)!important;
+}
+
+/* Sidebar — richer lacquer, fine gold inner rail and ceremonial brand block. */
+#sidebar{
+  background:
+    radial-gradient(circle at 44% 1%,rgba(95,35,210,.28),transparent 24%),
+    linear-gradient(180deg,#25065d 0%,#10072e 24%,#050a17 68%,#03060d 100%)!important;
+  border-right:1px solid rgba(255,216,115,.58)!important;
+  box-shadow:18px 0 54px rgba(0,0,0,.42),inset -1px 0 rgba(255,235,171,.11),inset -9px 0 24px rgba(85,32,182,.08)!important;
+}
+#sidebar:before{
+  content:"";
+  position:absolute;
+  pointer-events:none;
+  inset:8px 7px;
+  border:1px solid rgba(232,189,79,.13);
+  border-radius:18px;
+  background:
+    radial-gradient(circle at 14px 14px,rgba(255,211,99,.24) 0 2px,transparent 2.5px),
+    radial-gradient(circle at calc(100% - 14px) 14px,rgba(255,211,99,.24) 0 2px,transparent 2.5px),
+    radial-gradient(circle at 14px calc(100% - 14px),rgba(255,211,99,.18) 0 2px,transparent 2.5px),
+    radial-gradient(circle at calc(100% - 14px) calc(100% - 14px),rgba(255,211,99,.18) 0 2px,transparent 2.5px);
+}
+#sidebar .brand{
+  position:relative;
+  margin:-2px -2px 13px;
+  padding:8px 8px 17px!important;
+  border-bottom:1px solid rgba(255,213,105,.45)!important;
+  background:radial-gradient(circle at 26% 28%,rgba(38,120,255,.13),transparent 34%);
+}
+#sidebar .brand:after{
+  content:"";
+  position:absolute;
+  left:12px;right:12px;bottom:-1px;height:1px;
+  background:linear-gradient(90deg,transparent,#e8bd4f 24%,#ffe69d 50%,#e8bd4f 76%,transparent);
+  box-shadow:0 0 9px rgba(232,189,79,.30);
+}
+#sidebar .brand-mark{
+  width:54px!important;height:54px!important;
+  border:1.5px solid rgba(255,216,115,.78)!important;
+  box-shadow:0 0 0 2px rgba(44,119,255,.16),0 0 28px rgba(34,125,255,.28),0 0 16px rgba(232,189,79,.14)!important;
+}
+#sidebar .brand-copy b{color:#fff4d1!important;text-shadow:0 0 13px rgba(255,211,96,.18)!important}
+#sidebar .brand-copy small{color:#d9b75c!important}
+#sidebar .nav-label{
+  display:flex;align-items:center;gap:7px;
+  color:#e5bd58!important;
+  text-shadow:0 0 8px rgba(232,189,79,.22);
+}
+#sidebar .nav-label:before,#sidebar .nav-label:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,transparent,rgba(232,189,79,.46),transparent)}
+#sidebar #nav a{border-radius:10px!important}
+#sidebar #nav a.active{box-shadow:inset 3px 0 0 #25bfff,0 0 20px rgba(232,189,79,.18),inset 0 0 14px rgba(77,34,172,.15)!important}
+
+/* Header — formal gold rail around the Basmala and deeper violet glass. */
+.workspace-topbar{
+  border-radius:18px!important;
+  background:
+    radial-gradient(ellipse at 50% -80%,rgba(134,58,255,.44),transparent 48%),
+    radial-gradient(circle at 8% 30%,rgba(21,102,203,.10),transparent 20%),
+    linear-gradient(180deg,#26065f 0%,#130735 54%,#070d1d 100%)!important;
+  box-shadow:0 0 0 1px rgba(255,229,150,.05) inset,0 0 21px rgba(232,189,79,.13),0 15px 40px rgba(0,0,0,.22)!important;
+}
+.basmala-seal{
+  border-top-color:rgba(255,226,139,.92)!important;
+  border-bottom-color:rgba(255,226,139,.92)!important;
+  background:
+    radial-gradient(ellipse at 50% 50%,rgba(104,38,218,.30),rgba(3,8,20,.18) 66%),
+    linear-gradient(90deg,transparent,rgba(255,220,120,.035),transparent)!important;
+  box-shadow:0 0 22px rgba(232,189,79,.13),inset 0 0 24px rgba(121,51,255,.10)!important;
+}
+.basmala-seal strong{font-size:19px!important;color:#fff0b9!important;text-shadow:0 0 8px rgba(255,210,100,.38),0 0 18px rgba(137,64,255,.15)!important}
+.basmala-seal small{color:#ffd360!important;text-shadow:0 0 12px rgba(255,201,70,.58),0 0 24px rgba(111,48,255,.22)!important}
+.basmala-wing:before{height:1.5px!important;box-shadow:0 0 9px rgba(232,189,79,.40)!important}
+
+/* Hero — royal electric blue/violet depth with gold ceremonial edge. */
+.approved-hero{
+  border-color:rgba(255,215,110,.72)!important;
+  background:
+    radial-gradient(circle at 86% 50%,rgba(20,121,255,.24),transparent 21%),
+    radial-gradient(circle at 35% 15%,rgba(111,46,224,.26),transparent 31%),
+    repeating-radial-gradient(circle at 18% 120%,rgba(232,189,79,.035) 0 1px,transparent 2px 23px),
+    linear-gradient(112deg,#050c1e 0%,#160b45 42%,#06152b 73%,#020a17 100%)!important;
+  box-shadow:0 0 0 1px rgba(255,231,160,.035) inset,0 0 21px rgba(232,189,79,.11),0 14px 34px rgba(0,0,0,.25)!important;
+}
+.approved-hero h2{color:#fff8de!important;text-shadow:0 0 16px rgba(85,137,255,.18)}
+.approved-hero .kicker{color:#e7bf5a!important;text-shadow:0 0 8px rgba(232,189,79,.26)}
+.approved-hero p{color:#aab7ca!important}
+.approved-hero:after{border:1.5px solid rgba(255,219,121,.82)!important;box-shadow:0 0 0 3px rgba(41,105,237,.10),0 0 28px rgba(32,115,255,.34),0 0 21px rgba(232,189,79,.18)!important}
+
+/* Panels — keep alternating inner frames but lift title readability. */
+.approved-dashboard .panel,.approved-dashboard .metric-card{background-blend-mode:screen,normal}
+.approved-dashboard .panel-head h3,.approved-dashboard .section-title h2{color:#eff5ff;text-shadow:0 0 9px rgba(86,128,196,.10)}
+.approved-dashboard .kicker{color:#dcb550!important}
+.approved-dashboard .frame-silver{box-shadow:0 0 0 1px rgba(255,255,255,.08),0 0 15px rgba(177,204,235,.14),inset 0 0 16px rgba(160,190,230,.045)!important}
+.approved-dashboard .frame-electric-black{box-shadow:0 0 0 1px rgba(68,114,165,.20),0 0 14px rgba(30,122,255,.11),inset 0 0 20px rgba(0,0,0,.64)!important}
+
+/* Small royal corner accents without making the internal frames uniformly gold. */
+.approved-dashboard .panel,.approved-dashboard .metric-card{isolation:isolate}
+.approved-dashboard .panel-head:after{content:"◆";font-size:7px;color:rgba(232,189,79,.58);text-shadow:0 0 6px rgba(232,189,79,.3);margin-inline-start:auto;align-self:center}
+
+@media(max-width:780px){
+  #sidebar:before{inset:6px 5px}
+  #sidebar .brand-mark{width:48px!important;height:48px!important}
+  .basmala-seal strong{font-size:15px!important}
+  .approved-dashboard .panel-head:after{display:none}
+}
