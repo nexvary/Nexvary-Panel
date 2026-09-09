@@ -18,4 +18,4 @@ DOMAIN_RE = re.compile(r"^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-
 DB_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,31}$")
 USER_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{2,31}$")
 PASSWORD_RE = re.compile(r"^[A-Za-z0-9_@%+=:.,!$#?-]{14,128}$")
-ROLES = {"admin", "operator", "viewer"}
+ROLES = {"admin", "reseller", "operator", "viewer"}
