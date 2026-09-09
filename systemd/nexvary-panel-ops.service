@@ -28,7 +28,7 @@ RestrictRealtime=true
 SystemCallArchitectures=native
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 ReadOnlyPaths=/etc/nexvary-panel/credentials
-ReadWritePaths=/etc/nginx /etc/letsencrypt /var/lib/letsencrypt /var/log/letsencrypt /var/www /var/backups/nexvary-panel /run/nexvary-panel
+ReadWritePaths=/etc/nginx -/etc/letsencrypt -/var/lib/letsencrypt -/var/log/letsencrypt /var/www /var/backups/nexvary-panel /run/nexvary-panel
 
 [Install]
 WantedBy=multi-user.target
