@@ -57,7 +57,7 @@ await desktop.locator('.fusion-provider-card').first().waitFor({state:'visible',
 await desktop.locator('.fusion-capability-card').first().waitFor({state:'visible',timeout:10000});
 if(await desktop.locator('.fusion-provider-card').count()<10)throw new Error('Fusion provider registry did not render expected providers');
 if(await desktop.locator('.fusion-capability-card').count()!==6)throw new Error('Capability Matrix did not render six capability groups');
-if(await desktop.locator('.fusion-policy-grid > div').count()!==4)throw new Error('Fusion policy controls missing');
+if(await desktop.locator('#fusion .fusion-policy-grid > div').count()!==4)throw new Error('Fusion policy controls missing');
 if(!(await desktop.locator('#fusionCapabilities').textContent())?.includes('/'))throw new Error('Available capability summary missing');
 await assertRoyalFrame(desktop,'.fusion-provider-card','Fusion provider card');
 await assertRoyalFrame(desktop,'.fusion-capability-card','Fusion capability card');
