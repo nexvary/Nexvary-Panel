@@ -30,7 +30,7 @@ jobs:
       - name: Smoke tests
         env:
           NVP_COOKIE_SECURE: '0'
-        run: python tests/smoke_test.py && python tests/vault_test.py && python tests/integrations_test.py && python tests/provider_backup_test.py && python tests/trust_test.py
+        run: python tests/smoke_test.py && python tests/vault_test.py && python tests/integrations_test.py && python tests/provider_backup_test.py && python tests/trust_test.py && python tests/hosting_features_test.py
 
   installation-gate:
     name: Ubuntu 24.04 full installer gate
@@ -51,6 +51,8 @@ jobs:
           test -f /opt/nexvary-panel/panel/__init__.py
           test -f /opt/nexvary-panel/static/app.css
           test -f /opt/nexvary-panel/static/approved-theme.css
+          test -f /opt/nexvary-panel/static/hosting-suite.css
+          test -f /opt/nexvary-panel/panel/hosting_features.py
           test -f /opt/nexvary-panel-agent/secret_vault.py
           test -f /opt/nexvary-panel-agent/vault_agent.py
           test -f /opt/nexvary-panel-agent/provider_agent.py
@@ -108,7 +110,7 @@ jobs:
           cat /tmp/nexvary-panel.log
           exit 1
       - name: UI Release Gate
-        run: node tests/ui_gate.mjs && node tests/backups_ui_gate.mjs && node tests/vault_ui_gate.mjs && node tests/integrations_ui_gate.mjs && node tests/approved_theme_ui_gate.mjs && node tests/internal_workspace_ui_gate.mjs
+        run: node tests/ui_gate.mjs && node tests/backups_ui_gate.mjs && node tests/vault_ui_gate.mjs && node tests/integrations_ui_gate.mjs && node tests/approved_theme_ui_gate.mjs && node tests/internal_workspace_ui_gate.mjs && node tests/hosting_ui_gate.mjs
       - name: Upload real UI screenshots
         if: always()
         uses: actions/upload-artifact@v4
