@@ -114,8 +114,9 @@ row = {"enabled": 1, "run_requested": 0, "cadence": "daily", "minute_utc": 0, "h
 assert _due(row, ts) is True
 row = {"enabled": 1, "run_requested": 0, "cadence": "weekly", "minute_utc": 0, "hour_utc": 12, "weekday_utc": base.weekday(), "last_run": 0}
 assert _due(row, ts) is True
-row["run_requested"] = 1
 row["enabled"] = 0
-assert _due(row, ts) is False  # disabled tasks stay disabled even if manually queued
+assert _due(row, ts) is False
+row["run_requested"] = 1
+assert _due(row, ts) is True  # explicit Step-Up-protected Run Now overrides pause
 
 print("Nexvary Panel Scheduled Tasks quota/Step-Up/allowlist/timing tests: PASS")
