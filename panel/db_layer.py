@@ -22,6 +22,21 @@ def db() -> sqlite3.Connection:
       CREATE TABLE IF NOT EXISTS wordpress_instances (id INTEGER PRIMARY KEY, domain TEXT UNIQUE NOT NULL, db_name TEXT NOT NULL, db_user TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'prepared', version TEXT DEFAULT '', owner TEXT NOT NULL DEFAULT 'admin', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY, level TEXT NOT NULL DEFAULT 'info', title TEXT NOT NULL, detail TEXT DEFAULT '', source TEXT DEFAULT 'system', owner TEXT NOT NULL DEFAULT 'admin', read_at INTEGER, created_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS user_security (username TEXT PRIMARY KEY, totp_secret TEXT DEFAULT '', totp_enabled INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL DEFAULT 0);
+      CREATE TABLE IF NOT EXISTS integration_targets (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        capability TEXT NOT NULL,
+        endpoint TEXT NOT NULL DEFAULT '',
+        secret_kind TEXT NOT NULL,
+        secret_id TEXT NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        owner TEXT NOT NULL DEFAULT 'admin',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        UNIQUE(owner,name)
+      );
+      CREATE INDEX IF NOT EXISTS idx_integration_targets_owner ON integration_targets(owner,provider,capability);
     """)
     return conn
 
