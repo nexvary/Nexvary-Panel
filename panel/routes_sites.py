@@ -69,7 +69,7 @@ def register_site_routes(app):
 
     @app.post("/ssl")
     @role_required("admin", "operator")
-    def ssl_issue():
+    def legacy_ssl_issue():
         domain = request.form.get("domain", "").lower().strip()
         email = request.form.get("email", "").strip()
         if not DOMAIN_RE.match(domain) or "@" not in email or len(email) > 254 or not can_manage_domain(domain):
