@@ -1,0 +1,84 @@
+{% from "macros/icons.html" import icon %}
+<section class="workspace-page" id="hosting" data-admin="{{ '1' if role == 'admin' else '0' }}" data-step-up="{{ '1' if step_up_active else '0' }}">
+  <div class="workspace-hero hosting-hero">
+    <div class="hero-icon">{{icon('layers')}}</div>
+    <div class="hero-copy">
+      <span class="kicker">NEXVARY HOSTING SUITE · PLATFORM 0.7</span>
+      <h2>مركز وظائف الاستضافة والحزم</h2>
+      <p>طبقة موحدة لإدارة قدرات الاستضافة، الحزم، الحدود والصلاحيات. الوظائف المخطط لها تظهر بوضوح كـ Roadmap ولا تُعرض على أنها جاهزة قبل اكتمال Provider/Agent الآمن.</p>
+    </div>
+    <div class="hero-stats">
+      <div><small>CATALOG</small><strong id="hostingFeatureCount">—</strong></div>
+      <div><small>NATIVE</small><strong id="hostingNativeCount">—</strong></div>
+      <div><small>FOUNDATION</small><strong id="hostingFoundationCount">—</strong></div>
+      <div><small>PLANNED</small><strong id="hostingPlannedCount">—</strong></div>
+    </div>
+  </div>
+
+  <div class="hosting-toolbar content-toolbar">
+    <div class="hosting-search-wrap">{{icon('search')}}<input id="hostingSearch" type="search" placeholder="ابحث عن وظيفة: البريد، FTP، SSL، Cron..." autocomplete="off"></div>
+    <select id="hostingCategory" aria-label="الفئة"><option value="">كل الفئات</option></select>
+    <select id="hostingMaturity" aria-label="الحالة">
+      <option value="">كل الحالات</option>
+      <option value="native">Native</option>
+      <option value="foundation">Foundation</option>
+      <option value="planned">Planned</option>
+    </select>
+    <div class="hosting-current-package"><small>PACKAGE</small><b id="hostingCurrentPackage">—</b></div>
+  </div>
+
+  <div class="hosting-layout">
+    <div class="hosting-catalog-panel panel">
+      <div class="panel-head"><div><span class="kicker">FEATURE MATRIX</span><h3>وظائف الاستضافة</h3></div><span class="hosting-live-pill">CLEAN-ROOM</span></div>
+      <div id="hostingFeatureGrid" class="hosting-feature-grid" aria-live="polite"><div class="empty-state">جارٍ تحميل سجل الوظائف…</div></div>
+    </div>
+
+    <aside class="hosting-side">
+      <div class="panel hosting-quota-panel">
+        <div class="panel-head"><div><span class="kicker">CURRENT LIMITS</span><h3>حدود الحساب</h3></div></div>
+        <div id="hostingQuotaGrid" class="hosting-quota-grid"><div class="empty-state">جارٍ التحميل…</div></div>
+      </div>
+
+      {% if role == 'admin' %}
+      <div class="panel hosting-admin-panel">
+        <div class="panel-head"><div><span class="kicker">WHM-LIKE CONTROL</span><h3>Package Manager</h3></div><span class="step-badge {{'ok' if step_up_active else 'warning'}}">{{'STEP-UP ACTIVE' if step_up_active else 'STEP-UP REQUIRED'}}</span></div>
+        <p class="panel-note">إنشاء أو تعديل الحزم عملية حساسة، لذلك تتطلب Step-Up Authentication. لا توجد أي أوامر root عشوائية من هذه الشاشة.</p>
+        <form id="hostingPackageForm" class="hosting-package-form">
+          <label>اسم الحزمة<input name="name" required minlength="3" maxlength="48" placeholder="NEXVARY Business"></label>
+          <label>الوصف<input name="description" maxlength="240" placeholder="Business hosting plan"></label>
+          <div class="hosting-limit-pairs">
+            <label>Disk MB<input name="disk_mb" type="number" min="0" value="20480" required></label>
+            <label>Bandwidth MB<input name="bandwidth_mb" type="number" min="0" value="204800" required></label>
+            <label>Sites<input name="max_sites" type="number" min="0" value="20" required></label>
+            <label>Databases<input name="max_databases" type="number" min="0" value="20" required></label>
+            <label>Mailboxes<input name="max_mailboxes" type="number" min="0" value="50" required></label>
+            <label>FTP Accounts<input name="max_ftp_accounts" type="number" min="0" value="10" required></label>
+            <label>Cron Jobs<input name="max_cron_jobs" type="number" min="0" value="20" required></label>
+            <label>Subdomains<input name="max_subdomains" type="number" min="0" value="50" required></label>
+            <label>Backups<input name="max_backups" type="number" min="0" value="30" required></label>
+          </div>
+          <button class="primary-create" type="submit" {{'' if step_up_active else 'disabled'}}>إنشاء الحزمة</button>
+        </form>
+        {% if not step_up_active %}<button type="button" class="ghost compact-action" data-open-view="security">فتح Security لتفعيل Step-Up</button>{% endif %}
+        <div id="hostingPackageStatus" class="hosting-status" aria-live="polite"></div>
+      </div>
+
+      <div class="panel hosting-feature-manager">
+        <div class="panel-head"><div><span class="kicker">FEATURE MANAGER</span><h3>سياسة ميزات الحزمة</h3></div></div>
+        <label class="hosting-package-select">الحزمة<select id="hostingPolicyPackage"><option value="">اختر حزمة…</option></select></label>
+        <div id="hostingPolicyFeatures" class="hosting-policy-features"><div class="empty-state">اختر حزمة لعرض السياسات.</div></div>
+      </div>
+
+      <div class="panel hosting-assignment-panel">
+        <div class="panel-head"><div><span class="kicker">ACCOUNT ASSIGNMENT</span><h3>تعيين الحزمة للمستخدم</h3></div></div>
+        <form id="hostingAssignForm" class="hosting-assign-form">
+          <label>Username<input name="username" maxlength="64" required placeholder="client01"></label>
+          <label>Package<select name="package_id" id="hostingAssignPackage" required><option value="">اختر…</option></select></label>
+          <button class="compact-action" type="submit" {{'' if step_up_active else 'disabled'}}>تعيين</button>
+        </form>
+        <div id="hostingAssignStatus" class="hosting-status" aria-live="polite"></div>
+      </div>
+      {% endif %}
+    </aside>
+  </div>
+</section>
