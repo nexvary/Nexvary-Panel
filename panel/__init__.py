@@ -17,6 +17,7 @@ from .routes_security import register_security_routes
 from .routes_health import register_health_routes
 from .routes_fusion import register_fusion_routes
 from .routes_dns import register_dns_routes
+from .routes_vault import register_vault_routes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -56,4 +57,5 @@ def create_app() -> Flask:
     register_health_routes(app)
     register_fusion_routes(app)
     register_dns_routes(app)
+    register_vault_routes(app)
     return app
