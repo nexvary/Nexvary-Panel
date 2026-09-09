@@ -42,18 +42,28 @@ jobs:
         run: sudo bash installer/install.sh
       - name: Verify services, vault/provider permissions, files and HTTPS login
         run: |
-          sudo systemctl is-active --quiet nginx
-          sudo systemctl is-active --quiet mariadb
-          sudo systemctl is-active --quiet nexvary-panel-agent
-          sudo systemctl is-active --quiet nexvary-panel-vault
-          sudo systemctl is-active --quiet nexvary-panel-provider || { sudo systemctl status nexvary-panel-provider --no-pager; sudo journalctl -u nexvary-panel-provider -n 80 --no-pager; exit 1; }
-          sudo systemctl is-active --quiet nexvary-panel-webtools || { sudo systemctl status nexvary-panel-webtools --no-pager; sudo journalctl -u nexvary-panel-webtools -n 80 --no-pager; exit 1; }
-          sudo systemctl is-active --quiet nexvary-panel-scheduler || { sudo systemctl status nexvary-panel-scheduler --no-pager; sudo journalctl -u nexvary-panel-scheduler -n 80 --no-pager; exit 1; }
-          sudo systemctl is-active --quiet nexvary-panel
+          check_service() {
+            local svc="$1"
+            for i in {1..12}; do
+              if sudo systemctl is-active --quiet "$svc"; then return 0; fi
+              sleep 1
+            done
+            echo "Service failed to become active: $svc"
+            sudo systemctl status "$svc" --no-pager || true
+            sudo journalctl -u "$svc" -n 100 --no-pager || true
+            return 1
+          }
+          for svc in nginx mariadb nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel; do
+            check_service "$svc"
+          done
           test -f /opt/nexvary-panel/panel/__init__.py
+          test -f /opt/nexvary-panel/panel/routes_accounts.py
+          test -f /opt/nexvary-panel/panel/account_schema.py
           test -f /opt/nexvary-panel/static/app.css
           test -f /opt/nexvary-panel/static/approved-theme.css
           test -f /opt/nexvary-panel/static/hosting-suite.css
+          test -f /opt/nexvary-panel/static/accounts.css
+          test -f /opt/nexvary-panel/static/accounts.js
           test -f /opt/nexvary-panel/static/webtools.css
           test -f /opt/nexvary-panel/static/scheduled-tasks.css
           test -f /opt/nexvary-panel/panel/hosting_features.py
@@ -117,7 +127,7 @@ jobs:
           cat /tmp/nexvary-panel.log
           exit 1
       - name: UI Release Gate
-        run: node tests/ui_gate.mjs && node tests/backups_ui_gate.mjs && node tests/vault_ui_gate.mjs && node tests/integrations_ui_gate.mjs && node tests/approved_theme_ui_gate.mjs && node tests/internal_workspace_ui_gate.mjs && node tests/hosting_ui_gate.mjs && node tests/schedules_ui_gate.mjs
+        run: node tests/ui_gate.mjs && node tests/backups_ui_gate.mjs && node tests/vault_ui_gate.mjs && node tests/integrations_ui_gate.mjs && node tests/approved_theme_ui_gate.mjs && node tests/internal_workspace_ui_gate.mjs && node tests/hosting_ui_gate.mjs && node tests/schedules_ui_gate.mjs && node tests/accounts_ui_gate.mjs
       - name: Upload real UI screenshots
         if: always()
         uses: actions/upload-artifact@v4
