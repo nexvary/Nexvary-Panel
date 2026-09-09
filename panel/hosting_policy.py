@@ -6,7 +6,7 @@ from .db_layer import db
 from .hosting_features import FEATURES
 
 DEFAULT_ACCOUNT_FEATURES = {
-    "files.file_manager", "files.disk_usage", "files.backups", "files.backup_wizard", "files.git",
+    "files.file_manager", "files.disk_usage", "files.ftp_accounts", "files.backups", "files.backup_wizard", "files.git",
     "domains.domains", "domains.redirects", "domains.zone_editor",
     "email.accounts", "email.forwarders", "email.deliverability",
     "databases.mariadb", "databases.wizard",
