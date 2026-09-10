@@ -74,4 +74,25 @@ with tempfile.TemporaryDirectory(prefix="nvp-autossl-") as tmp:
     mod.run_once()
     assert [x["action"] for x in calls] == ["ssl-status", "ssl-renew"]
 
+    # A package policy change must stop the background worker before any provider call.
+    calls.clear()
+    with db() as conn:
+        core = conn.execute("SELECT id FROM hosting_packages WHERE name='NEXVARY Core'").fetchone()
+        conn.execute("INSERT INTO users(username,role,salt,password_hash,enabled,created_at) VALUES(?,?,?,?,1,?)",
+                     ("client01", "operator", "11" * 16, "22" * 32, now))
+        conn.execute("INSERT INTO user_hosting_package(username,package_id,assigned_at) VALUES(?,?,?)",
+                     ("client01", int(core["id"]), now))
+        conn.execute("INSERT INTO sites(domain,kind,target,app_port,enabled,owner,created_at) VALUES(?,?,?,?,1,?,?)",
+                     ("blocked.example.net", "static", "", None, "client01", now))
+        conn.execute("INSERT INTO ssl_policies(domain,owner,contact_email,auto_renew,renew_before_days,last_check,updated_at) VALUES(?,?,?,?,?,?,?)",
+                     ("blocked.example.net", "client01", "admin@example.net", 1, 30, 0, now))
+        conn.execute("INSERT INTO hosting_package_features(package_id,feature_id,enabled,updated_at) VALUES(?,?,0,?) ON CONFLICT(package_id,feature_id) DO UPDATE SET enabled=0,updated_at=excluded.updated_at",
+                     (int(core["id"]), "security.ssl_tls", now))
+    mod._ops = lambda payload, timeout=240: calls.append(dict(payload)) or {"ok": True}
+    mod.run_once()
+    assert calls == [], calls
+    with db() as conn:
+        row = conn.execute("SELECT last_status FROM ssl_policies WHERE domain='blocked.example.net'").fetchone()
+        assert row["last_status"] == "policy-disabled"
+
 print("Nexvary Panel AutoSSL policy scheduler gate: PASS")
