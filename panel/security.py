@@ -48,7 +48,7 @@ def authenticate(username: str, password: str) -> tuple[bool, str]:
         row = conn.execute("SELECT username,role,salt,password_hash,enabled FROM users WHERE username=?", (username,)).fetchone()
     if not row or not row["enabled"]:
         return False, "viewer"
-    return hmac.compare_digest(password_hash(password, row["salt"],), row["password_hash"]), row["role"]
+    return hmac.compare_digest(password_hash(password, row["salt"]), row["password_hash"]), row["role"]
 
 
 def new_totp_secret() -> str:
@@ -142,10 +142,16 @@ def csrf_guard():
     return None
 
 
+def _api_request() -> bool:
+    return request.path.startswith("/api/") or request.is_json
+
+
 def login_required(fn):
     @wraps(fn)
     def wrapped(*args, **kwargs):
         if not session.get("auth"):
+            if _api_request():
+                return jsonify(ok=False, error="authentication required"), 401
             return redirect(url_for("login"))
         return fn(*args, **kwargs)
     return wrapped
@@ -156,8 +162,12 @@ def role_required(*roles: str):
         @wraps(fn)
         def wrapped(*args, **kwargs):
             if not session.get("auth"):
+                if _api_request():
+                    return jsonify(ok=False, error="authentication required"), 401
                 return redirect(url_for("login"))
             if session.get("role") not in roles:
+                if _api_request():
+                    return jsonify(ok=False, error="permission denied"), 403
                 flash("ليس لديك صلاحية لتنفيذ هذه العملية.", "error")
                 return redirect(url_for("home"))
             return fn(*args, **kwargs)
@@ -169,9 +179,11 @@ def step_up_required(fn):
     @wraps(fn)
     def wrapped(*args, **kwargs):
         if not session.get("auth"):
+            if _api_request():
+                return jsonify(ok=False, error="authentication required"), 401
             return redirect(url_for("login"))
         if session.get("step_up_user") != session.get("user") or not step_up_active():
-            if request.is_json or request.path.startswith("/api/"):
+            if _api_request():
                 return jsonify(ok=False, error="step-up authentication required"), 428
             flash("هذه العملية حساسة وتتطلب Step-Up Authentication أولًا.", "error")
             return redirect(url_for("home") + "#security")
