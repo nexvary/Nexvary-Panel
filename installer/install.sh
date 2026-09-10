@@ -57,6 +57,8 @@ install -m 0640 -o root -g root agent/mail_backend.py /opt/nexvary-panel-agent/m
 install -m 0750 -o root -g root agent/mail_agent.py /opt/nexvary-panel-agent/mail_agent.py
 install -m 0750 -o root -g root agent/transfer_agent.py /opt/nexvary-panel-agent/transfer_agent.py
 install -m 0750 -o root -g root agent/hosting_ops_agent.py /opt/nexvary-panel-agent/hosting_ops_agent.py
+install -m 0750 -o root -g root agent/hosting_ops_entry.py /opt/nexvary-panel-agent/hosting_ops_entry.py
+install -m 0750 -o root -g root agent/postgres_agent.py /opt/nexvary-panel-agent/postgres_agent.py
 rm -f /etc/sudoers.d/nexvary-panel
 
 if [[ ! -f /etc/nexvary-panel/admin.env ]]; then
@@ -88,6 +90,7 @@ install -m 0644 systemd/nexvary-panel-scheduler.service /etc/systemd/system/nexv
 install -m 0644 systemd/nexvary-panel-mail.service /etc/systemd/system/nexvary-panel-mail.service
 install -m 0644 systemd/nexvary-panel-transfer.service /etc/systemd/system/nexvary-panel-transfer.service
 install -m 0644 systemd/nexvary-panel-ops.service /etc/systemd/system/nexvary-panel-ops.service
+install -m 0644 systemd/nexvary-panel-postgres.service /etc/systemd/system/nexvary-panel-postgres.service
 CERT_DIR=/etc/nexvary-panel/tls
 install -d -m 0700 "$CERT_DIR"
 if [[ ! -f "$CERT_DIR/panel.crt" ]]; then
@@ -129,7 +132,7 @@ systemctl enable --now nginx mariadb fail2ban nexvary-panel-agent nexvary-panel-
 if (( WITH_DOCKER )); then systemctl enable --now docker; fi
 if (( WITH_MAIL )); then systemctl enable --now nexvary-panel-mail; fi
 if (( WITH_SFTP )); then systemctl enable --now nexvary-panel-transfer; fi
-if (( WITH_POSTGRES )); then systemctl enable --now postgresql; fi
+if (( WITH_POSTGRES )); then systemctl enable --now postgresql nexvary-panel-postgres; fi
 ufw allow OpenSSH >/dev/null || true
 ufw allow 80/tcp >/dev/null || true
 ufw allow 443/tcp >/dev/null || true
