@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import sqlite3
 import time
 from urllib.parse import urlsplit
 
@@ -124,10 +125,8 @@ def register_webtools_routes(app):
                     "INSERT INTO site_redirects(domain,source_path,target,status_code,owner,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
                     (domain, source, target, code, session.get("user", "admin"), now, now),
                 )
-            except Exception as exc:
-                if exc.__class__.__name__ == "IntegrityError":
-                    return jsonify(ok=False, error="redirect source already exists"), 409
-                raise
+            except sqlite3.IntegrityError:
+                return jsonify(ok=False, error="redirect source already exists"), 409
             rules = _redirect_rows(conn, domain)
             result = webtools_call({"action": "redirect-sync", "domain": domain, "rules": rules}, timeout=35)
             if not result.get("ok"):
