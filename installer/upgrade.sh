@@ -51,6 +51,8 @@ install -m 0640 -o root -g root agent/mail_backend.py /opt/nexvary-panel-agent/m
 install -m 0750 -o root -g root agent/mail_agent.py /opt/nexvary-panel-agent/mail_agent.py
 install -m 0750 -o root -g root agent/transfer_agent.py /opt/nexvary-panel-agent/transfer_agent.py
 install -m 0750 -o root -g root agent/hosting_ops_agent.py /opt/nexvary-panel-agent/hosting_ops_agent.py
+install -m 0750 -o root -g root agent/hosting_ops_entry.py /opt/nexvary-panel-agent/hosting_ops_entry.py
+install -m 0750 -o root -g root agent/postgres_agent.py /opt/nexvary-panel-agent/postgres_agent.py
 install -m 0644 systemd/nexvary-panel.service /etc/systemd/system/nexvary-panel.service
 install -m 0644 systemd/nexvary-panel-agent.service /etc/systemd/system/nexvary-panel-agent.service
 install -m 0644 systemd/nexvary-panel-vault.service /etc/systemd/system/nexvary-panel-vault.service
@@ -60,6 +62,7 @@ install -m 0644 systemd/nexvary-panel-scheduler.service /etc/systemd/system/nexv
 install -m 0644 systemd/nexvary-panel-mail.service /etc/systemd/system/nexvary-panel-mail.service
 install -m 0644 systemd/nexvary-panel-transfer.service /etc/systemd/system/nexvary-panel-transfer.service
 install -m 0644 systemd/nexvary-panel-ops.service /etc/systemd/system/nexvary-panel-ops.service
+install -m 0644 systemd/nexvary-panel-postgres.service /etc/systemd/system/nexvary-panel-postgres.service
 if (( WITH_MAIL )); then bash installer/configure-mail.sh; fi
 if (( WITH_SFTP )); then bash installer/configure-sftp.sh; fi
 systemctl daemon-reload
@@ -67,10 +70,11 @@ systemctl enable --now mariadb fail2ban nginx nexvary-panel-vault nexvary-panel-
 if (( WITH_DOCKER )); then systemctl enable --now docker; fi
 if (( WITH_MAIL )); then systemctl enable --now nexvary-panel-mail; fi
 if (( WITH_SFTP )); then systemctl enable --now nexvary-panel-transfer; fi
-if (( WITH_POSTGRES )); then systemctl enable --now postgresql; fi
+if (( WITH_POSTGRES )); then systemctl enable --now postgresql nexvary-panel-postgres; fi
 systemctl restart nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel-ops nexvary-panel
 if (( WITH_MAIL )); then systemctl restart nexvary-panel-mail; fi
 if (( WITH_SFTP )); then systemctl restart nexvary-panel-transfer; fi
+if (( WITH_POSTGRES )); then systemctl restart nexvary-panel-postgres; fi
 nginx -t
 printf '\nNexvary Panel %s upgrade complete. Existing admin credentials, Secret Vault, Integration Targets and SQLite data were preserved.\n' "$PANEL_VERSION"
 if (( ! WITH_BACKUP_PROVIDERS )); then printf 'restic/rclone package state was preserved. Use --with-backup-providers to install/enable the curated backup engines.\n'; fi
