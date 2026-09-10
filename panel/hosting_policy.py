@@ -17,6 +17,11 @@ DEFAULT_ACCOUNT_FEATURES = {
     "preferences.password", "preferences.language", "preferences.users",
 }
 
+LIMIT_COLUMNS = frozenset({
+    "disk_mb", "bandwidth_mb", "max_sites", "max_databases", "max_mailboxes",
+    "max_ftp_accounts", "max_cron_jobs", "max_subdomains", "max_backups",
+})
+
 
 def package_for_user(conn, username: str, role: str):
     row = conn.execute(
@@ -60,3 +65,30 @@ def feature_allowed(feature_id: str, username: str | None = None, role: str | No
     if feature_id not in FEATURES:
         return False
     return feature_id in effective_feature_ids(username=username, role=role)
+
+
+def package_limit(limit_name: str, username: str | None = None, role: str | None = None) -> int:
+    if limit_name not in LIMIT_COLUMNS:
+        raise ValueError("unknown hosting package limit")
+    username = str(username if username is not None else session.get("user", ""))[:64]
+    role = str(role if role is not None else session.get("role", "viewer"))
+    with db() as conn:
+        package = package_for_user(conn, username, role)
+        return max(0, int(package[limit_name])) if package else 0
+
+
+def quota_state(limit_name: str, used: int, username: str | None = None, role: str | None = None) -> dict[str, int | bool]:
+    limit = package_limit(limit_name, username=username, role=role)
+    used = max(0, int(used))
+    return {"allowed": limit > 0 and used < limit, "used": used, "limit": limit, "remaining": max(0, limit - used)}
+
+
+def entitlement_state(feature_id: str, *, limit_name: str | None = None, used: int = 0,
+                      username: str | None = None, role: str | None = None) -> dict[str, int | bool | str]:
+    feature = feature_allowed(feature_id, username=username, role=role)
+    result: dict[str, int | bool | str] = {"feature": feature_id, "feature_allowed": feature, "allowed": feature}
+    if limit_name is not None:
+        quota = quota_state(limit_name, used, username=username, role=role)
+        result.update(quota)
+        result["allowed"] = bool(feature and quota["allowed"])
+    return result
