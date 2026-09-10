@@ -52,43 +52,50 @@ def enabled_features(conn, package_id: int | None, role: str) -> set[str]:
     return base
 
 
-def effective_feature_ids(username: str | None = None, role: str | None = None) -> set[str]:
+def effective_feature_ids(username: str | None = None, role: str | None = None, *, connection=None) -> set[str]:
     username = str(username if username is not None else session.get("user", ""))[:64]
     role = str(role if role is not None else session.get("role", "viewer"))
+    if connection is not None:
+        package = package_for_user(connection, username, role)
+        package_id = int(package["id"]) if package else None
+        return enabled_features(connection, package_id, role)
     with db() as conn:
         package = package_for_user(conn, username, role)
         package_id = int(package["id"]) if package else None
         return enabled_features(conn, package_id, role)
 
 
-def feature_allowed(feature_id: str, username: str | None = None, role: str | None = None) -> bool:
+def feature_allowed(feature_id: str, username: str | None = None, role: str | None = None, *, connection=None) -> bool:
     if feature_id not in FEATURES:
         return False
-    return feature_id in effective_feature_ids(username=username, role=role)
+    return feature_id in effective_feature_ids(username=username, role=role, connection=connection)
 
 
-def package_limit(limit_name: str, username: str | None = None, role: str | None = None) -> int:
+def package_limit(limit_name: str, username: str | None = None, role: str | None = None, *, connection=None) -> int:
     if limit_name not in LIMIT_COLUMNS:
         raise ValueError("unknown hosting package limit")
     username = str(username if username is not None else session.get("user", ""))[:64]
     role = str(role if role is not None else session.get("role", "viewer"))
+    if connection is not None:
+        package = package_for_user(connection, username, role)
+        return max(0, int(package[limit_name])) if package else 0
     with db() as conn:
         package = package_for_user(conn, username, role)
         return max(0, int(package[limit_name])) if package else 0
 
 
-def quota_state(limit_name: str, used: int, username: str | None = None, role: str | None = None) -> dict[str, int | bool]:
-    limit = package_limit(limit_name, username=username, role=role)
+def quota_state(limit_name: str, used: int, username: str | None = None, role: str | None = None, *, connection=None) -> dict[str, int | bool]:
+    limit = package_limit(limit_name, username=username, role=role, connection=connection)
     used = max(0, int(used))
     return {"allowed": limit > 0 and used < limit, "used": used, "limit": limit, "remaining": max(0, limit - used)}
 
 
 def entitlement_state(feature_id: str, *, limit_name: str | None = None, used: int = 0,
-                      username: str | None = None, role: str | None = None) -> dict[str, int | bool | str]:
-    feature = feature_allowed(feature_id, username=username, role=role)
+                      username: str | None = None, role: str | None = None, connection=None) -> dict[str, int | bool | str]:
+    feature = feature_allowed(feature_id, username=username, role=role, connection=connection)
     result: dict[str, int | bool | str] = {"feature": feature_id, "feature_allowed": feature, "allowed": feature}
     if limit_name is not None:
-        quota = quota_state(limit_name, used, username=username, role=role)
+        quota = quota_state(limit_name, used, username=username, role=role, connection=connection)
         result.update(quota)
         result["allowed"] = bool(feature and quota["allowed"])
     return result
