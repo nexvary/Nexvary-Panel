@@ -26,6 +26,20 @@
     if(sites.length){select.value=sites[0].domain;await loadAll();}
   }
 
+  function renderAliases(rows,quota={}){
+    const target=$('#domainAliasList');
+    const used=Number(quota.used??rows.length),limit=Number(quota.limit??0),remaining=Number(quota.remaining??Math.max(0,limit-used));
+    $('#domainAliasQuota').textContent=limit>0?`الاستخدام ${used} / ${limit} · المتبقي ${remaining}`:`الاستخدام ${used}`;
+    if(!rows.length){target.innerHTML='<div class="empty-state">لا توجد Aliases أو نطاقات فرعية لهذا الموقع.</div>';return;}
+    target.innerHTML=rows.map(row=>`<div class="webtools-row"><code>${esc(row.alias)}</code><span class="code">${esc(row.kind||'alias')}</span><span class="target">${esc(row.domain)}</span><button type="button" data-delete-domain-alias="${row.id}" ${stepUp?'':'disabled'}>حذف</button></div>`).join('');
+  }
+  async function loadAliases(){
+    const domain=selectedDomain();
+    if(!domain){renderAliases([],{});return;}
+    try{const data=await api(`/api/domains/aliases?domain=${encodeURIComponent(domain)}`);renderAliases(data.aliases||[],data.quota||{});status($('#domainAliasStatus'),'','');}
+    catch(err){renderAliases([],{});status($('#domainAliasStatus'),err.message,'error');}
+  }
+
   function renderRedirects(rows){
     $('#webtoolsRedirectCount').textContent=String(rows.length);
     const target=$('#redirectList');
@@ -69,10 +83,26 @@
     const domain=selectedDomain();if(!domain){renderMetrics({});return;}
     try{const data=await api(`/api/webtools/metrics?domain=${encodeURIComponent(domain)}`);renderMetrics(data.metrics||{});}catch{renderMetrics({});}
   }
-  async function loadAll(){await Promise.all([loadRedirects(),loadErrorPages(),loadMetrics()]);}
+  async function loadAll(){await Promise.all([loadAliases(),loadRedirects(),loadErrorPages(),loadMetrics()]);}
 
   $('#webtoolsDomain')?.addEventListener('change',loadAll);
   $('#refreshMetrics')?.addEventListener('click',loadMetrics);
+
+  $('#domainAliasForm')?.addEventListener('submit',async event=>{
+    event.preventDefault();const out=$('#domainAliasStatus');
+    if(!stepUp){status(out,'Step-Up مطلوب قبل تعديل Domain Lifecycle.','error');return;}
+    const domain=selectedDomain();if(!domain){status(out,'اختر موقعًا أولًا.','error');return;}
+    const fd=new FormData(event.currentTarget);const alias=String(fd.get('alias')||'').trim().toLowerCase();
+    try{const data=await api('/api/domains/aliases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain,alias})});renderAliases(data.aliases||[],{});event.currentTarget.reset();status(out,'تم ربط النطاق وتحديث NGINX بنجاح.','ok');await loadAliases();}
+    catch(err){status(out,err.status===428?'انتهت نافذة Step-Up؛ أعد التحقق من Security.':err.message,'error');}
+  });
+  $('#domainAliasList')?.addEventListener('click',async event=>{
+    const btn=event.target.closest('[data-delete-domain-alias]');if(!btn)return;
+    if(!stepUp){status($('#domainAliasStatus'),'Step-Up مطلوب.','error');return;}
+    try{const data=await api(`/api/domains/aliases/${btn.dataset.deleteDomainAlias}`,{method:'DELETE'});renderAliases(data.aliases||[],{});status($('#domainAliasStatus'),'تم حذف الربط وإعادة مزامنة NGINX.','ok');await loadAliases();}
+    catch(err){status($('#domainAliasStatus'),err.message,'error');}
+  });
+
   $('#redirectForm')?.addEventListener('submit',async event=>{
     event.preventDefault();const out=$('#redirectStatus');
     if(!stepUp){status(out,'Step-Up مطلوب قبل تعديل NGINX.','error');return;}
