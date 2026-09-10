@@ -100,11 +100,20 @@ def _site_root(domain: str) -> Path:
 
 
 def _ensure_dirs() -> None:
-    for path, mode in ((CHROOT_BASE, 0o755), (KEY_DIR, 0o700), (TRACK_DIR, 0o700)):
+    try:
+        sftp_gid = grp.getgrnam("nexvary-sftp").gr_gid
+    except KeyError as exc:
+        raise RuntimeError("sftp-provider-not-configured") from exc
+    specs = (
+        (CHROOT_BASE, 0o755, 0, 0),
+        (KEY_DIR, 0o750, 0, sftp_gid),
+        (TRACK_DIR, 0o700, 0, 0),
+    )
+    for path, mode, uid, gid in specs:
         if path.exists() and path.is_symlink():
             raise RuntimeError("unsafe-transfer-boundary")
         path.mkdir(parents=True, exist_ok=True)
-        os.chown(path, 0, 0)
+        os.chown(path, uid, gid)
         os.chmod(path, mode)
 
 
@@ -114,14 +123,15 @@ def _atomic_key(system_user: str, public_key: str) -> None:
     if path.exists() and (path.is_symlink() or not path.is_file()):
         raise RuntimeError("unsafe-transfer-key-boundary")
     tmp = path.with_name(path.name + ".tmp")
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o640)
     try:
         os.write(fd, (public_key + "\n").encode())
         os.fsync(fd)
     finally:
         os.close(fd)
-    os.chown(tmp, 0, 0)
-    os.chmod(tmp, 0o600)
+    sftp_gid = grp.getgrnam("nexvary-sftp").gr_gid
+    os.chown(tmp, 0, sftp_gid)
+    os.chmod(tmp, 0o640)
     os.replace(tmp, path)
 
 
