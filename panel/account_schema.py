@@ -27,6 +27,14 @@ def ensure_account_schema() -> None:
             FOREIGN KEY(package_id) REFERENCES hosting_packages(id) ON DELETE RESTRICT
           );
           CREATE INDEX IF NOT EXISTS idx_hosting_accounts_reseller ON hosting_accounts(reseller_owner,status);
+          CREATE TABLE IF NOT EXISTS account_suspension_sites (
+            username TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            was_enabled INTEGER NOT NULL DEFAULT 1,
+            captured_at INTEGER NOT NULL,
+            PRIMARY KEY(username,domain)
+          );
+          CREATE INDEX IF NOT EXISTS idx_account_suspension_sites_user ON account_suspension_sites(username,was_enabled);
         """)
         # The built-in admin is not stored in the users table, but it is the root reseller boundary.
         conn.execute(
