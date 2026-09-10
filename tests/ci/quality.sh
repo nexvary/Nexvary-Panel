@@ -15,3 +15,4 @@ python tests/transfer_policy_test.py
 python tests/advanced_ops_test.py
 python tests/module_registry_test.py
 python tests/entitlements_test.py
+python tests/session_revocation_test.py
