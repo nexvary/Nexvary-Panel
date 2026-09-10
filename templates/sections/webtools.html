@@ -5,7 +5,7 @@
     <div class="hero-copy">
       <span class="kicker">WEB OPERATIONS · PLATFORM 0.7</span>
       <h2>أدوات الويب المتقدمة</h2>
-      <p>إدارة Redirects وصفحات الأخطاء المخصصة وإحصاءات الزوار والباندويدث للمواقع المسجلة فقط. تغييرات NGINX تمر عبر Webtools Agent مع Validation وRollback.</p>
+      <p>إدارة النطاقات الفرعية وAliases وRedirects وصفحات الأخطاء والإحصاءات للمواقع المسجلة فقط. تغييرات NGINX تمر عبر Webtools Agent مع Validation وRollback.</p>
     </div>
     <div class="hero-stats">
       <div><small>SITES</small><strong id="webtoolsSiteCount">—</strong></div>
@@ -22,6 +22,17 @@
   </div>
 
   <div class="webtools-grid">
+    <section class="panel webtools-domain-panel">
+      <div class="panel-head"><div><span class="kicker">DOMAIN LIFECYCLE</span><h3>Aliases والنطاقات الفرعية</h3></div><span class="webtools-badge">QUOTA ENFORCED</span></div>
+      <form id="domainAliasForm" class="webtools-form">
+        <label>Alias / Subdomain<input name="alias" required maxlength="253" placeholder="app.example.com"></label>
+        <button class="primary-create" type="submit" {{'' if step_up_active else 'disabled'}}>إضافة نطاق</button>
+      </form>
+      <div class="webtools-status"><span id="domainAliasQuota">—</span></div>
+      <div id="domainAliasStatus" class="webtools-status" aria-live="polite"></div>
+      <div id="domainAliasList" class="webtools-list"><div class="empty-state">اختر موقعًا لعرض Aliases والنطاقات الفرعية.</div></div>
+    </section>
+
     <section class="panel webtools-redirect-panel">
       <div class="panel-head"><div><span class="kicker">REDIRECT MANAGER</span><h3>إعادة التوجيه</h3></div><span class="webtools-badge">NGINX VALIDATED</span></div>
       <form id="redirectForm" class="webtools-form">
