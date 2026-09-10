@@ -30,7 +30,7 @@ jobs:
       - name: Smoke tests
         env:
           NVP_COOKIE_SECURE: '0'
-        run: python tests/smoke_test.py && python tests/vault_test.py && python tests/integrations_test.py && python tests/provider_backup_test.py && python tests/trust_test.py && python tests/hosting_features_test.py && python tests/schedules_test.py && python tests/accounts_scope_test.py && python tests/mail_policy_test.py && python tests/transfer_policy_test.py
+        run: python tests/smoke_test.py && python tests/vault_test.py && python tests/integrations_test.py && python tests/provider_backup_test.py && python tests/trust_test.py && python tests/hosting_features_test.py && python tests/schedules_test.py && python tests/accounts_scope_test.py && python tests/mail_policy_test.py && python tests/transfer_policy_test.py && python tests/advanced_ops_test.py
 
   installation-gate:
     name: Ubuntu 24.04 full installer gate
@@ -53,17 +53,18 @@ jobs:
             sudo journalctl -u "$svc" -n 100 --no-pager || true
             return 1
           }
-          for svc in nginx mariadb nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel; do check_service "$svc"; done
-          for file in panel/__init__.py panel/routes_accounts.py panel/account_schema.py panel/routes_mail.py panel/mail_schema.py panel/routes_transfers.py panel/transfer_schema.py static/app.css static/approved-theme.css static/hosting-suite.css static/accounts.css static/accounts.js static/mail.css static/mail.js static/transfers.css static/transfers.js static/webtools.css static/scheduled-tasks.css panel/hosting_features.py; do
+          for svc in nginx mariadb nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel-ops nexvary-panel; do check_service "$svc"; done
+          for file in panel/__init__.py panel/routes_accounts.py panel/account_schema.py panel/routes_mail.py panel/mail_schema.py panel/routes_transfers.py panel/transfer_schema.py panel/routes_advanced_ops.py panel/advanced_ops_schema.py panel/ops_client.py static/app.css static/approved-theme.css static/hosting-suite.css static/accounts.css static/accounts.js static/mail.css static/mail.js static/transfers.css static/transfers.js static/advanced-ops.css static/advanced-ops.js static/webtools.css static/scheduled-tasks.css panel/hosting_features.py; do
             test -f "/opt/nexvary-panel/$file"
           done
-          for file in secret_vault.py vault_agent.py provider_agent.py webtools_agent.py scheduler_agent.py mail_agent.py mail_backend.py transfer_agent.py; do
+          for file in secret_vault.py vault_agent.py provider_agent.py webtools_agent.py scheduler_agent.py mail_agent.py mail_backend.py transfer_agent.py hosting_ops_agent.py; do
             test -f "/opt/nexvary-panel-agent/$file"
           done
           test "$(sudo stat -c '%a %U %G' /opt/nexvary-panel-agent/scheduler_agent.py)" = "750 root nexvary-panel"
           test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/credentials)" = "700 root root"
           test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/vault.sock)" = "660 root nexvary-panel"
           test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/provider.sock)" = "660 root nexvary-panel"
+          test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/ops.sock)" = "660 root nexvary-panel"
           curl -kfsS https://127.0.0.1:8443/login | grep -q 'Nexvary Panel'
           sudo nginx -t
 
@@ -176,6 +177,43 @@ jobs:
           ! sudo mountpoint -q /srv/nexvary-sftp/nvpt_0123456789/site
           test ! -e /etc/nexvary-panel/sftp-keys/nvpt_0123456789
 
+  postgres-installation-gate:
+    name: Ubuntu 24.04 PostgreSQL provider gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nexvary Panel with PostgreSQL
+        run: sudo bash installer/install.sh --with-postgres
+      - name: Verify real PostgreSQL create and delete through allowlisted Ops Agent
+        run: |
+          for svc in postgresql nexvary-panel-ops; do
+            for i in {1..15}; do sudo systemctl is-active --quiet "$svc" && break; sleep 1; done
+            sudo systemctl is-active --quiet "$svc" || { sudo systemctl status "$svc" --no-pager; sudo journalctl -u "$svc" -n 120 --no-pager || true; exit 1; }
+          done
+          test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/ops.sock)" = "660 root nexvary-panel"
+          sudo -u nexvary-panel python3 - <<'PY'
+          import json,socket
+          def call(payload):
+              s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM);s.settimeout(30);s.connect('/run/nexvary-panel/ops.sock')
+              s.sendall((json.dumps(payload)+'\n').encode());data=b''
+              while not data.endswith(b'\n'):data+=s.recv(4096)
+              s.close();return json.loads(data)
+          status=call({'action':'status'});assert status.get('ok') is True,status;assert status.get('capabilities',{}).get('postgres') is True,status
+          created=call({'action':'postgres-create','db_name':'nvpgate','db_user':'nvpgateuser','password':'GatePassword_2026!'});assert created.get('ok') is True,created;assert 'password' not in created,created
+          PY
+          sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='nvpgate'" | grep -qx '1'
+          sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='nvpgateuser'" | grep -qx '1'
+          sudo -u nexvary-panel python3 - <<'PY'
+          import json,socket
+          s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM);s.settimeout(30);s.connect('/run/nexvary-panel/ops.sock')
+          s.sendall((json.dumps({'action':'postgres-delete','db_name':'nvpgate','db_user':'nvpgateuser'})+'\n').encode());data=b''
+          while not data.endswith(b'\n'):data+=s.recv(4096)
+          body=json.loads(data);assert body.get('ok') is True,body
+          PY
+          test -z "$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='nvpgate'")"
+          test -z "$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='nvpgateuser'")"
+
   ui-release-gate:
     name: Real browser UI gate and screenshots
     runs-on: ubuntu-24.04
@@ -216,6 +254,7 @@ jobs:
             echo 'NVP_PROVIDER_SOCK=/tmp/nexvary-panel-ci/missing-provider.sock'
             echo 'NVP_MAIL_SOCK=/tmp/nexvary-panel-ci/missing-mail.sock'
             echo 'NVP_TRANSFER_SOCK=/tmp/nexvary-panel-ci/missing-transfer.sock'
+            echo 'NVP_OPS_SOCK=/tmp/nexvary-panel-ci/missing-ops.sock'
             echo "NVP_TEST_PASSWORD=$TEST_PASSWORD"
           } >> "$GITHUB_ENV"
       - name: Start Nexvary Panel
@@ -226,7 +265,7 @@ jobs:
           cat /tmp/nexvary-panel.log
           exit 1
       - name: UI Release Gate
-        run: node tests/ui_gate.mjs && node tests/backups_ui_gate.mjs && node tests/vault_ui_gate.mjs && node tests/integrations_ui_gate.mjs && node tests/approved_theme_ui_gate.mjs && node tests/internal_workspace_ui_gate.mjs && node tests/hosting_ui_gate.mjs && node tests/schedules_ui_gate.mjs && node tests/accounts_ui_gate.mjs && node tests/mail_ui_gate.mjs && node tests/transfer_ui_gate.mjs
+        run: node tests/ui_gate.mjs && node tests/backups_ui_gate.mjs && node tests/vault_ui_gate.mjs && node tests/integrations_ui_gate.mjs && node tests/approved_theme_ui_gate.mjs && node tests/internal_workspace_ui_gate.mjs && node tests/hosting_ui_gate.mjs && node tests/schedules_ui_gate.mjs && node tests/accounts_ui_gate.mjs && node tests/mail_ui_gate.mjs && node tests/transfer_ui_gate.mjs && node tests/advanced_ops_ui_gate.mjs
       - name: Upload real UI screenshots
         if: always()
         uses: actions/upload-artifact@v4
