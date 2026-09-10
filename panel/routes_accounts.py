@@ -7,7 +7,7 @@ import time
 from flask import jsonify, request, session
 
 from .config import DOMAIN_RE, PASSWORD_RE, USER_RE
-from .core import audit, db, password_hash
+from .core import agent_call, audit, db, password_hash
 from .security import role_required, step_up_required
 
 
@@ -47,6 +47,19 @@ def _package_allowed_for_actor(row) -> bool:
     if session.get("role") == "admin":
         return True
     return str(row["name"]) != "NEXVARY Unlimited"
+
+
+def _toggle_sites(domains: list[str], desired: str) -> tuple[bool, str]:
+    completed: list[str] = []
+    rollback = "enable" if desired == "disable" else "disable"
+    for domain in domains:
+        result = agent_call({"action": "site-toggle", "domain": domain, "desired": desired}, timeout=25)
+        if not result.get("ok"):
+            for changed in reversed(completed):
+                agent_call({"action": "site-toggle", "domain": changed, "desired": rollback}, timeout=25)
+            return False, str(result.get("error", f"site transition failed for {domain}"))[:180]
+        completed.append(domain)
+    return True, ""
 
 
 def register_account_routes(app):
@@ -206,6 +219,9 @@ def register_account_routes(app):
     @role_required("admin", "reseller")
     @step_up_required
     def account_package(username: str):
+        username = username.strip()
+        if not USER_RE.fullmatch(username):
+            return jsonify(ok=False, error="invalid account username"), 400
         data = request.get_json(silent=True) or {}
         try:
             package_id = int(data.get("package_id")) if isinstance(data, dict) else 0
@@ -234,18 +250,63 @@ def register_account_routes(app):
     @role_required("admin", "reseller")
     @step_up_required
     def account_status(username: str):
+        username = username.strip()
         data = request.get_json(silent=True) or {}
         status = str(data.get("status", "")) if isinstance(data, dict) else ""
-        if status not in {"active", "suspended"}:
-            return jsonify(ok=False, error="status must be active or suspended"), 400
+        if not USER_RE.fullmatch(username) or status not in {"active", "suspended"}:
+            return jsonify(ok=False, error="valid account and active/suspended status required"), 400
         with db() as conn:
-            account = conn.execute("SELECT reseller_owner FROM hosting_accounts WHERE username=?", (username,)).fetchone()
+            account = conn.execute("SELECT reseller_owner,status FROM hosting_accounts WHERE username=?", (username,)).fetchone()
             if not account:
                 return jsonify(ok=False, error="hosting account not found"), 404
             if not _owns_account(str(account["reseller_owner"])):
                 return jsonify(ok=False, error="hosting account is outside your reseller scope"), 403
+            current_status = str(account["status"])
+            if current_status == status:
+                return jsonify(ok=True, status=status, scope="control-plane+managed-sites")
             now = int(time.time())
-            conn.execute("UPDATE hosting_accounts SET status=?,updated_at=? WHERE username=?", (status, now, username))
-            conn.execute("UPDATE users SET enabled=? WHERE username=? AND role='operator'", (1 if status == "active" else 0, username))
-        audit("hosting-account-status", f"account={username} status={status} scope=control-plane")
-        return jsonify(ok=True, status=status, scope="control-plane")
+            if status == "suspended":
+                sites = conn.execute("SELECT domain,enabled FROM sites WHERE owner=? ORDER BY domain", (username,)).fetchall()
+                conn.execute("DELETE FROM account_suspension_sites WHERE username=?", (username,))
+                for site in sites:
+                    conn.execute(
+                        "INSERT INTO account_suspension_sites(username,domain,was_enabled,captured_at) VALUES(?,?,?,?)",
+                        (username, str(site["domain"]), 1 if site["enabled"] else 0, now),
+                    )
+                conn.execute("UPDATE hosting_accounts SET status='suspending',updated_at=? WHERE username=?", (now, username))
+                conn.execute("UPDATE users SET enabled=0 WHERE username=? AND role='operator'", (username,))
+                domains = [str(site["domain"]) for site in sites if site["enabled"]]
+            else:
+                snapshots = conn.execute("SELECT domain,was_enabled FROM account_suspension_sites WHERE username=? ORDER BY domain", (username,)).fetchall()
+                conn.execute("UPDATE hosting_accounts SET status='activating',updated_at=? WHERE username=?", (now, username))
+                domains = [str(site["domain"]) for site in snapshots if site["was_enabled"] and conn.execute("SELECT 1 FROM sites WHERE domain=? AND owner=?", (site["domain"], username)).fetchone()]
+
+        desired = "disable" if status == "suspended" else "enable"
+        ok, detail = _toggle_sites(domains, desired)
+        if not ok:
+            with db() as conn:
+                fallback = "active" if status == "suspended" else "suspended"
+                conn.execute("UPDATE hosting_accounts SET status=?,updated_at=? WHERE username=?", (fallback, int(time.time()), username))
+                conn.execute("UPDATE users SET enabled=? WHERE username=? AND role='operator'", (1 if fallback == "active" else 0, username))
+                if status == "suspended":
+                    conn.execute("DELETE FROM account_suspension_sites WHERE username=?", (username,))
+            audit("hosting-account-status-failed", f"account={username} requested={status} sites={len(domains)}")
+            return jsonify(ok=False, error=detail or "managed site transition failed"), 503
+
+        now = int(time.time())
+        with db() as conn:
+            if status == "suspended":
+                if domains:
+                    placeholders = ",".join("?" for _ in domains)
+                    conn.execute(f"UPDATE sites SET enabled=0 WHERE owner=? AND domain IN ({placeholders})", (username, *domains))
+                conn.execute("UPDATE hosting_accounts SET status='suspended',updated_at=? WHERE username=?", (now, username))
+                conn.execute("UPDATE users SET enabled=0 WHERE username=? AND role='operator'", (username,))
+            else:
+                if domains:
+                    placeholders = ",".join("?" for _ in domains)
+                    conn.execute(f"UPDATE sites SET enabled=1 WHERE owner=? AND domain IN ({placeholders})", (username, *domains))
+                conn.execute("UPDATE hosting_accounts SET status='active',updated_at=? WHERE username=?", (now, username))
+                conn.execute("UPDATE users SET enabled=1 WHERE username=? AND role='operator'", (username,))
+                conn.execute("DELETE FROM account_suspension_sites WHERE username=?", (username,))
+        audit("hosting-account-status", f"account={username} status={status} sites={len(domains)} scope=control-plane+managed-sites")
+        return jsonify(ok=True, status=status, affected_sites=len(domains), scope="control-plane+managed-sites")
