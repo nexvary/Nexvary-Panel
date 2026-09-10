@@ -15,6 +15,7 @@ from .routes_advanced_ops import register_advanced_ops_routes
 from .routes_auth import register_auth_routes
 from .routes_dns import register_dns_routes
 from .routes_domains import register_domain_routes
+from .routes_dnssec import register_dnssec_routes
 from .routes_fusion import register_fusion_routes
 from .routes_health import register_health_routes
 from .routes_hosting import register_hosting_routes
@@ -64,6 +65,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("remote_backup", "Remote Backup", "hosting", register_remote_backup_routes, depends_on=("integrations",), feature_prefixes=("files.backups",), provider_services=("nexvary-panel-provider",), ui_view="backups", maturity="provider"),
     PanelModule("hosting", "Hosting Suite", "hosting", register_hosting_routes, depends_on=("auth",), ui_view="hosting"),
     PanelModule("domains", "Domain Lifecycle", "hosting", register_domain_routes, schema_hook=ensure_domain_schema, depends_on=("hosting", "sites"), feature_prefixes=("domains.",), provider_services=("nexvary-panel-webtools",), ui_view="webtools", maturity="provider"),
+    PanelModule("dnssec", "DNSSEC Lifecycle", "hosting", register_dnssec_routes, depends_on=("domains", "integrations"), feature_prefixes=("domains.zone_editor",), provider_services=("nexvary-panel-ops",), ui_view="webtools", maturity="provider"),
     PanelModule("webtools", "Web Tools", "hosting", register_webtools_routes, depends_on=("hosting", "sites"), feature_prefixes=("domains.", "metrics."), provider_services=("nexvary-panel-webtools",), ui_view="webtools", maturity="provider"),
     PanelModule("schedules", "Scheduled Tasks", "automation", register_schedule_routes, depends_on=("hosting", "sites"), feature_prefixes=("advanced.cron",), provider_services=("nexvary-panel-scheduler",), ui_view="schedules", maturity="provider"),
     PanelModule("accounts", "Accounts and Resellers", "hosting", register_account_routes, schema_hook=ensure_account_schema, depends_on=("hosting",), feature_prefixes=("whm.accounts", "whm.resellers"), ui_view="accounts"),
