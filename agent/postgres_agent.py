@@ -10,7 +10,7 @@ import socket
 import subprocess
 from pathlib import Path
 
-SOCK = Path(os.environ.get("NVP_POSTGRES_SOCK", "/run/nexvary-panel/postgres.sock"))
+SOCK = Path(os.environ.get("NVP_POSTGRES_SOCK", "/run/nexvary-panel-postgres/postgres.sock"))
 MAX_REQUEST = 16 * 1024
 DB_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,31}$")
 PASSWORD_RE = re.compile(r"^[A-Za-z0-9_@%+=:.,!$#?-]{14,128}$")
@@ -28,7 +28,6 @@ def _run(args: list[str], timeout: int = 30, stdin: str | None = None) -> subpro
     proc = subprocess.run(args, capture_output=True, text=True, input=stdin, timeout=timeout, env=ENV, check=False)
     if proc.returncode != 0:
         command = Path(args[0]).name[:48]
-        # stdin may contain a role password, so never mirror it or SQL text into logs/API errors.
         detail = "" if stdin is not None else (proc.stderr or proc.stdout or "").strip().replace("\n", " ")[-160:]
         suffix = f":{detail}" if detail else ""
         raise RuntimeError(f"postgres-command-failed:{command}:{proc.returncode}{suffix}")
@@ -71,7 +70,6 @@ def _create(data: dict) -> dict:
     try:
         _run(["createuser", "--no-password", "--login", "--", user], 30)
         role_created = True
-        # PASSWORD_RE excludes quotes. Secret is delivered only over stdin, never argv.
         _run(["psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "postgres"], 30,
              f"ALTER ROLE \"{user}\" WITH LOGIN PASSWORD '{password}';\n")
         _run(["createdb", "-O", user, "--", name], 30)
