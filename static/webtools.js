@@ -7,6 +7,7 @@
   const esc=v=>String(v??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
   const status=(node,msg,type='')=>{if(!node)return;node.textContent=msg;node.className=`webtools-status ${type}`.trim();};
   const bytes=n=>{let v=Number(n||0);for(const u of ['B','KB','MB','GB','TB']){if(v<1024||u==='TB')return `${v.toFixed(v>=10||u==='B'?0:1)} ${u}`;v/=1024;}return '0 B';};
+  const when=ts=>{const n=Number(ts||0);return n?new Date(n*1000).toLocaleString():'لم يُفحص بعد';};
   const api=async(url,options={})=>{
     const opts={credentials:'same-origin',...options,headers:{Accept:'application/json',...(options.headers||{})}};
     if(opts.method&&opts.method!=='GET') opts.headers['X-CSRF-Token']=csrf;
@@ -33,15 +34,43 @@
     if(!rows.length){target.innerHTML='<div class="empty-state">لا توجد Aliases أو نطاقات فرعية لهذا الموقع.</div>';return;}
     target.innerHTML=rows.map(row=>`<div class="webtools-row"><code>${esc(row.alias)}</code><span class="code">${esc(row.kind||'alias')}</span><span class="target">${esc(row.domain)}</span><button type="button" data-delete-domain-alias="${row.id}" ${stepUp?'':'disabled'}>حذف</button></div>`).join('');
   }
-  async function loadAliases(){
+
+  function renderLifecycle(data){
+    renderAliases(data.aliases||[],data.alias_quota||{});
+    const binding=data.dns_binding;
+    const provider=binding?.provider?String(binding.provider).toUpperCase():'UNBOUND';
+    $('#domainDnsProvider').textContent=provider;
+    $('#domainDnsEndpoint').textContent=binding?.name||binding?.endpoint||'اربط DNS Provider من Advanced Ops';
+    $('#domainDnsHero').textContent=binding?.provider?'BOUND':'OFF';
+
+    const ssl=data.ssl||{};
+    const installed=ssl.ok===true&&ssl.installed===true;
+    $('#domainSslState').textContent=installed?'INSTALLED':(ssl.ok===false?'PROVIDER OFFLINE':'NOT ISSUED');
+    $('#domainSslDetail').textContent=installed?String(ssl.detail||'Certificate active').split('\n')[0].slice(0,120):String(ssl.error||'No certificate').slice(0,120);
+    $('#domainSslHero').textContent=installed?'ON':'OFF';
+
+    const policy=data.ssl_policy||{};
+    $('#domainAutoSslState').textContent=Number(policy.auto_renew||0)?'ON':'OFF';
+    $('#domainSslLast').textContent=`${esc(policy.last_status||'unknown')} · ${when(policy.last_check)}`;
+    const form=$('#sslPolicyForm');
+    if(form){
+      form.elements.contact_email.value=policy.contact_email||'';
+      form.elements.renew_before_days.value=String(policy.renew_before_days||30);
+      form.elements.auto_renew.checked=Boolean(Number(policy.auto_renew||0));
+    }
+    const suggestions=data.dns_suggestions||[];
+    $('#domainDnsSuggestions').innerHTML=suggestions.length?suggestions.map(row=>`<div class="webtools-row dns-suggestion"><code>${esc(row.record_name)}</code><span class="code">${esc(row.record_type)}</span><span class="target">→ ${esc(row.record_value)} · TTL ${Number(row.ttl||300)}</span></div>`).join(''):'<div class="empty-state">لا توجد اقتراحات DNS؛ أضف Alias/Subdomain لعرض سجلات CNAME المقترحة.</div>';
+  }
+
+  async function loadLifecycle(){
     const domain=selectedDomain();
     if(!domain){renderAliases([],{});return;}
-    try{const data=await api(`/api/domains/aliases?domain=${encodeURIComponent(domain)}`);renderAliases(data.aliases||[],data.quota||{});status($('#domainAliasStatus'),'','');}
+    try{const data=await api(`/api/domains/lifecycle?domain=${encodeURIComponent(domain)}`);renderLifecycle(data);status($('#domainAliasStatus'),'','');}
     catch(err){renderAliases([],{});status($('#domainAliasStatus'),err.message,'error');}
   }
 
   function renderRedirects(rows){
-    $('#webtoolsRedirectCount').textContent=String(rows.length);
+    const counter=$('#webtoolsRedirectCount');if(counter)counter.textContent=String(rows.length);
     const target=$('#redirectList');
     if(!rows.length){target.innerHTML='<div class="empty-state">لا توجد Redirects لهذا الموقع.</div>';return;}
     target.innerHTML=rows.map(row=>`<div class="webtools-row"><code>${esc(row.source_path)}</code><span class="code">${esc(row.status_code)}</span><span class="target">${esc(row.target)}</span><button type="button" data-delete-redirect="${row.id}" ${stepUp?'':'disabled'}>حذف</button></div>`).join('');
@@ -52,7 +81,7 @@
   }
 
   function renderErrorPages(rows){
-    $('#webtoolsErrorCount').textContent=String(rows.length);
+    const counter=$('#webtoolsErrorCount');if(counter)counter.textContent=String(rows.length);
     const target=$('#errorPageList');
     if(!rows.length){target.innerHTML='<div class="empty-state">لا توجد صفحات أخطاء مخصصة.</div>';return;}
     target.innerHTML=rows.map(row=>`<div class="webtools-code-card"><b>${row.status_code}</b><small>${Number(new Blob([row.html||'']).size).toLocaleString()} bytes</small><button type="button" class="ghost" data-edit-error="${row.status_code}">تحرير</button><button type="button" data-delete-error="${row.status_code}" ${stepUp?'':'disabled'}>حذف</button></div>`).join('');
@@ -83,7 +112,7 @@
     const domain=selectedDomain();if(!domain){renderMetrics({});return;}
     try{const data=await api(`/api/webtools/metrics?domain=${encodeURIComponent(domain)}`);renderMetrics(data.metrics||{});}catch{renderMetrics({});}
   }
-  async function loadAll(){await Promise.all([loadAliases(),loadRedirects(),loadErrorPages(),loadMetrics()]);}
+  async function loadAll(){await Promise.all([loadLifecycle(),loadRedirects(),loadErrorPages(),loadMetrics()]);}
 
   $('#webtoolsDomain')?.addEventListener('change',loadAll);
   $('#refreshMetrics')?.addEventListener('click',loadMetrics);
@@ -93,14 +122,38 @@
     if(!stepUp){status(out,'Step-Up مطلوب قبل تعديل Domain Lifecycle.','error');return;}
     const domain=selectedDomain();if(!domain){status(out,'اختر موقعًا أولًا.','error');return;}
     const fd=new FormData(event.currentTarget);const alias=String(fd.get('alias')||'').trim().toLowerCase();
-    try{const data=await api('/api/domains/aliases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain,alias})});renderAliases(data.aliases||[],{});event.currentTarget.reset();status(out,'تم ربط النطاق وتحديث NGINX بنجاح.','ok');await loadAliases();}
+    try{await api('/api/domains/aliases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain,alias})});event.currentTarget.reset();status(out,'تم ربط النطاق وتحديث جميع HTTP/TLS server blocks بنجاح.','ok');await loadLifecycle();}
     catch(err){status(out,err.status===428?'انتهت نافذة Step-Up؛ أعد التحقق من Security.':err.message,'error');}
   });
   $('#domainAliasList')?.addEventListener('click',async event=>{
     const btn=event.target.closest('[data-delete-domain-alias]');if(!btn)return;
     if(!stepUp){status($('#domainAliasStatus'),'Step-Up مطلوب.','error');return;}
-    try{const data=await api(`/api/domains/aliases/${btn.dataset.deleteDomainAlias}`,{method:'DELETE'});renderAliases(data.aliases||[],{});status($('#domainAliasStatus'),'تم حذف الربط وإعادة مزامنة NGINX.','ok');await loadAliases();}
+    try{await api(`/api/domains/aliases/${btn.dataset.deleteDomainAlias}`,{method:'DELETE'});status($('#domainAliasStatus'),'تم حذف الربط وإعادة مزامنة NGINX.','ok');await loadLifecycle();}
     catch(err){status($('#domainAliasStatus'),err.message,'error');}
+  });
+
+  $('#sslPolicyForm')?.addEventListener('submit',async event=>{
+    event.preventDefault();const out=$('#domainSslStatus');
+    if(!stepUp){status(out,'Step-Up مطلوب لتغيير سياسة AutoSSL.','error');return;}
+    const domain=selectedDomain();if(!domain){status(out,'اختر موقعًا أولًا.','error');return;}
+    const fd=new FormData(event.currentTarget);
+    const payload={domain,contact_email:String(fd.get('contact_email')||'').trim().toLowerCase(),auto_renew:event.currentTarget.elements.auto_renew.checked,renew_before_days:Number(fd.get('renew_before_days')||30)};
+    try{await api('/api/domains/ssl-policy',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});status(out,'تم حفظ سياسة AutoSSL. الـworker يفحص السياسات كل 6 ساعات مع Randomized Delay.','ok');await loadLifecycle();}
+    catch(err){status(out,err.status===428?'انتهت نافذة Step-Up؛ أعد التحقق.':err.message,'error');}
+  });
+
+  $('#domainSslIssue')?.addEventListener('click',async()=>{
+    const out=$('#domainSslStatus');if(!stepUp){status(out,'Step-Up مطلوب.','error');return;}
+    const domain=selectedDomain(),email=String($('#sslPolicyForm')?.elements.contact_email.value||'').trim().toLowerCase();
+    if(!domain||!email){status(out,'اختر موقعًا وأدخل Contact Email أولًا.','error');return;}
+    try{status(out,'جاري طلب الشهادة والتحقق من NGINX…','');await api('/api/domains/ssl/issue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain,contact_email:email})});status(out,'تم إصدار/ربط الشهادة بنجاح.','ok');await loadLifecycle();}
+    catch(err){status(out,err.message,'error');}
+  });
+  $('#domainSslRenew')?.addEventListener('click',async()=>{
+    const out=$('#domainSslStatus');if(!stepUp){status(out,'Step-Up مطلوب.','error');return;}
+    const domain=selectedDomain();if(!domain){status(out,'اختر موقعًا أولًا.','error');return;}
+    try{status(out,'جاري فحص وتجديد الشهادة…','');await api('/api/domains/ssl/renew',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain})});status(out,'اكتملت دورة التجديد وربط NGINX.','ok');await loadLifecycle();}
+    catch(err){status(out,err.message,'error');}
   });
 
   $('#redirectForm')?.addEventListener('submit',async event=>{
@@ -133,5 +186,5 @@
     catch(err){status($('#errorPageStatus'),err.message,'error');}
   });
 
-  loadSites().catch(err=>status($('#redirectStatus'),`تعذر تحميل Web Tools: ${err.message}`,'error'));
+  loadSites().catch(err=>status($('#domainAliasStatus'),`تعذر تحميل Domain Control Center: ${err.message}`,'error'));
 })();
