@@ -17,7 +17,7 @@ from pathlib import Path
 SOCKET_PATH = Path(os.environ.get("NVP_TRANSFER_SOCK", "/run/nexvary-panel/transfer.sock"))
 SITE_BASE = Path("/var/www")
 CHROOT_BASE = Path("/srv/nexvary-sftp")
-KEY_DIR = Path("/etc/nexvary-panel/sftp-keys")
+KEY_DIR = Path("/etc/ssh/nexvary-authorized-keys")
 TRACK_DIR = Path("/etc/nexvary-panel/sftp-mounts")
 SSHD_SNIPPET = Path("/etc/ssh/sshd_config.d/90-nexvary-sftp.conf")
 DOMAIN_RE = re.compile(r"^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$")
