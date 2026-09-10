@@ -10,6 +10,7 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 from pathlib import Path
 
 SOCKET_PATH = Path(os.environ.get("NVP_TRANSFER_SOCK", "/run/nexvary-panel/transfer.sock"))
@@ -29,7 +30,10 @@ ENV = {"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "
 def _run(args: list[str], timeout: int = 25, ok_codes: tuple[int, ...] = (0,)) -> subprocess.CompletedProcess:
     proc = subprocess.run(args, capture_output=True, text=True, timeout=timeout, env=ENV, check=False)
     if proc.returncode not in ok_codes:
-        raise RuntimeError("transfer-provider-command-failed")
+        command = Path(args[0]).name[:40]
+        tail = (proc.stderr or proc.stdout or "").strip().replace("\n", " ")[-240:]
+        print(f"transfer command failed: {command} rc={proc.returncode} detail={tail}", file=sys.stderr, flush=True)
+        raise RuntimeError(f"transfer-provider-command-failed:{command}:{proc.returncode}")
     return proc
 
 
@@ -139,45 +143,27 @@ def _mount_target(system_user: str) -> Path:
     return CHROOT_BASE / system_user / "site"
 
 
-def _mount_unit(path: Path) -> str:
-    proc = _run(["systemd-escape", "--path", "--suffix=mount", str(path)], timeout=10)
-    unit = proc.stdout.strip()
-    if not unit.endswith(".mount") or len(unit) > 240:
-        raise RuntimeError("invalid-transfer-mount-unit")
-    return unit
-
-
 def _is_mountpoint(path: Path) -> bool:
-    try:
-        unit = _mount_unit(path)
-    except Exception:
-        return False
-    proc = subprocess.run(["systemctl", "is-active", unit], capture_output=True, text=True, timeout=8, env=ENV, check=False)
-    return proc.stdout.strip() == "active"
+    proc = subprocess.run(["mountpoint", "-q", "--", str(path)], capture_output=True, text=True, timeout=8, env=ENV, check=False)
+    return proc.returncode == 0
 
 
 def _mount_site(site: Path, target: Path) -> None:
     if _is_mountpoint(target):
         return
-    # systemd-mount asks PID 1 to create the bind mount in the host mount namespace.
-    # This is required because the Transfer Agent itself is filesystem-namespaced/hardened.
-    _run(["systemd-mount", "--no-block", "--collect", "--bind", str(site), str(target)], timeout=20)
-    unit = _mount_unit(target)
-    for _ in range(20):
-        proc = subprocess.run(["systemctl", "is-active", unit], capture_output=True, text=True, timeout=5, env=ENV, check=False)
-        if proc.stdout.strip() == "active":
-            return
-        import time
-        time.sleep(0.2)
-    raise RuntimeError("transfer-mount-did-not-activate")
+    # The transfer agent deliberately has CAP_SYS_ADMIN and no private mount namespace.
+    # A direct bind mount is simpler and remains visible to sshd on the host.
+    _run(["mount", "--bind", "--", str(site), str(target)], timeout=20)
+    if not _is_mountpoint(target):
+        raise RuntimeError("transfer-mount-did-not-activate")
 
 
 def _unmount_site(target: Path) -> None:
     if not _is_mountpoint(target):
         return
-    _run(["systemd-mount", "--umount", str(target)], timeout=20)
-    unit = _mount_unit(target)
-    subprocess.run(["systemctl", "reset-failed", unit], capture_output=True, text=True, timeout=8, env=ENV, check=False)
+    _run(["umount", "--", str(target)], timeout=20)
+    if _is_mountpoint(target):
+        raise RuntimeError("transfer-unmount-did-not-complete")
 
 
 def _apply_acl(system_user: str, site: Path) -> None:
@@ -205,7 +191,7 @@ def _ensure_mount(system_user: str, domain: str) -> None:
 
 
 def provider_status() -> dict:
-    required = ["sshd", "systemd-mount", "systemd-escape", "systemctl", "setfacl", "useradd", "userdel"]
+    required = ["sshd", "mount", "umount", "mountpoint", "setfacl", "useradd", "userdel"]
     if any(shutil.which(name) is None for name in required):
         return {"ok": False, "error": "sftp-provider-not-installed"}
     try:
@@ -294,8 +280,8 @@ def _reconcile_mounts() -> None:
             domain = _valid_domain(path.read_text(encoding="utf-8").strip())
             if _account_exists(path.name):
                 _ensure_mount(path.name, domain)
-        except Exception:
-            continue
+        except Exception as exc:
+            print(f"transfer reconcile skipped {path.name}: {type(exc).__name__}", file=sys.stderr, flush=True)
 
 
 def _dispatch(data: dict) -> dict:
@@ -328,7 +314,10 @@ def _serve_client(conn: socket.socket) -> None:
             result = _dispatch(payload)
         except ValueError as exc:
             result = {"ok": False, "error": str(exc)[:100] or "invalid-transfer-request"}
-        except Exception:
+        except RuntimeError as exc:
+            result = {"ok": False, "error": str(exc)[:120] or "transfer-provider-operation-failed"}
+        except Exception as exc:
+            print(f"transfer provider operation failed: {type(exc).__name__}", file=sys.stderr, flush=True)
             result = {"ok": False, "error": "transfer-provider-operation-failed"}
     conn.sendall((json.dumps(result, separators=(",", ":")) + "\n").encode())
 
