@@ -38,7 +38,7 @@ for(const css of ['/static/royal-workspaces.css','/static/royal-workspace-entiti
   if(await page.locator(`link[href="${css}"]`).count()!==1) throw new Error(`Royal workspace stylesheet missing: ${css}`);
 }
 
-const pages=['hosting','sites','databases','files','security','backups','users','fusion','integrations','wordpress','deploy','docker','services','dns','notifications','audit','vault'];
+const pages=['hosting','sites','webtools','databases','files','security','backups','users','fusion','integrations','wordpress','deploy','docker','services','dns','notifications','audit','vault'];
 const iconColors=[];
 const accentValues=[];
 for(const id of pages){
@@ -65,6 +65,12 @@ for(const id of pages){
 if(new Set(accentValues).size<7) throw new Error(`Internal workspace accent palette is not diverse enough: ${new Set(accentValues).size} colors`);
 if(new Set(iconColors).size<7) throw new Error(`Internal workspace hero icon palette is not diverse enough: ${new Set(iconColors).size} colors`);
 
+await open(page,'webtools');
+for(const selector of ['#domainAliasForm','#domainAliasList','#domainAliasQuota']){
+  if(await page.locator(selector).count()!==1) throw new Error(`Domain Lifecycle control missing: ${selector}`);
+}
+if(!await page.locator('#webtools').getByText('DOMAIN LIFECYCLE',{exact:true}).count()) throw new Error('Domain Lifecycle workspace marker missing');
+
 await open(page,'dns');
 const dnsCards=page.locator('#dns .dns-summary-card');
 if(await dnsCards.count()<2) throw new Error('DNS summary cards missing for frame alternation test');
@@ -74,13 +80,15 @@ if(c1===c2) throw new Error('Silver / electric-black internal frame alternation 
 
 const mobile=await browser.newPage({viewport:{width:390,height:844}});
 await login(mobile);
-for(const id of ['hosting','sites','files','security','backups','dns','fusion']){
+for(const id of ['hosting','sites','webtools','files','security','backups','dns','fusion']){
   await open(mobile,id);
   await onlyVisible(mobile,id);
   const hero=mobile.locator(`#${id}.active-view > .workspace-hero`);
   if(await hero.count()!==1) throw new Error(`${id}: mobile royal hero missing`);
   await noOverflow(mobile,`${id} mobile`);
 }
+await open(mobile,'webtools');
+if(await mobile.locator('#domainAliasForm').count()!==1) throw new Error('Domain Lifecycle form missing on mobile');
 await mobile.screenshot({path:`${out}/nexvary-panel-0.7-royal-internal-mobile.png`,fullPage:false});
 
 await browser.close();
