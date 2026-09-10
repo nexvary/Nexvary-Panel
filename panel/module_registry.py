@@ -6,6 +6,7 @@ from typing import Callable, Iterable
 from flask import Flask
 
 from .account_schema import ensure_account_schema
+from .domain_schema import ensure_domain_schema
 from .mail_schema import ensure_mail_schema
 from .ops_schema import ensure_ops_schema
 from .transfer_schema import ensure_transfer_schema
@@ -13,6 +14,7 @@ from .routes_accounts import register_account_routes
 from .routes_advanced_ops import register_advanced_ops_routes
 from .routes_auth import register_auth_routes
 from .routes_dns import register_dns_routes
+from .routes_domains import register_domain_routes
 from .routes_fusion import register_fusion_routes
 from .routes_health import register_health_routes
 from .routes_hosting import register_hosting_routes
@@ -56,17 +58,18 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("security", "Security", "security", register_security_routes, depends_on=("auth",), feature_prefixes=("security.",), ui_view="security"),
     PanelModule("health", "Health and Doctor", "observability", register_health_routes, depends_on=("auth",), ui_view="services"),
     PanelModule("fusion", "Fusion Providers", "providers", register_fusion_routes, depends_on=("auth",), ui_view="fusion"),
-    PanelModule("dns", "DNS Inventory", "hosting", register_dns_routes, depends_on=("sites",), feature_prefixes=("domains.dns",), ui_view="dns"),
+    PanelModule("dns", "DNS Inventory", "hosting", register_dns_routes, depends_on=("sites",), feature_prefixes=("domains.",), ui_view="dns"),
     PanelModule("vault", "Secret Vault", "security", register_vault_routes, depends_on=("auth",), provider_services=("nexvary-panel-vault",), ui_view="vault", maturity="provider"),
     PanelModule("integrations", "Integration Targets", "providers", register_integration_routes, depends_on=("vault",), provider_services=("nexvary-panel-provider",), ui_view="integrations", maturity="provider"),
     PanelModule("remote_backup", "Remote Backup", "hosting", register_remote_backup_routes, depends_on=("integrations",), feature_prefixes=("files.backups",), provider_services=("nexvary-panel-provider",), ui_view="backups", maturity="provider"),
     PanelModule("hosting", "Hosting Suite", "hosting", register_hosting_routes, depends_on=("auth",), ui_view="hosting"),
+    PanelModule("domains", "Domain Lifecycle", "hosting", register_domain_routes, schema_hook=ensure_domain_schema, depends_on=("hosting", "sites"), feature_prefixes=("domains.",), provider_services=("nexvary-panel-webtools",), ui_view="webtools", maturity="provider"),
     PanelModule("webtools", "Web Tools", "hosting", register_webtools_routes, depends_on=("hosting", "sites"), feature_prefixes=("domains.", "metrics."), provider_services=("nexvary-panel-webtools",), ui_view="webtools", maturity="provider"),
     PanelModule("schedules", "Scheduled Tasks", "automation", register_schedule_routes, depends_on=("hosting", "sites"), feature_prefixes=("advanced.cron",), provider_services=("nexvary-panel-scheduler",), ui_view="schedules", maturity="provider"),
-    PanelModule("accounts", "Accounts and Resellers", "hosting", register_account_routes, schema_hook=ensure_account_schema, depends_on=("hosting",), feature_prefixes=("server.accounts", "server.resellers"), ui_view="accounts"),
+    PanelModule("accounts", "Accounts and Resellers", "hosting", register_account_routes, schema_hook=ensure_account_schema, depends_on=("hosting",), feature_prefixes=("whm.accounts", "whm.resellers"), ui_view="accounts"),
     PanelModule("mail", "Email Center", "hosting", register_mail_routes, schema_hook=ensure_mail_schema, depends_on=("accounts", "sites"), feature_prefixes=("email.",), provider_services=("nexvary-panel-mail",), ui_view="mail", maturity="provider"),
     PanelModule("transfers", "Transfer Center", "hosting", register_transfer_routes, schema_hook=ensure_transfer_schema, depends_on=("accounts", "sites"), feature_prefixes=("files.ftp", "files.sftp"), provider_services=("nexvary-panel-transfer",), ui_view="transfers", maturity="provider"),
-    PanelModule("advanced_ops", "Advanced Hosting Ops", "server", register_advanced_ops_routes, schema_hook=ensure_ops_schema, depends_on=("hosting", "sites", "integrations"), feature_prefixes=("domains.", "security.ssl", "email.", "software.php", "databases.postgresql", "server."), provider_services=("nexvary-panel-ops", "nexvary-panel-postgres"), ui_view="advancedops", maturity="provider"),
+    PanelModule("advanced_ops", "Advanced Hosting Ops", "server", register_advanced_ops_routes, schema_hook=ensure_ops_schema, depends_on=("hosting", "sites", "integrations"), feature_prefixes=("domains.", "security.ssl", "email.", "software.php", "databases.postgresql", "whm."), provider_services=("nexvary-panel-ops", "nexvary-panel-postgres"), ui_view="advancedops", maturity="provider"),
 )
 
 
