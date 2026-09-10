@@ -7,12 +7,13 @@ import os
 import socket
 import sqlite3
 import time
-from datetime import datetime, timezone
+from datetime import timezone
 from pathlib import Path
 
 DB_PATH = Path(os.environ.get("NVP_DB_PATH", "/var/lib/nexvary-panel/panel.db"))
 OPS_SOCK = Path(os.environ.get("NVP_OPS_SOCK", "/run/nexvary-panel/ops.sock"))
 MAX_REPLY = 256 * 1024
+SSL_FEATURE = "security.ssl_tls"
 
 
 def _ops(payload: dict, timeout: int = 240) -> dict:
@@ -56,6 +57,33 @@ def _expiry_epoch(detail: object) -> int | None:
     return None
 
 
+def _ssl_allowed(conn: sqlite3.Connection, owner: str) -> bool:
+    """Mirror the account SSL entitlement without importing Flask/session code.
+
+    Admin always retains server SSL capability. Non-admin users must be enabled and
+    have an enabled package. The explicit package feature override wins; otherwise
+    SSL/TLS is part of the default account feature set used by the control plane.
+    """
+    if owner == "admin":
+        return True
+    user = conn.execute("SELECT role,enabled FROM users WHERE username=?", (owner,)).fetchone()
+    if not user or not int(user["enabled"]):
+        return False
+    package = conn.execute(
+        """SELECT p.id FROM user_hosting_package u JOIN hosting_packages p ON p.id=u.package_id
+           WHERE u.username=? AND p.enabled=1""", (owner,)
+    ).fetchone()
+    if package is None:
+        package = conn.execute("SELECT id FROM hosting_packages WHERE name='NEXVARY Core' AND enabled=1").fetchone()
+    if package is None:
+        return False
+    explicit = conn.execute(
+        "SELECT enabled FROM hosting_package_features WHERE package_id=? AND feature_id=?",
+        (int(package["id"]), SSL_FEATURE),
+    ).fetchone()
+    return bool(int(explicit["enabled"])) if explicit is not None else True
+
+
 def _record(conn: sqlite3.Connection, domain: str, owner: str, status: str, detail: str, *, renewed: bool = False) -> None:
     now = int(time.time())
     conn.execute(
@@ -85,8 +113,11 @@ def run_once() -> int:
         for row in rows:
             domain = str(row["domain"])
             owner = str(row["owner"])
-            # Avoid repeated attempts if the timer is manually triggered many times.
             if int(row["last_check"] or 0) > now - 3600:
+                continue
+            if not _ssl_allowed(conn, owner):
+                _record(conn, domain, owner, "policy-disabled", "security.ssl_tls disabled or account inactive; no provider action executed")
+                conn.commit()
                 continue
             status = _ops({"action": "ssl-status", "domain": domain}, timeout=20)
             if not status.get("ok"):
@@ -94,12 +125,12 @@ def run_once() -> int:
                 conn.commit()
                 continue
             if not status.get("installed"):
-                email = str(row["contact_email"] or "").strip().lower()
-                if not email:
+                contact = str(row["contact_email"] or "").strip().lower()
+                if not contact:
                     _record(conn, domain, owner, "needs-contact", "certificate missing; contact email required for automatic issuance")
                     conn.commit()
                     continue
-                result = _ops({"action": "ssl-issue", "domain": domain, "email": email})
+                result = _ops({"action": "ssl-issue", "domain": domain, "email": contact})
                 _record(conn, domain, owner, "valid" if result.get("ok") else "issue-failed", str(result.get("detail", result.get("error", ""))), renewed=bool(result.get("ok")))
                 conn.commit()
                 continue
