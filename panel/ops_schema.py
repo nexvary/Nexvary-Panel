@@ -47,6 +47,21 @@ def ensure_ops_schema() -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_ssl_jobs_owner_domain ON ssl_jobs(owner,domain,created_at);
 
+        CREATE TABLE IF NOT EXISTS ssl_policies (
+          domain TEXT PRIMARY KEY,
+          owner TEXT NOT NULL,
+          contact_email TEXT NOT NULL DEFAULT '',
+          auto_renew INTEGER NOT NULL DEFAULT 0,
+          renew_before_days INTEGER NOT NULL DEFAULT 30,
+          last_check INTEGER NOT NULL DEFAULT 0,
+          last_renewal INTEGER NOT NULL DEFAULT 0,
+          last_status TEXT NOT NULL DEFAULT 'unknown',
+          last_detail TEXT NOT NULL DEFAULT '',
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY(domain) REFERENCES sites(domain) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_ssl_policies_auto ON ssl_policies(auto_renew,last_check);
+
         CREATE TABLE IF NOT EXISTS php_runtime_assignments (
           domain TEXT PRIMARY KEY,
           version TEXT NOT NULL,
