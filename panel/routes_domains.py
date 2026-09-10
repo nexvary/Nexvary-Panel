@@ -50,6 +50,10 @@ def _ssl_feature_for_owner(conn, owner: str) -> bool:
     return "security.ssl_tls" in enabled_features(conn, package_id, role)
 
 
+def _package_limit_for_owner(conn, limit_name: str, owner: str) -> int:
+    return package_limit(limit_name, username=owner, role=_owner_role(conn, owner), connection=conn)
+
+
 def register_domain_routes(app):
     @app.get("/api/domains/aliases")
     @role_required("admin", "operator")
@@ -66,7 +70,7 @@ def register_domain_routes(app):
             rows = _alias_rows(conn, domain)
             owner = str(site["owner"])
             used = int(conn.execute("SELECT COUNT(*) FROM domain_aliases WHERE owner=?", (owner,)).fetchone()[0])
-            limit = package_limit("max_subdomains", username=owner, role=_owner_role(conn, owner))
+            limit = _package_limit_for_owner(conn, "max_subdomains", owner)
         return jsonify(ok=True, domain=domain, aliases=rows, quota={"used": used, "limit": limit, "remaining": max(0, limit-used)})
 
     @app.get("/api/domains/lifecycle")
@@ -95,7 +99,7 @@ def register_domain_routes(app):
                 (domain,),
             ).fetchone()
             ssl_allowed = _ssl_feature_for_owner(conn, owner)
-            limit = package_limit("max_subdomains", username=owner, role=_owner_role(conn, owner))
+            limit = _package_limit_for_owner(conn, "max_subdomains", owner)
             used = int(conn.execute("SELECT COUNT(*) FROM domain_aliases WHERE owner=?", (owner,)).fetchone()[0])
         ssl = ops_call({"action": "ssl-status", "domain": domain}, timeout=10) if ssl_allowed else {"ok": False, "error": "security.ssl_tls disabled by hosting policy"}
         suggestions = [
@@ -132,7 +136,7 @@ def register_domain_routes(app):
                 return jsonify(ok=False, error="site outside your scope"), 403
             owner = str(site["owner"])
             used = int(conn.execute("SELECT COUNT(*) FROM domain_aliases WHERE owner=?", (owner,)).fetchone()[0])
-            limit = package_limit("max_subdomains", username=owner, role=_owner_role(conn, owner))
+            limit = _package_limit_for_owner(conn, "max_subdomains", owner)
             if limit <= 0 or used >= limit:
                 return jsonify(ok=False, error="domain alias/subdomain quota reached"), 409
             if conn.execute("SELECT 1 FROM sites WHERE domain=?", (alias,)).fetchone() or conn.execute("SELECT 1 FROM hosting_accounts WHERE primary_domain=?", (alias,)).fetchone():
