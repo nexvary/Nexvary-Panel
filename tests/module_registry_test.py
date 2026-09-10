@@ -15,14 +15,15 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     os.environ["NVP_COOKIE_SECURE"] = "0"
 
     from panel import create_app
+    from panel.db_layer import db
     from panel.module_registry import MODULES, module_catalog, validate_modules
 
     modules = validate_modules()
-    assert len(modules) >= 18
+    assert len(modules) >= 19
     assert tuple(modules) == MODULES
     ids = [m.id for m in modules]
     assert len(ids) == len(set(ids))
-    assert {"hosting", "accounts", "mail", "transfers", "advanced_ops", "security", "vault"}.issubset(ids)
+    assert {"hosting", "domains", "accounts", "mail", "transfers", "advanced_ops", "security", "vault"}.issubset(ids)
 
     catalog = module_catalog()
     assert len(catalog) == len(modules)
@@ -30,7 +31,10 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     assert "nexvary-panel-mail" in by_id["mail"]["provider_services"]
     assert "nexvary-panel-transfer" in by_id["transfers"]["provider_services"]
     assert "nexvary-panel-postgres" in by_id["advanced_ops"]["provider_services"]
+    assert "nexvary-panel-webtools" in by_id["domains"]["provider_services"]
+    assert by_id["domains"]["has_schema"] is True
     assert "email." in by_id["mail"]["feature_prefixes"]
+    assert "domains." in by_id["domains"]["feature_prefixes"]
 
     app = create_app()
     endpoints = [rule.endpoint for rule in app.url_map.iter_rules()]
@@ -39,11 +43,16 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     for path in (
         "/login",
         "/api/hosting/catalog",
+        "/api/domains/aliases",
         "/api/accounts",
         "/api/mail",
         "/api/transfers",
         "/api/advanced/status",
     ):
         assert path in routes, f"missing module route: {path}"
+
+    with db() as conn:
+        tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        assert "domain_aliases" in tables
 
 print("Nexvary Panel module registry architecture gate: PASS")
