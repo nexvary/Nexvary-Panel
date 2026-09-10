@@ -93,6 +93,13 @@ def _atomic_write(path: Path, data: bytes, mode: int = 0o640) -> None:
             pass
 
 
+def _restore_optional(path: Path, content: bytes | None, mode: int) -> None:
+    if content is None:
+        path.unlink(missing_ok=True)
+    else:
+        _atomic_write(path, content, mode)
+
+
 def _managed_dir(domain: str) -> Path:
     domain = _valid_domain(domain)
     target = MANAGED_BASE / domain
@@ -128,6 +135,16 @@ def _ensure_managed_include(domain: str) -> tuple[Path, bytes | None]:
 def _restore(path: Path, content: bytes | None) -> None:
     if content is not None:
         _atomic_write(path, content, 0o644)
+
+
+def _rollback_nginx(conf: Path, old_conf: bytes | None, include_file: Path, old_include: bytes | None,
+                    extra_restore=None) -> None:
+    _restore(conf, old_conf)
+    _restore_optional(include_file, old_include, 0o640)
+    if extra_restore is not None:
+        extra_restore()
+    _run(["nginx", "-t"])
+    _run(["systemctl", "reload", "nginx"])
 
 
 def _safe_redirect_target(value: object) -> str:
@@ -192,16 +209,12 @@ def sync_redirects(domain: str, rules: object) -> dict:
         _atomic_write(include_file, ("\n".join(lines) + "\n").encode(), 0o640)
         test = _run(["nginx", "-t"])
         if not test.get("ok"):
-            _restore(conf, old_conf)
-            if old_include is None:
-                include_file.unlink(missing_ok=True)
-            else:
-                _atomic_write(include_file, old_include, 0o640)
-            _run(["nginx", "-t"])
+            _rollback_nginx(conf, old_conf, include_file, old_include)
             return {"ok": False, "error": "redirect configuration rejected; previous configuration restored"}
         reload_result = _run(["systemctl", "reload", "nginx"])
         if not reload_result.get("ok"):
-            return {"ok": False, "error": "redirects validated but NGINX reload failed"}
+            _rollback_nginx(conf, old_conf, include_file, old_include)
+            return {"ok": False, "error": "NGINX reload failed; previous redirect configuration restored"}
         return {"ok": True, "meta": {"rules": len(normalized)}}
     except (OSError, ValueError):
         return {"ok": False, "error": "redirect synchronization failed"}
@@ -240,6 +253,17 @@ def sync_error_pages(domain: str, pages: object) -> dict:
         uid, gid = pwd.getpwnam("www-data").pw_uid, grp.getgrnam("www-data").gr_gid
         os.chown(error_dir, uid, gid)
         os.chmod(error_dir, 0o750)
+        old_pages: dict[int, bytes | None] = {}
+        for code in ALLOWED_ERROR_CODES:
+            path = error_dir / f"{code}.html"
+            old_pages[code] = path.read_bytes() if _safe_regular(path, required=False) else None
+
+        def restore_pages() -> None:
+            for restore_code, content in old_pages.items():
+                path = error_dir / f"{restore_code}.html"
+                _restore_optional(path, content, 0o640)
+                if content is not None:
+                    os.chown(path, uid, gid)
 
         for code in ALLOWED_ERROR_CODES:
             path = error_dir / f"{code}.html"
@@ -257,16 +281,12 @@ def sync_error_pages(domain: str, pages: object) -> dict:
         _atomic_write(include_file, ("\n".join(lines) + "\n").encode(), 0o640)
         test = _run(["nginx", "-t"])
         if not test.get("ok"):
-            _restore(conf, old_conf)
-            if old_include is None:
-                include_file.unlink(missing_ok=True)
-            else:
-                _atomic_write(include_file, old_include, 0o640)
-            _run(["nginx", "-t"])
-            return {"ok": False, "error": "error page configuration rejected; previous NGINX configuration restored"}
+            _rollback_nginx(conf, old_conf, include_file, old_include, restore_pages)
+            return {"ok": False, "error": "error page configuration rejected; previous state restored"}
         reload_result = _run(["systemctl", "reload", "nginx"])
         if not reload_result.get("ok"):
-            return {"ok": False, "error": "error pages validated but NGINX reload failed"}
+            _rollback_nginx(conf, old_conf, include_file, old_include, restore_pages)
+            return {"ok": False, "error": "NGINX reload failed; previous error-page state restored"}
         return {"ok": True, "meta": {"pages": len(normalized)}}
     except (OSError, ValueError):
         return {"ok": False, "error": "error page synchronization failed"}
