@@ -16,3 +16,5 @@ python tests/advanced_ops_test.py
 python tests/module_registry_test.py
 python tests/entitlements_test.py
 python tests/session_revocation_test.py
+python tests/domain_agent_test.py
+python tests/domain_lifecycle_test.py
