@@ -7,6 +7,7 @@ import json
 import os
 import pwd
 import re
+import secrets
 import shutil
 import socket
 import subprocess
@@ -35,6 +36,25 @@ def _run(args: list[str], timeout: int = 25, ok_codes: tuple[int, ...] = (0,)) -
         print(f"transfer command failed: {command} rc={proc.returncode} detail={tail}", file=sys.stderr, flush=True)
         raise RuntimeError(f"transfer-provider-command-failed:{command}:{proc.returncode}")
     return proc
+
+
+def _random_login_hash() -> str:
+    if shutil.which("openssl") is None:
+        raise RuntimeError("openssl-not-installed")
+    secret = secrets.token_urlsafe(48)
+    proc = subprocess.run(
+        ["openssl", "passwd", "-6", "-stdin"],
+        input=secret + "\n",
+        capture_output=True,
+        text=True,
+        timeout=10,
+        env=ENV,
+        check=False,
+    )
+    password_hash = proc.stdout.strip()
+    if proc.returncode != 0 or not password_hash.startswith("$6$") or len(password_hash) > 255:
+        raise RuntimeError("transfer-password-hash-failed")
+    return password_hash
 
 
 def _valid_domain(domain: str) -> str:
@@ -151,8 +171,6 @@ def _is_mountpoint(path: Path) -> bool:
 def _mount_site(site: Path, target: Path) -> None:
     if _is_mountpoint(target):
         return
-    # The transfer agent deliberately has CAP_SYS_ADMIN and no private mount namespace.
-    # A direct bind mount is simpler and remains visible to sshd on the host.
     _run(["mount", "--bind", "--", str(site), str(target)], timeout=20)
     if not _is_mountpoint(target):
         raise RuntimeError("transfer-mount-did-not-activate")
@@ -191,7 +209,7 @@ def _ensure_mount(system_user: str, domain: str) -> None:
 
 
 def provider_status() -> dict:
-    required = ["sshd", "mount", "umount", "mountpoint", "setfacl", "useradd", "userdel"]
+    required = ["sshd", "mount", "umount", "mountpoint", "setfacl", "useradd", "userdel", "openssl"]
     if any(shutil.which(name) is None for name in required):
         return {"ok": False, "error": "sftp-provider-not-installed"}
     try:
@@ -217,7 +235,8 @@ def account_create(system_user: str, domain: str, public_key: str) -> dict:
         return {"ok": False, "error": "transfer-user-conflict"}
     created_user = False
     try:
-        _run(["useradd", "--system", "--gid", "nexvary-sftp", "--no-create-home", "--home-dir", "/site", "--shell", "/usr/sbin/nologin", "--password", "*", "--", system_user])
+        password_hash = _random_login_hash()
+        _run(["useradd", "--system", "--gid", "nexvary-sftp", "--no-create-home", "--home-dir", "/site", "--shell", "/usr/sbin/nologin", "--password", password_hash, "--", system_user])
         created_user = True
         _atomic_key(system_user, public_key)
         _write_tracking(system_user, domain)
