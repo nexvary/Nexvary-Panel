@@ -7,30 +7,9 @@ from pathlib import Path
 
 from flask import Flask
 
-from .account_schema import ensure_account_schema
-from .mail_schema import ensure_mail_schema
-from .transfer_schema import ensure_transfer_schema
-from .ops_schema import ensure_ops_schema
 from .config import VERSION
 from .core import csrf_guard, csrf_token, ensure_schema_columns
-from .routes_auth import register_auth_routes
-from .routes_ops import register_ops_routes
-from .routes_sites import register_site_routes
-from .routes_platform import register_platform_routes
-from .routes_security import register_security_routes
-from .routes_health import register_health_routes
-from .routes_fusion import register_fusion_routes
-from .routes_dns import register_dns_routes
-from .routes_vault import register_vault_routes
-from .routes_integrations import register_integration_routes
-from .routes_remote_backup import register_remote_backup_routes
-from .routes_hosting import register_hosting_routes
-from .routes_webtools import register_webtools_routes
-from .routes_schedules import register_schedule_routes
-from .routes_accounts import register_account_routes
-from .routes_mail import register_mail_routes
-from .routes_transfers import register_transfer_routes
-from .routes_advanced_ops import register_advanced_ops_routes
+from .module_registry import initialize_module_schemas, register_modules
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -46,10 +25,7 @@ def create_app() -> Flask:
         MAX_CONTENT_LENGTH=16 * 1024 * 1024,
     )
     ensure_schema_columns()
-    ensure_account_schema()
-    ensure_mail_schema()
-    ensure_transfer_schema()
-    ensure_ops_schema()
+    initialize_module_schemas()
     app.before_request(csrf_guard)
     app.jinja_env.globals.update(csrf_token=csrf_token, panel_version=VERSION)
 
@@ -66,22 +42,5 @@ def create_app() -> Flask:
             n /= 1024
         return f"{n:.1f} TB"
 
-    register_auth_routes(app)
-    register_site_routes(app)
-    register_ops_routes(app)
-    register_platform_routes(app)
-    register_security_routes(app)
-    register_health_routes(app)
-    register_fusion_routes(app)
-    register_dns_routes(app)
-    register_vault_routes(app)
-    register_integration_routes(app)
-    register_remote_backup_routes(app)
-    register_hosting_routes(app)
-    register_webtools_routes(app)
-    register_schedule_routes(app)
-    register_account_routes(app)
-    register_mail_routes(app)
-    register_transfer_routes(app)
-    register_advanced_ops_routes(app)
+    register_modules(app)
     return app
