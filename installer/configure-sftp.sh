@@ -5,11 +5,12 @@ command -v sshd >/dev/null || { echo 'openssh-server is required'; exit 2; }
 command -v setfacl >/dev/null || { echo 'acl package is required'; exit 2; }
 
 getent group nexvary-sftp >/dev/null || groupadd --system nexvary-sftp
-install -d -m 0700 -o root -g root /etc/nexvary-panel/sftp-keys /etc/nexvary-panel/sftp-mounts
+# Public keys are not secrets. OpenSSH may read AuthorizedKeysFile under the
+# target account's credentials, so the central directory must be traversable
+# by the SFTP group while remaining root-owned and non-writable.
+install -d -m 0750 -o root -g nexvary-sftp /etc/nexvary-panel/sftp-keys
+install -d -m 0700 -o root -g root /etc/nexvary-panel/sftp-mounts
 install -d -m 0755 -o root -g root /srv/nexvary-sftp
-# Some clean/cloud runners do not have sshd's volatile privilege-separation directory
-# until the service has started once. Create it explicitly before `sshd -t` so the
-# configuration gate validates our SFTP policy rather than failing on runtime setup.
 install -d -m 0755 -o root -g root /run/sshd
 
 cat > /etc/ssh/sshd_config.d/90-nexvary-sftp.conf <<'EOF'
