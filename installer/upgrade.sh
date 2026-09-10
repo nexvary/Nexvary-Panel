@@ -52,7 +52,7 @@ install -m 0750 -o root -g root agent/mail_agent.py /opt/nexvary-panel-agent/mai
 install -m 0750 -o root -g root agent/transfer_agent.py /opt/nexvary-panel-agent/transfer_agent.py
 install -m 0750 -o root -g root agent/hosting_ops_agent.py /opt/nexvary-panel-agent/hosting_ops_agent.py
 install -m 0750 -o root -g root agent/hosting_ops_entry.py /opt/nexvary-panel-agent/hosting_ops_entry.py
-install -m 0750 -o root -g root agent/postgres_agent.py /opt/nexvary-panel-agent/postgres_agent.py
+install -m 0750 -o root -g nexvary-panel agent/postgres_agent.py /opt/nexvary-panel-agent/postgres_agent.py
 install -m 0644 systemd/nexvary-panel.service /etc/systemd/system/nexvary-panel.service
 install -m 0644 systemd/nexvary-panel-agent.service /etc/systemd/system/nexvary-panel-agent.service
 install -m 0644 systemd/nexvary-panel-vault.service /etc/systemd/system/nexvary-panel-vault.service
