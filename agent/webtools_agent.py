@@ -7,6 +7,7 @@ import os
 import socket
 from pathlib import Path
 
+from domain_ops import sync_domain_aliases
 from webtools import site_metrics, sync_error_pages, sync_redirects
 
 SOCK = Path(os.environ.get("NVP_WEBTOOLS_SOCK", "/run/nexvary-panel/webtools.sock"))
@@ -23,6 +24,8 @@ def handle(req: dict) -> dict:
         return sync_redirects(req.get("domain", ""), req.get("rules", []))
     if action == "error-page-sync":
         return sync_error_pages(req.get("domain", ""), req.get("pages", []))
+    if action == "domain-alias-sync":
+        return sync_domain_aliases(req.get("domain", ""), req.get("aliases", []))
     if action == "site-metrics":
         try:
             return site_metrics(req.get("domain", ""))
