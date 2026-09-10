@@ -2,14 +2,14 @@
 Description=Nexvary Panel Advanced Hosting Ops Agent
 After=network.target nginx.service mariadb.service
 Wants=nginx.service mariadb.service
-ConditionPathExists=/opt/nexvary-panel-agent/hosting_ops_agent.py
+ConditionPathExists=/opt/nexvary-panel-agent/hosting_ops_entry.py
 
 [Service]
 Type=simple
 User=root
 Group=root
 WorkingDirectory=/opt/nexvary-panel-agent
-ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/hosting_ops_agent.py
+ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/hosting_ops_entry.py
 Restart=on-failure
 RestartSec=3
 UMask=0077
@@ -28,7 +28,7 @@ RestrictRealtime=true
 SystemCallArchitectures=native
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 ReadOnlyPaths=/etc/nexvary-panel/credentials
-ReadWritePaths=/etc/nginx -/etc/letsencrypt -/var/lib/letsencrypt -/var/log/letsencrypt /var/www /var/backups/nexvary-panel /run/nexvary-panel
+ReadWritePaths=/etc/nginx -/etc/letsencrypt -/var/lib/letsencrypt -/var/log/letsencrypt /var/www /var/backups/nexvary-panel /run/nexvary-panel -/run/nexvary-panel-postgres
 
 [Install]
 WantedBy=multi-user.target
