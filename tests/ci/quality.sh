@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 python -m compileall -q app.py panel agent tests
-bash -n installer/install.sh installer/upgrade.sh installer/configure-mail.sh installer/configure-sftp.sh agent/nvpctl
+bash -n installer/install.sh installer/upgrade.sh installer/configure-mail.sh installer/configure-sftp.sh agent/nvpctl tests/ci/*.sh
 python tests/smoke_test.py
 python tests/vault_test.py
 python tests/integrations_test.py
@@ -14,3 +14,4 @@ python tests/mail_policy_test.py
 python tests/transfer_policy_test.py
 python tests/advanced_ops_test.py
 python tests/module_registry_test.py
+python tests/entitlements_test.py
