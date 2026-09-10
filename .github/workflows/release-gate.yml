@@ -30,7 +30,7 @@ jobs:
       - name: Smoke tests
         env:
           NVP_COOKIE_SECURE: '0'
-        run: python tests/smoke_test.py && python tests/vault_test.py && python tests/integrations_test.py && python tests/provider_backup_test.py && python tests/trust_test.py && python tests/hosting_features_test.py && python tests/schedules_test.py && python tests/accounts_scope_test.py && python tests/mail_policy_test.py && python tests/transfer_policy_test.py && python tests/advanced_ops_test.py
+        run: python tests/smoke_test.py && python tests/vault_test.py && python tests/integrations_test.py && python tests/provider_backup_test.py && python tests/trust_test.py && python tests/hosting_features_test.py && python tests/schedules_test.py && python tests/accounts_scope_test.py && python tests/mail_policy_test.py && python tests/transfer_policy_test.py && python tests/advanced_ops_test.py && python tests/module_registry_test.py
 
   installation-gate:
     name: Ubuntu 24.04 full installer gate
@@ -54,7 +54,7 @@ jobs:
             return 1
           }
           for svc in nginx mariadb nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel-ops nexvary-panel; do check_service "$svc"; done
-          for file in panel/__init__.py panel/routes_accounts.py panel/account_schema.py panel/routes_mail.py panel/mail_schema.py panel/routes_transfers.py panel/transfer_schema.py panel/routes_advanced_ops.py panel/advanced_ops_schema.py panel/ops_client.py static/app.css static/approved-theme.css static/hosting-suite.css static/accounts.css static/accounts.js static/mail.css static/mail.js static/transfers.css static/transfers.js static/advanced-ops.css static/advanced-ops.js static/webtools.css static/scheduled-tasks.css panel/hosting_features.py; do
+          for file in panel/__init__.py panel/module_registry.py panel/routes_accounts.py panel/account_schema.py panel/routes_mail.py panel/mail_schema.py panel/routes_transfers.py panel/transfer_schema.py panel/routes_advanced_ops.py panel/advanced_ops_schema.py panel/ops_client.py static/app.css static/approved-theme.css static/hosting-suite.css static/accounts.css static/accounts.js static/mail.css static/mail.js static/transfers.css static/transfers.js static/advanced-ops.css static/advanced-ops.js static/webtools.css static/scheduled-tasks.css panel/hosting_features.py; do
             test -f "/opt/nexvary-panel/$file"
           done
           for file in secret_vault.py vault_agent.py provider_agent.py webtools_agent.py scheduler_agent.py mail_agent.py mail_backend.py transfer_agent.py hosting_ops_agent.py hosting_ops_entry.py postgres_agent.py; do
@@ -123,11 +123,12 @@ jobs:
           sudo systemctl is-active --quiet ssh
           sudo systemctl is-active --quiet nexvary-panel-transfer || { sudo systemctl status nexvary-panel-transfer --no-pager; sudo journalctl -u nexvary-panel-transfer -n 120 --no-pager; exit 1; }
           test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/transfer.sock)" = "660 root nexvary-panel"
-          test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/sftp-keys)" = "750 root nexvary-sftp"
+          test "$(sudo stat -c '%a %U %G' /etc/ssh/nexvary-authorized-keys)" = "750 root nexvary-sftp"
           test "$(sudo stat -c '%a %U %G' /srv/nexvary-sftp)" = "755 root root"
           sudo sshd -t
           sudo grep -q '^Match Group nexvary-sftp$' /etc/ssh/sshd_config.d/90-nexvary-sftp.conf
           sudo grep -q 'ForceCommand internal-sftp -d /site' /etc/ssh/sshd_config.d/90-nexvary-sftp.conf
+          sudo grep -q 'AuthorizedKeysFile /etc/ssh/nexvary-authorized-keys/%u' /etc/ssh/sshd_config.d/90-nexvary-sftp.conf
           sudo grep -q 'AuthenticationMethods publickey' /etc/ssh/sshd_config.d/90-nexvary-sftp.conf
           sudo grep -q 'PasswordAuthentication no' /etc/ssh/sshd_config.d/90-nexvary-sftp.conf
           sudo -u nexvary-panel python3 - <<'PY'
@@ -154,7 +155,7 @@ jobs:
           id -nG nvpt_0123456789 | grep -qw nexvary-sftp
           sudo passwd -S nvpt_0123456789 | grep -q ' P '
           sudo mountpoint -q /srv/nexvary-sftp/nvpt_0123456789/site
-          test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/sftp-keys/nvpt_0123456789)" = "640 root nexvary-sftp"
+          test "$(sudo stat -c '%a %U %G' /etc/ssh/nexvary-authorized-keys/nvpt_0123456789)" = "640 root nexvary-sftp"
           echo 'uploaded-through-sftp' > /tmp/nvp-upload.txt
           cat > /tmp/nvp-sftp.batch <<'EOF'
           pwd
@@ -185,7 +186,7 @@ jobs:
           PY
           ! getent passwd nvpt_0123456789
           ! sudo mountpoint -q /srv/nexvary-sftp/nvpt_0123456789/site
-          test ! -e /etc/nexvary-panel/sftp-keys/nvpt_0123456789
+          test ! -e /etc/ssh/nexvary-authorized-keys/nvpt_0123456789
 
   postgres-installation-gate:
     name: Ubuntu 24.04 PostgreSQL provider gate
