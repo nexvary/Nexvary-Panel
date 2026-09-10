@@ -21,16 +21,11 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-      - name: Install Python dependencies
-        run: python -m pip install --upgrade pip && pip install -r requirements.txt
-      - name: Python compile gate
-        run: python -m compileall -q app.py panel agent tests
-      - name: Shell syntax gate
-        run: bash -n installer/install.sh installer/upgrade.sh installer/configure-mail.sh installer/configure-sftp.sh agent/nvpctl
-      - name: Smoke tests
+      - run: python -m pip install --upgrade pip && pip install -r requirements.txt
+      - name: Backend, architecture and security gates
         env:
           NVP_COOKIE_SECURE: '0'
-        run: python tests/smoke_test.py && python tests/vault_test.py && python tests/integrations_test.py && python tests/provider_backup_test.py && python tests/trust_test.py && python tests/hosting_features_test.py && python tests/schedules_test.py && python tests/accounts_scope_test.py && python tests/mail_policy_test.py && python tests/transfer_policy_test.py && python tests/advanced_ops_test.py && python tests/module_registry_test.py
+        run: bash tests/ci/quality.sh
 
   installation-gate:
     name: Ubuntu 24.04 full installer gate
@@ -38,36 +33,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Install Nexvary Panel on clean runner
-        run: sudo bash installer/install.sh
-      - name: Verify services, permissions, files and HTTPS login
-        run: |
-          check_service() {
-            local svc="$1"
-            for i in {1..12}; do
-              if sudo systemctl is-active --quiet "$svc"; then return 0; fi
-              sleep 1
-            done
-            echo "Service failed to become active: $svc"
-            sudo systemctl status "$svc" --no-pager || true
-            sudo journalctl -u "$svc" -n 100 --no-pager || true
-            return 1
-          }
-          for svc in nginx mariadb nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel-ops nexvary-panel; do check_service "$svc"; done
-          for file in panel/__init__.py panel/module_registry.py panel/routes_accounts.py panel/account_schema.py panel/routes_mail.py panel/mail_schema.py panel/routes_transfers.py panel/transfer_schema.py panel/routes_advanced_ops.py panel/advanced_ops_schema.py panel/ops_client.py static/app.css static/approved-theme.css static/hosting-suite.css static/accounts.css static/accounts.js static/mail.css static/mail.js static/transfers.css static/transfers.js static/advanced-ops.css static/advanced-ops.js static/webtools.css static/scheduled-tasks.css panel/hosting_features.py; do
-            test -f "/opt/nexvary-panel/$file"
-          done
-          for file in secret_vault.py vault_agent.py provider_agent.py webtools_agent.py scheduler_agent.py mail_agent.py mail_backend.py transfer_agent.py hosting_ops_agent.py hosting_ops_entry.py postgres_agent.py; do
-            test -f "/opt/nexvary-panel-agent/$file"
-          done
-          test "$(sudo stat -c '%a %U %G' /opt/nexvary-panel-agent/scheduler_agent.py)" = "750 root nexvary-panel"
-          test "$(sudo stat -c '%a %U %G' /opt/nexvary-panel-agent/postgres_agent.py)" = "750 root nexvary-panel"
-          test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/credentials)" = "700 root root"
-          test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/vault.sock)" = "660 root nexvary-panel"
-          test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/provider.sock)" = "660 root nexvary-panel"
-          test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/ops.sock)" = "660 root nexvary-panel"
-          curl -kfsS https://127.0.0.1:8443/login | grep -q 'Nexvary Panel'
-          sudo nginx -t
+      - run: sudo bash installer/install.sh
+      - run: bash tests/ci/verify-install.sh
 
   mail-installation-gate:
     name: Ubuntu 24.04 Email Stack gate
@@ -75,39 +42,8 @@ jobs:
     timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
-      - name: Install Nexvary Panel with Postfix and Dovecot
-        run: sudo bash installer/install.sh --with-mail
-      - name: Verify mail services, socket, configuration and idempotence
-        run: |
-          check_service() {
-            local svc="$1"
-            for i in {1..15}; do
-              if sudo systemctl is-active --quiet "$svc"; then return 0; fi
-              sleep 1
-            done
-            sudo systemctl status "$svc" --no-pager || true
-            sudo journalctl -u "$svc" -n 120 --no-pager || true
-            return 1
-          }
-          for svc in postfix dovecot nexvary-panel-mail; do check_service "$svc"; done
-          test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/mail.sock)" = "660 root nexvary-panel"
-          test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/mail/users)" = "640 root dovecot"
-          test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/mail/domains)" = "640 root postfix"
-          sudo postfix check
-          sudo dovecot -n >/dev/null
-          sudo postconf virtual_mailbox_domains | grep -q '/etc/nexvary-panel/mail/domains'
-          sudo grep -q '/etc/nexvary-panel/mail/users' /etc/dovecot/conf.d/99-nexvary-panel.conf
-          echo 'preserve.example OK' | sudo tee -a /etc/nexvary-panel/mail/domains >/dev/null
-          sudo postmap /etc/nexvary-panel/mail/domains
-          sudo bash installer/configure-mail.sh
-          sudo grep -q '^preserve.example OK$' /etc/nexvary-panel/mail/domains
-          sudo -u nexvary-panel python3 - <<'PY'
-          import json,socket
-          s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM); s.settimeout(5); s.connect('/run/nexvary-panel/mail.sock')
-          s.sendall(b'{"action":"status"}\n'); data=b''
-          while not data.endswith(b'\n'): data+=s.recv(4096)
-          body=json.loads(data); assert body.get('ok') is True, body; assert body.get('engine')=='postfix-dovecot', body
-          PY
+      - run: sudo bash installer/install.sh --with-mail
+      - run: bash tests/ci/verify-mail.sh
 
   transfer-installation-gate:
     name: Ubuntu 24.04 key-only SFTP gate
@@ -115,78 +51,8 @@ jobs:
     timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
-      - name: Install Nexvary Panel with SFTP Transfer Center
-        run: sudo bash installer/install.sh --with-sftp
-      - name: Verify provider and real chrooted SFTP session
-        run: |
-          for i in {1..15}; do sudo systemctl is-active --quiet nexvary-panel-transfer && break; sleep 1; done
-          sudo systemctl is-active --quiet ssh
-          sudo systemctl is-active --quiet nexvary-panel-transfer || { sudo systemctl status nexvary-panel-transfer --no-pager; sudo journalctl -u nexvary-panel-transfer -n 120 --no-pager; exit 1; }
-          test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/transfer.sock)" = "660 root nexvary-panel"
-          test "$(sudo stat -c '%a %U %G' /etc/ssh/nexvary-authorized-keys)" = "750 root nexvary-sftp"
-          test "$(sudo stat -c '%a %U %G' /srv/nexvary-sftp)" = "755 root root"
-          sudo sshd -t
-          sudo grep -q '^Match Group nexvary-sftp$' /etc/ssh/sshd_config.d/90-nexvary-sftp.conf
-          sudo grep -q 'ForceCommand internal-sftp -d /site' /etc/ssh/sshd_config.d/90-nexvary-sftp.conf
-          sudo grep -q 'AuthorizedKeysFile /etc/ssh/nexvary-authorized-keys/%u' /etc/ssh/sshd_config.d/90-nexvary-sftp.conf
-          sudo grep -q 'AuthenticationMethods publickey' /etc/ssh/sshd_config.d/90-nexvary-sftp.conf
-          sudo grep -q 'PasswordAuthentication no' /etc/ssh/sshd_config.d/90-nexvary-sftp.conf
-          sudo -u nexvary-panel python3 - <<'PY'
-          import json,socket
-          s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM); s.settimeout(5); s.connect('/run/nexvary-panel/transfer.sock')
-          s.sendall(b'{"action":"status"}\n'); data=b''
-          while not data.endswith(b'\n'): data+=s.recv(4096)
-          body=json.loads(data); assert body.get('ok') is True, body; assert body.get('shell') is False, body
-          PY
-          sudo install -d -m 0750 -o www-data -g www-data /var/www/sftp-gate.example
-          echo 'gate' | sudo tee /var/www/sftp-gate.example/index.txt >/dev/null
-          sudo chown www-data:www-data /var/www/sftp-gate.example/index.txt
-          ssh-keygen -q -t ed25519 -N '' -f /tmp/nvp_sftp_key
-          PUB="$(cat /tmp/nvp_sftp_key.pub)"
-          sudo -u nexvary-panel python3 - "$PUB" <<'PY'
-          import json,socket,sys
-          payload={'action':'account-create','system_user':'nvpt_0123456789','domain':'sftp-gate.example','public_key':sys.argv[1]}
-          s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM); s.settimeout(20); s.connect('/run/nexvary-panel/transfer.sock')
-          s.sendall((json.dumps(payload)+'\n').encode()); data=b''
-          while not data.endswith(b'\n'): data+=s.recv(4096)
-          body=json.loads(data); assert body.get('ok') is True, body; assert body.get('shell') is False, body
-          PY
-          getent passwd nvpt_0123456789
-          id -nG nvpt_0123456789 | grep -qw nexvary-sftp
-          sudo passwd -S nvpt_0123456789 | grep -q ' P '
-          sudo mountpoint -q /srv/nexvary-sftp/nvpt_0123456789/site
-          test "$(sudo stat -c '%a %U %G' /etc/ssh/nexvary-authorized-keys/nvpt_0123456789)" = "640 root nexvary-sftp"
-          echo 'uploaded-through-sftp' > /tmp/nvp-upload.txt
-          cat > /tmp/nvp-sftp.batch <<'EOF'
-          pwd
-          ls
-          put /tmp/nvp-upload.txt upload.txt
-          EOF
-          if ! sftp -vvv -b /tmp/nvp-sftp.batch -i /tmp/nvp_sftp_key -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=8 nvpt_0123456789@127.0.0.1; then
-            echo '--- effective sshd policy ---'
-            sudo sshd -T -C user=nvpt_0123456789,host=localhost,addr=127.0.0.1 | grep -E '^(chrootdirectory|forcecommand|authorizedkeysfile|authenticationmethods|passwordauthentication|pubkeyauthentication) ' || true
-            echo '--- ssh service log ---'
-            sudo journalctl -u ssh -n 120 --no-pager || true
-            exit 1
-          fi
-          grep -q 'uploaded-through-sftp' /var/www/sftp-gate.example/upload.txt
-          cat > /tmp/nvp-sftp-escape.batch <<'EOF'
-          ls /etc
-          EOF
-          if sftp -q -b /tmp/nvp-sftp-escape.batch -i /tmp/nvp_sftp_key -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=8 nvpt_0123456789@127.0.0.1; then
-            echo 'SFTP chroot escape test unexpectedly succeeded'; exit 1
-          fi
-          sudo -u nexvary-panel python3 - <<'PY'
-          import json,socket
-          payload={'action':'account-delete','system_user':'nvpt_0123456789','domain':'sftp-gate.example'}
-          s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM); s.settimeout(20); s.connect('/run/nexvary-panel/transfer.sock')
-          s.sendall((json.dumps(payload)+'\n').encode()); data=b''
-          while not data.endswith(b'\n'): data+=s.recv(4096)
-          body=json.loads(data); assert body.get('ok') is True, body
-          PY
-          ! getent passwd nvpt_0123456789
-          ! sudo mountpoint -q /srv/nexvary-sftp/nvpt_0123456789/site
-          test ! -e /etc/ssh/nexvary-authorized-keys/nvpt_0123456789
+      - run: sudo bash installer/install.sh --with-sftp
+      - run: bash tests/ci/verify-sftp.sh
 
   postgres-installation-gate:
     name: Ubuntu 24.04 PostgreSQL provider gate
@@ -194,38 +60,8 @@ jobs:
     timeout-minutes: 24
     steps:
       - uses: actions/checkout@v4
-      - name: Install Nexvary Panel with PostgreSQL
-        run: sudo bash installer/install.sh --with-postgres
-      - name: Verify real PostgreSQL create and delete through isolated provider
-        run: |
-          for svc in postgresql nexvary-panel-postgres nexvary-panel-ops; do
-            for i in {1..15}; do sudo systemctl is-active --quiet "$svc" && break; sleep 1; done
-            sudo systemctl is-active --quiet "$svc" || { sudo systemctl status "$svc" --no-pager; sudo journalctl -u "$svc" -n 120 --no-pager || true; exit 1; }
-          done
-          test "$(sudo stat -c '%a %U %G' /opt/nexvary-panel-agent/postgres_agent.py)" = "750 root nexvary-panel"
-          test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/ops.sock)" = "660 root nexvary-panel"
-          test "$(sudo stat -c '%a %U %G' /run/nexvary-panel-postgres/postgres.sock)" = "660 postgres nexvary-panel"
-          sudo -u nexvary-panel python3 - <<'PY'
-          import json,socket
-          def call(payload):
-              s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM);s.settimeout(30);s.connect('/run/nexvary-panel/ops.sock')
-              s.sendall((json.dumps(payload)+'\n').encode());data=b''
-              while not data.endswith(b'\n'):data+=s.recv(4096)
-              s.close();return json.loads(data)
-          status=call({'action':'status'});assert status.get('ok') is True,status;assert status.get('capabilities',{}).get('postgres') is True,status
-          created=call({'action':'postgres-create','db_name':'nvpgate','db_user':'nvpgateuser','password':'GatePassword_2026!'});assert created.get('ok') is True,created;assert 'password' not in created,created
-          PY
-          sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='nvpgate'" | grep -qx '1'
-          sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='nvpgateuser'" | grep -qx '1'
-          sudo -u nexvary-panel python3 - <<'PY'
-          import json,socket
-          s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM);s.settimeout(30);s.connect('/run/nexvary-panel/ops.sock')
-          s.sendall((json.dumps({'action':'postgres-delete','db_name':'nvpgate','db_user':'nvpgateuser'})+'\n').encode());data=b''
-          while not data.endswith(b'\n'):data+=s.recv(4096)
-          body=json.loads(data);assert body.get('ok') is True,body
-          PY
-          test -z "$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='nvpgate'")"
-          test -z "$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='nvpgateuser'")"
+      - run: sudo bash installer/install.sh --with-postgres
+      - run: bash tests/ci/verify-postgres.sh
 
   ui-release-gate:
     name: Real browser UI gate and screenshots
@@ -240,10 +76,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install app dependencies
-        run: python -m pip install --upgrade pip && pip install -r requirements.txt
-      - name: Install Playwright Chromium
-        run: npm install --no-save playwright@1.55.0 && npx playwright install --with-deps chromium
+      - run: python -m pip install --upgrade pip && pip install -r requirements.txt
+      - run: npm install --no-save playwright@1.55.0 && npx playwright install --with-deps chromium
       - name: Prepare isolated CI identity
         shell: bash
         run: |
@@ -277,8 +111,7 @@ jobs:
           for i in {1..30}; do curl -fsS http://127.0.0.1:8000/login >/dev/null && exit 0; sleep 1; done
           cat /tmp/nexvary-panel.log
           exit 1
-      - name: UI Release Gate
-        run: node tests/ui_gate.mjs && node tests/backups_ui_gate.mjs && node tests/vault_ui_gate.mjs && node tests/integrations_ui_gate.mjs && node tests/approved_theme_ui_gate.mjs && node tests/internal_workspace_ui_gate.mjs && node tests/hosting_ui_gate.mjs && node tests/schedules_ui_gate.mjs && node tests/accounts_ui_gate.mjs && node tests/mail_ui_gate.mjs && node tests/transfer_ui_gate.mjs && node tests/advanced_ops_ui_gate.mjs
+      - run: bash tests/ci/ui.sh
       - name: Upload real UI screenshots
         if: always()
         uses: actions/upload-artifact@v4
