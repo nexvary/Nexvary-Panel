@@ -146,6 +146,27 @@ def _api_request() -> bool:
     return request.path.startswith("/api/") or request.is_json
 
 
+def _session_identity_active() -> bool:
+    if not session.get("auth"):
+        return False
+    username = str(session.get("user", ""))[:64]
+    role = str(session.get("role", ""))
+    if username == "admin":
+        return role == "admin"
+    if not username:
+        return False
+    with db() as conn:
+        row = conn.execute("SELECT role,enabled FROM users WHERE username=?", (username,)).fetchone()
+    return bool(row and row["enabled"] and str(row["role"]) == role)
+
+
+def _revoked_response():
+    session.clear()
+    if _api_request():
+        return jsonify(ok=False, error="session revoked or account disabled"), 401
+    return redirect(url_for("login"))
+
+
 def login_required(fn):
     @wraps(fn)
     def wrapped(*args, **kwargs):
@@ -153,6 +174,8 @@ def login_required(fn):
             if _api_request():
                 return jsonify(ok=False, error="authentication required"), 401
             return redirect(url_for("login"))
+        if not _session_identity_active():
+            return _revoked_response()
         return fn(*args, **kwargs)
     return wrapped
 
@@ -165,6 +188,8 @@ def role_required(*roles: str):
                 if _api_request():
                     return jsonify(ok=False, error="authentication required"), 401
                 return redirect(url_for("login"))
+            if not _session_identity_active():
+                return _revoked_response()
             if session.get("role") not in roles:
                 if _api_request():
                     return jsonify(ok=False, error="permission denied"), 403
@@ -182,6 +207,8 @@ def step_up_required(fn):
             if _api_request():
                 return jsonify(ok=False, error="authentication required"), 401
             return redirect(url_for("login"))
+        if not _session_identity_active():
+            return _revoked_response()
         if session.get("step_up_user") != session.get("user") or not step_up_active():
             if _api_request():
                 return jsonify(ok=False, error="step-up authentication required"), 428
