@@ -72,6 +72,12 @@ with tempfile.TemporaryDirectory(prefix="nvp-doctor-remediation-") as tmp:
     csrf = "doctor-csrf"
     now = int(time.time())
 
+    with db() as conn:
+        conn.execute(
+            "INSERT INTO users(username,role,salt,password_hash,enabled,created_at) VALUES(?,?,?,?,1,?)",
+            ("operator1", "operator", "55" * 16, "55" * 32, now),
+        )
+
     with client.session_transaction() as session:
         session.update(auth=True, user="admin", role="admin", csrf=csrf)
 
@@ -113,8 +119,12 @@ with tempfile.TemporaryDirectory(prefix="nvp-doctor-remediation-") as tmp:
     assert rows and rows[0]["check_name"] == "Service: nginx"
     assert rows[0]["status"] == "verified"
     with db() as conn:
-        audit_text = " ".join(str(row[0]) for row in conn.execute("SELECT detail FROM audit").fetchall())
-        assert "doctor-remediation" not in audit_text or "nginx" in audit_text
+        audit_row = conn.execute(
+            "SELECT action,detail FROM audit WHERE action='doctor-remediation' ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        assert audit_row is not None
+        assert "service=nginx" in str(audit_row["detail"])
+        assert "verified=1" in str(audit_row["detail"])
 
     state["nginx_active"] = False
     state["nginx_config"] = False
@@ -132,7 +142,14 @@ with tempfile.TemporaryDirectory(prefix="nvp-doctor-remediation-") as tmp:
     assert sum(1 for call in calls if call.get("action") == "service-restart") == restart_count
 
     with client.session_transaction() as session:
-        session.update(user="operator1", role="operator", step_up_user="operator1", step_up_until=now + 300)
+        session.update(
+            auth=True,
+            user="operator1",
+            role="operator",
+            csrf=csrf,
+            step_up_user="operator1",
+            step_up_until=now + 300,
+        )
     denied = client.post(
         "/api/doctor/remediate",
         json={"check": "Service: nginx"},
