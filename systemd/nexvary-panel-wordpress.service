@@ -1,0 +1,33 @@
+[Unit]
+Description=Nexvary Panel WordPress Lifecycle Agent
+After=network-online.target nexvary-panel-agent.service
+Wants=network-online.target
+ConditionPathExists=/opt/nexvary-panel-agent/wordpress_agent.py
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/nexvary-panel-agent
+ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/wordpress_agent.py
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/www /run/nexvary-panel
+
+[Install]
+WantedBy=multi-user.target
