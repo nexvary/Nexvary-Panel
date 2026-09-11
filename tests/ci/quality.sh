@@ -21,5 +21,6 @@ python tests/domain_lifecycle_test.py
 python tests/autossl_test.py
 python tests/autossl_routes_test.py
 python tests/deliverability_test.py
+python tests/domain_health_test.py
 python tests/wordpress_agent_test.py
 python tests/wordpress_lifecycle_test.py
