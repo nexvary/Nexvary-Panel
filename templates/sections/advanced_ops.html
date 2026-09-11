@@ -17,6 +17,16 @@
   <div id="advNotice" class="adv-notice royal-frame">جاري قراءة حالة Advanced Ops…</div>
 
   <div class="adv-grid">
+    <article class="panel royal-frame frame-electric-black adv-card" id="advDomainReadinessCard">
+      <div class="panel-head"><div><span class="kicker">DOMAIN READINESS</span><h3>Control-plane Health</h3></div><span class="adv-chip">UNIFIED HEALTH</span></div>
+      <div class="adv-form">
+        <div class="adv-inline"><select id="domainReadinessDomain"><option value="">اختر نطاقًا…</option></select><button id="domainReadinessRefresh" type="button" class="tiny ghost">تحديث</button></div>
+      </div>
+      <div class="metrics-summary"><div><small>READINESS</small><b id="domainReadinessScore">—</b></div><div><small>GRADE</small><b id="domainReadinessGrade">—</b></div></div>
+      <div id="domainReadinessMeta" class="adv-result">اختر نطاقًا لعرض Control-plane Readiness.</div>
+      <div id="domainReadinessChecks" class="adv-list"><div class="empty-state">لا توجد Checks بعد.</div></div>
+    </article>
+
     <article class="panel royal-frame frame-silver adv-card" id="advDnsCard">
       <div class="panel-head"><div><span class="kicker">DNS WRITES</span><h3>DNS Apply / Rollback</h3></div><span class="adv-chip">PREVIEW FIRST</span></div>
       {% if role == 'admin' %}
@@ -98,4 +108,5 @@
     {% endif %}
   </div>
   <div id="advStatus" class="adv-status" role="status"></div>
+  <script src="/static/domain-readiness.js"></script>
 </section>
