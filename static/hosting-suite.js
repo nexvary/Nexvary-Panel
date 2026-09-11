@@ -16,7 +16,7 @@
     const res=await fetch(url,opts);
     let data={};
     try{data=await res.json();}catch{data={ok:false,error:`HTTP ${res.status}`};}
-    if(!res.ok||data.ok===false){const err=new Error(data.error||`HTTP ${res.status}`);err.status=res.status;throw err;}
+    if(!res.ok||data.ok===false){const err=new Error(data.error||`HTTP ${res.status}`);err.status=res.status;err.data=data;throw err;}
     return data;
   };
   const status=(node,message,type='')=>{if(!node)return;node.textContent=message;node.className=`hosting-status ${type}`.trim();};
@@ -102,10 +102,47 @@
     renderPolicy();
   }
 
+  function impactInput(){
+    return {
+      username:String($('#hostingAssignUsername')?.value||'').trim(),
+      package_id:Number($('#hostingAssignPackage')?.value||0)
+    };
+  }
+
+  function renderImpact(impact){
+    const out=$('#hostingImpactResult');
+    if(!out)return;
+    const violations=impact?.violations||[];
+    const removed=impact?.removed_features||[];
+    const unmeasured=impact?.unmeasured||[];
+    const current=impact?.current_package?.name||'Default';
+    const target=impact?.target_package?.name||'—';
+    const quotaText=violations.length
+      ? violations.map(v=>`${quotaLabels[v.limit]||v.limit}: ${v.used}/${v.target} (+${v.excess})`).join(' · ')
+      : 'لا توجد تجاوزات في الحدود القابلة للقياس.';
+    const featureText=removed.length?`سيتم تعطيل ${removed.length} ميزة: ${removed.slice(0,5).join(', ')}${removed.length>5?'…':''}`:'لا توجد ميزات ستُسحب.';
+    const measurement=unmeasured.length?`Disk/Bandwidth غير مقاسين لحظيًا ولن يُدّعى أنهما متوافقان.`:'';
+    out.innerHTML=`<b>${impact.safe_to_assign?'SAFE TO ASSIGN':'ASSIGNMENT BLOCKED'}</b><br><small>${esc(current)} → ${esc(target)}</small><br><span>${esc(quotaText)}</span><br><span>${esc(featureText)}</span>${measurement?`<br><span>${esc(measurement)}</span>`:''}`;
+    out.className=`hosting-status ${impact.safe_to_assign?'ok':'error'}`;
+  }
+
+  async function simulateImpact(){
+    const input=impactInput();
+    if(!input.username||!input.package_id){status($('#hostingImpactResult'),'أدخل Username واختر الحزمة أولًا.','error');return null;}
+    try{
+      const data=await api('/api/hosting/package-impact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});
+      renderImpact(data.impact);
+      return data.impact;
+    }catch(err){status($('#hostingImpactResult'),err.message,'error');return null;}
+  }
+
   $('#hostingSearch')?.addEventListener('input',renderCatalog);
   $('#hostingCategory')?.addEventListener('change',renderCatalog);
   $('#hostingMaturity')?.addEventListener('change',renderCatalog);
   $('#hostingPolicyPackage')?.addEventListener('change',renderPolicy);
+  $('#hostingImpactBtn')?.addEventListener('click',simulateImpact);
+  $('#hostingAssignPackage')?.addEventListener('change',()=>{status($('#hostingImpactResult'),'تغيرت الحزمة؛ أعد محاكاة التأثير قبل التعيين.','');});
+  $('#hostingAssignUsername')?.addEventListener('input',()=>{status($('#hostingImpactResult'),'تغير المستخدم؛ أعد محاكاة التأثير قبل التعيين.','');});
 
   $('#hostingPackageForm')?.addEventListener('submit',async event=>{
     event.preventDefault();
@@ -141,14 +178,19 @@
     event.preventDefault();
     const out=$('#hostingAssignStatus');
     if(!stepUp){status(out,'Step-Up مطلوب قبل تغيير حزمة المستخدم.','error');return;}
-    const form=new FormData(event.currentTarget);
-    const username=String(form.get('username')||'').trim();
-    const packageId=Number(form.get('package_id'));
+    const impact=await simulateImpact();
+    if(!impact)return;
+    if(!impact.safe_to_assign){status(out,'تم منع تغيير الحزمة لأن الاستخدام الحالي يتجاوز حدود الحزمة المستهدفة.','error');return;}
+    const input=impactInput();
     try{
-      await api(`/api/hosting/users/${encodeURIComponent(username)}/package`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({package_id:packageId})});
-      status(out,`تم تعيين الحزمة للمستخدم ${username}.`,'ok');
+      const data=await api(`/api/hosting/users/${encodeURIComponent(input.username)}/package`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({package_id:input.package_id})});
+      renderImpact(data.impact||impact);
+      status(out,`تم تعيين الحزمة للمستخدم ${input.username} بعد اجتياز Impact Gate.`,'ok');
       await loadPackages();
-    }catch(err){status(out,err.status===428?'Step-Up مطلوب أو انتهت صلاحيته.':err.message,'error');}
+    }catch(err){
+      if(err.data?.impact)renderImpact(err.data.impact);
+      status(out,err.status===428?'Step-Up مطلوب أو انتهت صلاحيته.':err.message,'error');
+    }
   });
 
   Promise.all([loadCatalog(),loadPackages()]).catch(err=>{
