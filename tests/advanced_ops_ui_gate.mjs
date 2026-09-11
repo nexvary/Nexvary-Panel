@@ -24,6 +24,9 @@ if(await page.locator('script[src="/static/advanced-ops.js"]').count()!==1)throw
 
 const required=['#advDnsCard','#advSslCard','#advMailOpsCard','#advPhpCard','#advPostgresCard','#advMigrationCard','#advServicesCard','#advFleetCard'];
 for(const sel of required)if(await page.locator(sel).count()!==1)throw new Error(`Advanced Ops card missing: ${sel}`);
+for(const sel of ['#autoSslEnabled','#autoSslDays','#autoSslSaveBtn','#autoSslPolicyState','#deliverSelector','#deliverMailHost','#deliverMailIpv4','#deliverPrepareBtn','#deliverPreviewList']){
+  if(await page.locator(sel).count()!==1)throw new Error(`Advanced Ops lifecycle control missing: ${sel}`);
+}
 if(await page.locator('#dnsDomain').count()!==1)throw new Error('Legacy DNS Center selector must remain unique');
 if(await page.locator('#advDnsDomain').count()!==1)throw new Error('Advanced DNS selector missing or duplicated');
 if(await page.locator('#dnsInspect').count()!==1)throw new Error('Legacy DNS Inspector control missing');
@@ -35,7 +38,7 @@ const notice=(await page.locator('#advNotice').innerText()).trim();
 if(!notice.includes('غير متصل'))throw new Error('Advanced Ops offline posture is not explicit');
 
 const text=await page.locator('#advancedops').innerText();
-for(const marker of ['DNS Apply / Rollback','AutoSSL / Renew','Queue & Deliverability','PHP Version Manager','PostgreSQL Resources','Migration Bundles','Service Control','Fleet / Cluster Foundation']){
+for(const marker of ['DNS Apply / Rollback','AutoSSL / Renew','Queue & Deliverability Repair','PHP Version Manager','PostgreSQL Resources','Migration Bundles','Service Control','Fleet / Cluster Foundation','PREVIEW FIRST','DIAGNOSE → PREVIEW']){
   if(!text.includes(marker))throw new Error(`Advanced Ops capability label missing: ${marker}`);
 }
 if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error('Advanced Ops desktop horizontal overflow');
