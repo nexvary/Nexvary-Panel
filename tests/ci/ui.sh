@@ -12,3 +12,4 @@ node tests/accounts_ui_gate.mjs
 node tests/mail_ui_gate.mjs
 node tests/transfer_ui_gate.mjs
 node tests/advanced_ops_ui_gate.mjs
+node tests/wordpress_lifecycle_ui_gate.mjs
