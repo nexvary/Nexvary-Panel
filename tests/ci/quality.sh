@@ -19,3 +19,4 @@ python tests/session_revocation_test.py
 python tests/domain_agent_test.py
 python tests/domain_lifecycle_test.py
 python tests/autossl_test.py
+python tests/autossl_routes_test.py
