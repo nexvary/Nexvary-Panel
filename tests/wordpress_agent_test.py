@@ -50,11 +50,18 @@ with tempfile.TemporaryDirectory(prefix="nvp-wordpress-agent-") as tmp:
     assert integrity["integrity_ok"] is False
     assert "wp-load.php" in integrity["mismatched"]
 
-    result = agent.maintenance("wp.example.test", True)
-    assert result["maintenance"] is True and (public / ".maintenance").is_file()
-    assert agent.inventory("wp.example.test")["maintenance"] is True
-    result = agent.maintenance("wp.example.test", False)
-    assert result["maintenance"] is False and not (public / ".maintenance").exists()
+    # The production service runs as root and chowns .maintenance to www-data.
+    # This unit test intentionally runs unprivileged, so model an environment without that account.
+    original_getpwnam = agent.pwd.getpwnam
+    agent.pwd.getpwnam = lambda name: (_ for _ in ()).throw(KeyError(name))
+    try:
+        result = agent.maintenance("wp.example.test", True)
+        assert result["maintenance"] is True and (public / ".maintenance").is_file()
+        assert agent.inventory("wp.example.test")["maintenance"] is True
+        result = agent.maintenance("wp.example.test", False)
+        assert result["maintenance"] is False and not (public / ".maintenance").exists()
+    finally:
+        agent.pwd.getpwnam = original_getpwnam
 
     # Symlinked WordPress roots must never be accepted as managed roots.
     outside = pathlib.Path(tmp) / "outside"
