@@ -19,11 +19,11 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     from panel.module_registry import MODULES, module_catalog, validate_modules
 
     modules = validate_modules()
-    assert len(modules) >= 19
+    assert len(modules) >= 24
     assert tuple(modules) == MODULES
     ids = [m.id for m in modules]
     assert len(ids) == len(set(ids))
-    assert {"hosting", "domains", "accounts", "mail", "transfers", "advanced_ops", "security", "vault"}.issubset(ids)
+    assert {"hosting", "domains", "dnssec", "accounts", "mail", "transfers", "advanced_ops", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "security", "vault"}.issubset(ids)
 
     catalog = module_catalog()
     assert len(catalog) == len(modules)
@@ -33,6 +33,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     assert "nexvary-panel-postgres" in by_id["advanced_ops"]["provider_services"]
     assert "nexvary-panel-webtools" in by_id["domains"]["provider_services"]
     assert by_id["domains"]["has_schema"] is True
+    assert set(by_id["domain_health"]["depends_on"]) == {"domains", "advanced_ops", "autossl", "deliverability"}
     assert "email." in by_id["mail"]["feature_prefixes"]
     assert "domains." in by_id["domains"]["feature_prefixes"]
 
@@ -44,6 +45,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         "/login",
         "/api/hosting/catalog",
         "/api/domains/aliases",
+        "/api/domain-health",
         "/api/accounts",
         "/api/mail",
         "/api/transfers",
