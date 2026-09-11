@@ -15,6 +15,7 @@ from .routes_accounts import register_account_routes
 from .routes_advanced_ops import register_advanced_ops_routes
 from .routes_auth import register_auth_routes
 from .routes_autossl import register_autossl_routes
+from .routes_change_safety import register_change_safety_routes
 from .routes_deliverability import register_deliverability_routes
 from .routes_dns import register_dns_routes
 from .routes_domain_health import register_domain_health_routes
@@ -81,6 +82,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("autossl", "AutoSSL Policy", "automation", register_autossl_routes, depends_on=("advanced_ops",), feature_prefixes=("security.ssl",), provider_services=("nexvary-panel-autossl.timer", "nexvary-panel-ops"), ui_view="advancedops", maturity="provider"),
     PanelModule("deliverability", "Mail Deliverability", "hosting", register_deliverability_routes, depends_on=("mail", "advanced_ops"), feature_prefixes=("email.deliverability", "domains.zone_editor"), provider_services=("nexvary-panel-ops",), ui_view="advancedops", maturity="provider"),
     PanelModule("domain_health", "Domain Readiness", "observability", register_domain_health_routes, depends_on=("domains", "advanced_ops", "autossl", "deliverability"), feature_prefixes=("domains.", "security.ssl", "email.deliverability"), ui_view="advancedops"),
+    PanelModule("change_safety", "Change Safety", "observability", register_change_safety_routes, depends_on=("health", "advanced_ops", "domain_health"), ui_view="advancedops"),
     PanelModule("wordpress_lifecycle", "WordPress Lifecycle", "hosting", register_wordpress_lifecycle_routes, depends_on=("platform", "hosting"), feature_prefixes=("software.wordpress",), provider_services=("nexvary-panel-wordpress",), ui_view="wordpress", maturity="provider"),
     PanelModule("wordpress_updates", "WordPress Components", "hosting", register_wordpress_update_routes, depends_on=("wordpress_lifecycle",), feature_prefixes=("software.wordpress",), provider_services=("nexvary-panel-wordpress",), ui_view="wordpress", maturity="provider"),
 )
