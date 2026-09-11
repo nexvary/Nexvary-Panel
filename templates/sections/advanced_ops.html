@@ -5,7 +5,7 @@
     <div class="hero-copy">
       <span class="kicker">NEXVARY ADVANCED HOSTING OPS</span>
       <h2>عمليات الاستضافة المتقدمة</h2>
-      <p>DNS Writes وSSL Lifecycle وMail Deliverability وPHP وPostgreSQL وMigration وService Control وFleet ضمن Agent محدود الأوامر، Step-Up وAudit.</p>
+      <p>DNS Writes وAutoSSL وMail Deliverability وPHP وPostgreSQL وMigration وService Control وFleet ضمن Agents محدودة الأوامر، Step-Up وAudit.</p>
     </div>
     <div class="hero-stats">
       <div><small>OPS AGENT</small><strong id="advProviderState">CHECKING</strong><span>allowlisted socket</span></div>
@@ -18,7 +18,7 @@
 
   <div class="adv-grid">
     <article class="panel royal-frame frame-silver adv-card" id="advDnsCard">
-      <div class="panel-head"><div><span class="kicker">JUMP 3 · DNS WRITES</span><h3>DNS Apply / Rollback</h3></div><span class="adv-chip">PREVIEW FIRST</span></div>
+      <div class="panel-head"><div><span class="kicker">DNS WRITES</span><h3>DNS Apply / Rollback</h3></div><span class="adv-chip">PREVIEW FIRST</span></div>
       {% if role == 'admin' %}
       <div class="adv-inline">
         <select id="dnsBindDomain"><option value="">اختر نطاقًا</option></select>
@@ -40,48 +40,58 @@
     </article>
 
     <article class="panel royal-frame frame-electric-black adv-card" id="advSslCard">
-      <div class="panel-head"><div><span class="kicker">JUMP 4 · SSL LIFECYCLE</span><h3>AutoSSL / Renew</h3></div><span class="adv-chip">CERTBOT</span></div>
+      <div class="panel-head"><div><span class="kicker">SSL LIFECYCLE</span><h3>AutoSSL / Renew</h3></div><span class="adv-chip">CERTBOT + POLICY</span></div>
       <div class="adv-form">
         <select id="sslDomain"><option value="">اختر موقعًا</option></select>
-        <input id="sslEmail" type="email" placeholder="admin@example.com">
-        <div class="adv-inline"><button id="sslStatusBtn" type="button" class="tiny ghost">الحالة</button><button id="sslIssueBtn" type="button" class="primary royal-action">إصدار</button><button id="sslRenewBtn" type="button" class="tiny ghost">تجديد</button></div>
+        <input id="sslEmail" type="email" maxlength="320" placeholder="admin@example.com">
+        <div class="adv-inline"><button id="sslStatusBtn" type="button" class="tiny ghost">الحالة</button><button id="sslIssueBtn" type="button" class="primary royal-action">إصدار</button><button id="sslRenewBtn" type="button" class="tiny ghost">تجديد الآن</button></div>
+        <div class="adv-inline autossl-policy-row">
+          <label class="adv-toggle"><input id="autoSslEnabled" type="checkbox"><span>AutoSSL</span></label>
+          <label>قبل الانتهاء <input id="autoSslDays" type="number" min="7" max="60" value="30" inputmode="numeric"></label>
+          <button id="autoSslSaveBtn" type="button" class="tiny ghost">حفظ السياسة</button>
+        </div>
       </div>
-      <pre id="sslResult" class="adv-result">اختر نطاقًا لفحص الشهادة.</pre>
+      <pre id="sslResult" class="adv-result">اختر نطاقًا لفحص الشهادة وسياسة AutoSSL.</pre>
+      <div id="autoSslPolicyState" class="adv-result">AutoSSL policy: غير محملة.</div>
     </article>
 
     <article class="panel royal-frame frame-silver adv-card" id="advMailOpsCard">
-      <div class="panel-head"><div><span class="kicker">JUMP 5 · MAIL OPS</span><h3>Queue & Deliverability</h3></div><span class="adv-chip">POSTFIX + DNS</span></div>
-      <select id="deliverDomain"><option value="">اختر نطاقًا</option></select>
-      <div class="adv-inline"><button id="deliverCheckBtn" type="button" class="tiny ghost">فحص MX/SPF/DMARC</button>{% if role == 'admin' %}<button id="mailQueueBtn" type="button" class="tiny ghost">Mail Queue</button><button id="mailFlushBtn" type="button" class="tiny danger">Flush Queue</button>{% endif %}</div>
-      <div id="deliverResult" class="adv-result">لم يبدأ الفحص.</div>
+      <div class="panel-head"><div><span class="kicker">MAIL DELIVERABILITY</span><h3>Queue & Deliverability Repair</h3></div><span class="adv-chip">DIAGNOSE → PREVIEW</span></div>
+      <div class="adv-form">
+        <select id="deliverDomain"><option value="">اختر نطاقًا</option></select>
+        <div class="adv-inline"><input id="deliverSelector" value="default" maxlength="63" placeholder="DKIM selector"><input id="deliverMailHost" maxlength="253" placeholder="mail.example.com"><input id="deliverMailIpv4" inputmode="decimal" placeholder="Public IPv4 (اختياري)"></div>
+        <div class="adv-inline"><button id="deliverCheckBtn" type="button" class="tiny ghost">فحص شامل</button><button id="deliverPrepareBtn" type="button" class="primary royal-action">تجهيز DNS Fix Previews</button>{% if role == 'admin' %}<button id="mailQueueBtn" type="button" class="tiny ghost">Mail Queue</button><button id="mailFlushBtn" type="button" class="tiny danger">Flush Queue</button>{% endif %}</div>
+      </div>
+      <div id="deliverResult" class="adv-result">لم يبدأ الفحص. مسار الإصلاح لا يطبّق DNS مباشرة.</div>
+      <div id="deliverPreviewList" class="adv-list"></div>
     </article>
 
     <article class="panel royal-frame frame-electric-black adv-card" id="advPhpCard">
-      <div class="panel-head"><div><span class="kicker">JUMP 6 · PHP RUNTIME</span><h3>PHP Version Manager</h3></div><span class="adv-chip">NGINX VALIDATED</span></div>
+      <div class="panel-head"><div><span class="kicker">PHP RUNTIME</span><h3>PHP Version Manager</h3></div><span class="adv-chip">NGINX VALIDATED</span></div>
       <div class="adv-form"><select id="phpDomain"><option value="">اختر موقع PHP</option></select><select id="phpVersion"><option value="">اكتشاف الإصدارات…</option></select><button id="phpApplyBtn" type="button" class="primary royal-action">تطبيق Runtime</button></div>
       <div id="phpResult" class="adv-result">يتم تطبيق التغيير فقط إذا نجح nginx -t.</div>
     </article>
 
     <article class="panel royal-frame frame-silver adv-card" id="advPostgresCard">
-      <div class="panel-head"><div><span class="kicker">JUMP 7 · POSTGRESQL</span><h3>PostgreSQL Resources</h3></div><span class="adv-chip">NO PASSWORD STORAGE</span></div>
+      <div class="panel-head"><div><span class="kicker">POSTGRESQL</span><h3>PostgreSQL Resources</h3></div><span class="adv-chip">NO PASSWORD STORAGE</span></div>
       <form id="postgresForm" class="adv-form"><select id="pgDomain"><option value="">اختر موقعًا</option></select><input id="pgDb" placeholder="database_name" required><input id="pgUser" placeholder="database_user" required><input id="pgPassword" type="password" minlength="14" maxlength="128" autocomplete="new-password" placeholder="كلمة مرور مؤقتة" required><button class="primary royal-action" type="submit">إنشاء PostgreSQL</button></form>
       <div id="postgresList" class="adv-list"><div class="empty-state">لا توجد موارد.</div></div>
     </article>
 
     <article class="panel royal-frame frame-electric-black adv-card" id="advMigrationCard">
-      <div class="panel-head"><div><span class="kicker">JUMP 8 · MIGRATION</span><h3>Migration Bundles</h3></div><span class="adv-chip">SHA256 + ROLLBACK</span></div>
+      <div class="panel-head"><div><span class="kicker">MIGRATION</span><h3>Migration Bundles</h3></div><span class="adv-chip">SHA256 + ROLLBACK</span></div>
       <div class="adv-form"><select id="migrationDomain"><option value="">اختر موقعًا</option></select><input id="migrationDb" placeholder="MariaDB name (اختياري)"><button id="migrationExportBtn" type="button" class="primary royal-action">إنشاء Bundle</button></div>
       <div id="migrationList" class="adv-list"><div class="empty-state">لا توجد Bundles.</div></div>
     </article>
 
     {% if role == 'admin' %}
     <article class="panel royal-frame frame-silver adv-card" id="advServicesCard">
-      <div class="panel-head"><div><span class="kicker">JUMP 9 · WHM CONTROLS</span><h3>Service Control</h3></div><span class="adv-chip">ALLOWLIST ONLY</span></div>
+      <div class="panel-head"><div><span class="kicker">WHM CONTROLS</span><h3>Service Control</h3></div><span class="adv-chip">ALLOWLIST ONLY</span></div>
       <div id="serviceList" class="adv-list"><div class="empty-state">جاري تحميل الخدمات…</div></div>
     </article>
 
     <article class="panel royal-frame frame-electric-black adv-card" id="advFleetCard">
-      <div class="panel-head"><div><span class="kicker">JUMP 10 · FLEET</span><h3>Fleet / Cluster Foundation</h3></div><span class="adv-chip">HTTPS ONLY</span></div>
+      <div class="panel-head"><div><span class="kicker">FLEET</span><h3>Fleet / Cluster Foundation</h3></div><span class="adv-chip">HTTPS ONLY</span></div>
       <form id="fleetForm" class="adv-form"><input id="fleetName" maxlength="64" placeholder="Node name" required><input id="fleetEndpoint" type="url" placeholder="https://node.example.com" required><button class="primary royal-action" type="submit">إضافة Node</button></form>
       <div id="fleetList" class="adv-list"><div class="empty-state">لا توجد Nodes.</div></div>
     </article>
