@@ -32,6 +32,7 @@ from .routes_sites import register_site_routes
 from .routes_transfers import register_transfer_routes
 from .routes_vault import register_vault_routes
 from .routes_webtools import register_webtools_routes
+from .routes_wordpress_lifecycle import register_wordpress_lifecycle_routes
 
 SchemaHook = Callable[[], None]
 RouteHook = Callable[[Flask], None]
@@ -76,6 +77,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("advanced_ops", "Advanced Hosting Ops", "server", register_advanced_ops_routes, schema_hook=ensure_ops_schema, depends_on=("hosting", "sites", "integrations"), feature_prefixes=("domains.", "security.ssl", "email.", "software.php", "databases.postgresql", "whm."), provider_services=("nexvary-panel-ops", "nexvary-panel-postgres"), ui_view="advancedops", maturity="provider"),
     PanelModule("autossl", "AutoSSL Policy", "automation", register_autossl_routes, depends_on=("advanced_ops",), feature_prefixes=("security.ssl",), provider_services=("nexvary-panel-autossl.timer", "nexvary-panel-ops"), ui_view="advancedops", maturity="provider"),
     PanelModule("deliverability", "Mail Deliverability", "hosting", register_deliverability_routes, depends_on=("mail", "advanced_ops"), feature_prefixes=("email.deliverability", "domains.zone_editor"), provider_services=("nexvary-panel-ops",), ui_view="advancedops", maturity="provider"),
+    PanelModule("wordpress_lifecycle", "WordPress Lifecycle", "hosting", register_wordpress_lifecycle_routes, depends_on=("platform", "hosting"), feature_prefixes=("software.wordpress",), provider_services=("nexvary-panel-wordpress",), ui_view="wordpress", maturity="provider"),
 )
 
 
