@@ -19,11 +19,11 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     from panel.module_registry import MODULES, module_catalog, validate_modules
 
     modules = validate_modules()
-    assert len(modules) >= 24
+    assert len(modules) >= 25
     assert tuple(modules) == MODULES
     ids = [m.id for m in modules]
     assert len(ids) == len(set(ids))
-    assert {"hosting", "domains", "dnssec", "accounts", "mail", "transfers", "advanced_ops", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "security", "vault"}.issubset(ids)
+    assert {"hosting", "domains", "dnssec", "accounts", "mail", "transfers", "advanced_ops", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_updates", "security", "vault"}.issubset(ids)
 
     catalog = module_catalog()
     assert len(catalog) == len(modules)
@@ -32,8 +32,10 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     assert "nexvary-panel-transfer" in by_id["transfers"]["provider_services"]
     assert "nexvary-panel-postgres" in by_id["advanced_ops"]["provider_services"]
     assert "nexvary-panel-webtools" in by_id["domains"]["provider_services"]
+    assert "nexvary-panel-wordpress" in by_id["wordpress_updates"]["provider_services"]
     assert by_id["domains"]["has_schema"] is True
     assert set(by_id["domain_health"]["depends_on"]) == {"domains", "advanced_ops", "autossl", "deliverability"}
+    assert by_id["wordpress_updates"]["depends_on"] == ["wordpress_lifecycle"]
     assert "email." in by_id["mail"]["feature_prefixes"]
     assert "domains." in by_id["domains"]["feature_prefixes"]
 
@@ -50,6 +52,9 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         "/api/mail",
         "/api/transfers",
         "/api/advanced/status",
+        "/api/wordpress/components/check",
+        "/api/wordpress/components/update",
+        "/api/wordpress/components/rollback",
     ):
         assert path in routes, f"missing module route: {path}"
 
