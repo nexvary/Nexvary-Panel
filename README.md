@@ -2,66 +2,54 @@
 
 Nexvary Panel is a security-first Linux hosting and application control plane with a Royal Electric interface and strict privilege separation.
 
-Current development track: **0.6.0**
+Current development track: **0.7.0**
 
 ## Core architecture
 
-- Unprivileged Flask control plane.
-- Privileged root-agent over a Unix socket with an explicit allow-list.
-- No arbitrary root terminal from the web interface.
-- CSRF protection, PBKDF2 passwords, secure sessions and TOTP 2FA.
-- Admin / Operator / Viewer RBAC and per-site ownership.
-- Audit trail and operational notifications.
-- Ubuntu 24.04 full-install CI gate and Chromium UI release gate.
+- Unprivileged Flask control plane composed through a validated Module Registry.
+- Privileged operations split across narrow Unix-socket providers with explicit action allow-lists.
+- No arbitrary root terminal or arbitrary command runner from the web interface.
+- CSRF protection, PBKDF2 passwords, secure sessions, TOTP 2FA and Step-Up for sensitive mutations.
+- Admin / Reseller / Operator / Viewer RBAC with ownership and hosting-package policy enforcement.
+- Secret Vault, audit trail, operational notifications and reversible configuration changes.
+- Ubuntu 24.04 clean-install gates plus real Chromium desktop/mobile release gates with screenshots.
 
-## Hosting capabilities
+## Platform 0.7 hosting capabilities
 
-- Static, PHP-FPM, Node.js, Python and reverse-proxy sites.
-- NGINX configuration validation before reload.
-- Let's Encrypt via Certbot.
-- MariaDB database/user provisioning.
-- Site-aware backup and restore with safety snapshot.
-- Safe site-root File Manager with symlink/traversal blocking.
-- Git Deploy from allow-listed public Git hosts.
-- WordPress core preparation and secure wp-config generation.
-- Docker inventory/lifecycle controls.
-- NEXVARY Doctor and service health.
-- Site Health Inspector for DNS, TLS certificate/protocol/cipher and bounded Web Edge HEAD checks.
+- Hosting packages, Feature Manager, per-account quotas and scoped reseller accounts.
+- Static, PHP-FPM, Node.js, Python and reverse-proxy sites with NGINX validation before reload.
+- Domain Lifecycle for aliases/subdomains plus Redirects, custom error pages and bounded access metrics.
+- DNS inventory plus Cloudflare/PowerDNS zone binding, Preview → Apply → Rollback writes and DNSSEC lifecycle.
+- SSL issuance/renewal through Certbot plus AutoSSL policy and scheduled renewal checks.
+- Domain Readiness score combining hosting policy, DNS binding, pending DNS previews, SSL lifecycle and optional mail readiness.
+- MariaDB and PostgreSQL provisioning with database passwords excluded from panel SQLite.
+- Site-aware local backup/restore, remote backup providers, migration bundles and Scheduled Tasks.
+- Scoped File Manager, Git Deploy and key-only chrooted SFTP Transfer Center.
+- Postfix/Dovecot Email Center with mailboxes, forwarders, mail queue controls and deliverability checks for MX/SPF/DKIM/DMARC/MTA-STS/TLS-RPT.
+- WordPress lifecycle: official core checksums, reversible Core Repair, Maintenance Mode, plugin/theme inventory and official WordPress.org component Check/Update/Rollback with snapshots.
+- PHP runtime management, Docker inventory/lifecycle controls, service controls and Fleet foundation.
+- NEXVARY Doctor, Trust Center, CrowdSec/Fail2Ban posture and Site Health inspection.
 
-## NEXVARY Fusion Architecture
+## Provider boundaries
 
-0.6 introduces a provider framework so Nexvary Panel can integrate mature open-source engines instead of reimplementing them.
+Nexvary Panel integrates mature infrastructure through curated providers rather than exposing a generic privileged shell. Current provider/service boundaries include NGINX, Certbot, MariaDB, PostgreSQL, Postfix/Dovecot, OpenSSH/SFTP, WordPress.org, Docker, restic/rclone, Cloudflare/PowerDNS and the Nexvary Vault/Provider/Webtools/Ops agents.
 
-The current read-only provider registry detects:
-
-- NGINX
-- Caddy
-- Traefik
-- CrowdSec
-- Fail2Ban
-- Authelia
-- restic
-- rclone
-- Docker
-- Podman
-- PowerDNS
-
-Fusion discovery uses fixed argv only, never `shell=True`, never auto-installs missing providers, and never gives the browser a generic command interface. Future write-capable adapters must pass through the root-agent allow-list and their own action schemas.
+Provider requests use fixed actions and validated arguments. Secrets remain in the Secret Vault or provider-owned credential files and are not returned in normal UI/API payloads. Configuration mutations validate before reload where applicable and preserve rollback paths for destructive or externally visible changes.
 
 See `docs/FUSION_COMPONENTS.md` for the component/integration boundary manifest.
 
 ## Install
 
-On a fresh supported Linux VPS:
+On a fresh supported Ubuntu/Debian host:
 
 ```bash
 sudo bash installer/install.sh
 ```
 
-Optional Docker installation where supported by the installer:
+Optional curated providers can be installed explicitly:
 
 ```bash
-sudo bash installer/install.sh --with-docker
+sudo bash installer/install.sh --with-docker --with-backup-providers --with-mail --with-sftp --with-postgres
 ```
 
 Upgrade an existing Nexvary Panel installation while preserving panel state:
@@ -70,19 +58,23 @@ Upgrade an existing Nexvary Panel installation while preserving panel state:
 sudo bash installer/upgrade.sh
 ```
 
+The same optional provider flags can be supplied during upgrade when those providers should be installed/configured.
+
 ## Release policy
 
-Changes are developed in branches and are not merged into `main` until the release gates pass. The gate includes Python compilation, shell syntax checks, security smoke tests, a clean Ubuntu 24.04 installation and real Chromium UI/overflow checks with screenshots.
+Development changes remain outside `main` until the release gates pass. Platform 0.7 currently gates Python compilation and backend/security tests, a clean Ubuntu 24.04 base installation, Postfix/Dovecot installation, real key-only SFTP, PostgreSQL provider operation and real Chromium UI/overflow checks with screenshots.
 
 ## Security boundaries
 
 - Treat the panel as internet-facing administrative infrastructure.
-- Keep the web process unprivileged.
-- Do not weaken the Unix-socket root-agent boundary to simplify a feature.
-- Do not store database passwords, cloud tokens or provider secrets in page HTML or audit details.
+- Keep browser-facing processes unprivileged.
+- Do not weaken Unix-socket provider boundaries to simplify a feature.
+- Do not store database passwords, cloud tokens, mailbox passwords or provider secrets in page HTML, ordinary API responses or audit details.
 - Provider adapters must not concatenate user input into shell commands.
-- Validate and test configuration changes before reload and preserve rollback paths for destructive operations.
+- Sensitive mutations require Step-Up where appropriate.
+- Validate configuration changes before reload and preserve rollback paths.
+- WordPress component updates accept installed slugs only and fetch packages only from official WordPress.org infrastructure.
 
 ## Visual identity
 
-The approved interface direction is deep navy + electric violet with luminous gold framing, electric green for healthy/live states and electric crimson for warnings/danger states. The approved Nexvary Panel brand image is used in the login and control shell.
+The approved interface direction is deep navy + electric violet with luminous gold framing, electric green for healthy/live states and electric crimson for warnings/danger states. Arabic RTL and desktop/mobile layout are protected by Chromium release gates.
