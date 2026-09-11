@@ -5,7 +5,7 @@
     <div class="hero-copy">
       <span class="kicker">NEXVARY ADVANCED HOSTING OPS</span>
       <h2>عمليات الاستضافة المتقدمة</h2>
-      <p>DNS Writes وAutoSSL وMail Deliverability وPHP وPostgreSQL وMigration وService Control وFleet ضمن Agents محدودة الأوامر، Step-Up وAudit.</p>
+      <p>DNS Writes وAutoSSL وMail Deliverability وPHP وPostgreSQL وMigration وService Control وFleet ضمن Agents محدودة الأوامر، Step-Up وAudit، مع Change Safety لقياس قابلية الرجوع.</p>
     </div>
     <div class="hero-stats">
       <div><small>OPS AGENT</small><strong id="advProviderState">CHECKING</strong><span>allowlisted socket</span></div>
@@ -26,6 +26,8 @@
       <div id="domainReadinessMeta" class="adv-result">اختر نطاقًا لعرض Control-plane Readiness.</div>
       <div id="domainReadinessChecks" class="adv-list"><div class="empty-state">لا توجد Checks بعد.</div></div>
     </article>
+
+    {% include "sections/change_safety_card.html" %}
 
     <article class="panel royal-frame frame-silver adv-card" id="advDnsCard">
       <div class="panel-head"><div><span class="kicker">DNS WRITES</span><h3>DNS Apply / Rollback</h3></div><span class="adv-chip">PREVIEW FIRST</span></div>
@@ -109,4 +111,5 @@
   </div>
   <div id="advStatus" class="adv-status" role="status"></div>
   <script src="/static/domain-readiness.js"></script>
+  <script src="/static/change-safety.js"></script>
 </section>
