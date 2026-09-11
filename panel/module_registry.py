@@ -6,6 +6,7 @@ from typing import Callable, Iterable
 from flask import Flask
 
 from .account_schema import ensure_account_schema
+from .doctor_schema import ensure_doctor_schema
 from .domain_schema import ensure_domain_schema
 from .mail_schema import ensure_mail_schema
 from .ops_schema import ensure_ops_schema
@@ -62,7 +63,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("operations", "Operations", "core", register_ops_routes, depends_on=("auth",), provider_services=("nexvary-panel-agent",), maturity="provider"),
     PanelModule("platform", "Platform", "core", register_platform_routes, depends_on=("auth",)),
     PanelModule("security", "Security", "security", register_security_routes, depends_on=("auth",), feature_prefixes=("security.",), ui_view="security"),
-    PanelModule("health", "Health and Doctor", "observability", register_health_routes, depends_on=("auth",), ui_view="services"),
+    PanelModule("health", "Health and Doctor", "observability", register_health_routes, schema_hook=ensure_doctor_schema, depends_on=("auth",), provider_services=("nexvary-panel-agent",), ui_view="services"),
     PanelModule("fusion", "Fusion Providers", "providers", register_fusion_routes, depends_on=("auth",), ui_view="fusion"),
     PanelModule("dns", "DNS Inventory", "hosting", register_dns_routes, depends_on=("sites",), feature_prefixes=("domains.",), ui_view="dns"),
     PanelModule("vault", "Secret Vault", "security", register_vault_routes, depends_on=("auth",), provider_services=("nexvary-panel-vault",), ui_view="vault", maturity="provider"),
