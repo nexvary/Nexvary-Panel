@@ -23,6 +23,12 @@ MAX_REPLY = 512 * 1024
 MAX_HTTP = 3 * 1024 * 1024
 MAX_CHECKSUM_FILES = 20000
 MAX_ISSUES = 100
+MAX_CORE_FILE = 32 * 1024 * 1024
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
 
 
 def _domain(value: object) -> str:
@@ -94,7 +100,8 @@ def inventory(domain: str) -> dict:
     domain = _domain(domain)
     root = _wordpress_root(domain)
     version = _version(root)
-    maintenance = (root / ".maintenance").is_file() and not (root / ".maintenance").is_symlink()
+    maintenance_path = root / ".maintenance"
+    maintenance = maintenance_path.is_file() and not maintenance_path.is_symlink()
     config = root / "wp-config.php"
     plugins = _component_inventory(root / "wp-content" / "plugins", kind="plugin")
     themes = _component_inventory(root / "wp-content" / "themes", kind="theme")
@@ -112,12 +119,16 @@ def inventory(domain: str) -> dict:
 
 
 def _wp_api(path: str, params: dict[str, str]) -> dict:
+    if not path.startswith("/") or ".." in path:
+        raise RuntimeError("wordpress-api-invalid-path")
     query = urllib.parse.urlencode(params)
     url = "https://api.wordpress.org" + path + ("?" + query if query else "")
     req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "Nexvary-Panel/0.7"})
+    opener = urllib.request.build_opener(_NoRedirect())
     try:
-        with urllib.request.urlopen(req, timeout=12) as response:
-            if response.status != 200:
+        with opener.open(req, timeout=12) as response:
+            parsed = urllib.parse.urlsplit(response.geturl())
+            if response.status != 200 or parsed.scheme != "https" or parsed.hostname != "api.wordpress.org":
                 raise RuntimeError("wordpress-api-unavailable")
             raw = response.read(MAX_HTTP + 1)
     except Exception as exc:
@@ -135,18 +146,32 @@ def _wp_api(path: str, params: dict[str, str]) -> dict:
 
 def _safe_checksum_path(root: Path, relative: str) -> Path:
     pure = PurePosixPath(relative)
-    if pure.is_absolute() or not pure.parts or ".." in pure.parts or "wp-content" in pure.parts[:1]:
+    if pure.is_absolute() or not pure.parts or ".." in pure.parts or pure.parts[0] == "wp-content":
         raise ValueError("unsafe-checksum-path")
     target = root.joinpath(*pure.parts)
     if target.is_symlink():
         raise ValueError("wordpress-core-symlink-detected")
     try:
+        resolved_root = root.resolve()
         resolved = target.resolve(strict=False)
-        if os.path.commonpath((str(root.resolve()), str(resolved))) != str(root.resolve()):
+        if os.path.commonpath((str(resolved_root), str(resolved))) != str(resolved_root):
             raise ValueError("unsafe-checksum-path")
     except OSError as exc:
         raise ValueError("unsafe-checksum-path") from exc
     return target
+
+
+def _md5_file(path: Path) -> str:
+    if not path.is_file() or path.is_symlink() or path.stat().st_size > MAX_CORE_FILE:
+        raise ValueError("unsafe-wordpress-core-file")
+    digest = hashlib.md5(usedforsecurity=False)
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def integrity(domain: str) -> dict:
@@ -171,11 +196,12 @@ def integrity(domain: str) -> dict:
             if len(missing) < MAX_ISSUES:
                 missing.append(relative[:300])
             continue
-        if target.stat().st_size > 32 * 1024 * 1024:
+        try:
+            digest = _md5_file(target)
+        except ValueError:
             if len(mismatched) < MAX_ISSUES:
                 mismatched.append(relative[:300])
             continue
-        digest = hashlib.md5(target.read_bytes(), usedforsecurity=False).hexdigest()
         if digest.lower() != expected.lower() and len(mismatched) < MAX_ISSUES:
             mismatched.append(relative[:300])
     return {
