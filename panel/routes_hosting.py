@@ -36,15 +36,6 @@ DEFAULT_ACCOUNT_FEATURES = {
     "advanced.cron", "advanced.dns_trace", "advanced.error_pages",
     "preferences.password", "preferences.language", "preferences.users",
 }
-MEASURABLE_LIMITS = {
-    "max_sites": "sites",
-    "max_databases": "databases",
-    "max_mailboxes": "mailboxes",
-    "max_ftp_accounts": "transfer_accounts",
-    "max_cron_jobs": "scheduled_tasks",
-    "max_subdomains": "domain_aliases",
-    "max_backups": "backups",
-}
 
 
 def _safe_package(row) -> dict:
@@ -59,7 +50,7 @@ def _safe_package(row) -> dict:
     }
 
 
-def _package_for_user(conn, username: str):
+def _package_for_user(conn, username: str, role: str | None = None):
     row = conn.execute(
         """SELECT p.* FROM user_hosting_package u
            JOIN hosting_packages p ON p.id=u.package_id
@@ -68,7 +59,8 @@ def _package_for_user(conn, username: str):
     ).fetchone()
     if row:
         return row
-    fallback = "NEXVARY Unlimited" if session.get("role") == "admin" else "NEXVARY Core"
+    effective_role = str(role or session.get("role") or "operator")
+    fallback = "NEXVARY Unlimited" if effective_role == "admin" else "NEXVARY Core"
     return conn.execute("SELECT * FROM hosting_packages WHERE name=? AND enabled=1", (fallback,)).fetchone()
 
 
@@ -142,7 +134,7 @@ def _package_impact(conn, username: str, target_package) -> dict:
     if not user:
         raise LookupError("user not found")
     role = str(user["role"])
-    current = _package_for_user(conn, username)
+    current = _package_for_user(conn, username, role=role)
     current_id = int(current["id"]) if current else None
     target_id = int(target_package["id"])
     current_features = _enabled_features(conn, current_id, role)
@@ -181,7 +173,7 @@ def register_hosting_routes(app):
         username = str(session.get("user", ""))[:64]
         role = str(session.get("role", "user"))
         with db() as conn:
-            package = _package_for_user(conn, username)
+            package = _package_for_user(conn, username, role=role)
             package_id = int(package["id"]) if package else None
             enabled = _enabled_features(conn, package_id, role)
         catalog = []
