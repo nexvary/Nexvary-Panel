@@ -5,12 +5,19 @@ import socket
 import ssl
 import time
 
-from flask import jsonify, request
+from flask import jsonify, request, session
 
 from .config import DOMAIN_RE
-from .core import can_manage_domain, db, role_required
+from .core import agent_call, audit, can_manage_domain, db, role_required
+from .security import step_up_required
 
 MAX_HEAD_BYTES = 16 * 1024
+REMEDIATION_SERVICES = {
+    "Service: nginx": "nginx",
+    "Service: mariadb": "mariadb",
+    "Service: fail2ban": "fail2ban",
+    "Docker engine": "docker",
+}
 
 
 def _registered_site(domain: str) -> bool:
@@ -98,7 +105,7 @@ def _tls_probe(domain: str, ip: str) -> dict:
             tls_elapsed = int((time.perf_counter() - started) * 1000)
             http_started = time.perf_counter()
             request_bytes = (
-                f"HEAD / HTTP/1.1\r\nHost: {domain}\r\nUser-Agent: Nexvary-Panel-Health/0.6\r\n"
+                f"HEAD / HTTP/1.1\r\nHost: {domain}\r\nUser-Agent: Nexvary-Panel-Health/0.7\r\n"
                 "Accept: */*\r\nConnection: close\r\n\r\n"
             ).encode("ascii")
             tls.sendall(request_bytes)
@@ -135,6 +142,49 @@ def _tls_probe(domain: str, ip: str) -> dict:
         }
 
 
+def _doctor_snapshot() -> tuple[dict, dict]:
+    result = agent_call({"action": "doctor"}, timeout=45)
+    report = result.get("checks") if isinstance(result.get("checks"), dict) else {}
+    return result, report
+
+
+def _check_by_name(report: dict, name: str) -> dict | None:
+    for item in report.get("checks", []):
+        if isinstance(item, dict) and str(item.get("name", "")) == name:
+            return item
+    return None
+
+
+def _doctor_plan(report: dict) -> list[dict]:
+    nginx_config = _check_by_name(report, "NGINX configuration")
+    plan: list[dict] = []
+    for item in report.get("checks", []):
+        if not isinstance(item, dict) or item.get("ok"):
+            continue
+        name = str(item.get("name", ""))
+        service = REMEDIATION_SERVICES.get(name)
+        safe = bool(service)
+        reason = "Restart the allow-listed service and verify Doctor again."
+        if name == "Service: nginx" and nginx_config and not nginx_config.get("ok"):
+            safe = False
+            reason = "NGINX configuration is invalid; automatic restart is blocked until configuration is repaired."
+        elif not service:
+            reason = "This diagnostic needs an explicit administrator decision; no automatic fix is permitted."
+        plan.append(
+            {
+                "check": name,
+                "severity": str(item.get("severity", "warning")),
+                "detail": str(item.get("detail", ""))[:500],
+                "safe": safe,
+                "action": "restart-service" if safe else "manual",
+                "service": service or "",
+                "reason": reason,
+                "rollback": "not-applicable: service restart changes no panel configuration or stored data" if safe else "manual",
+            }
+        )
+    return plan
+
+
 def register_health_routes(app):
     @app.get("/api/site-health")
     @role_required("admin", "operator", "viewer")
@@ -152,3 +202,78 @@ def register_health_routes(app):
         else:
             tls = _tls_probe(domain, public[0])
         return jsonify(ok=True, domain=domain, dns=dns, tls=tls)
+
+    @app.get("/api/doctor/remediation-preview")
+    @role_required("admin", "operator")
+    def doctor_remediation_preview():
+        result, report = _doctor_snapshot()
+        if not result.get("ok"):
+            return jsonify(ok=False, error=str(result.get("error", "Doctor unavailable"))[:240]), 503
+        return jsonify(ok=True, report=report, remediation=_doctor_plan(report))
+
+    @app.get("/api/doctor/remediations")
+    @role_required("admin")
+    def doctor_remediation_history():
+        with db() as conn:
+            rows = [dict(row) for row in conn.execute(
+                "SELECT id,check_name,service_name,before_ok,before_detail,after_ok,after_detail,status,actor,created_at,updated_at FROM doctor_remediations ORDER BY id DESC LIMIT 50"
+            ).fetchall()]
+        return jsonify(ok=True, remediations=rows)
+
+    @app.post("/api/doctor/remediate")
+    @role_required("admin")
+    @step_up_required
+    def doctor_remediate():
+        data = request.get_json(silent=True) or {}
+        check_name = str(data.get("check", ""))[:120]
+        service = REMEDIATION_SERVICES.get(check_name)
+        if not service:
+            return jsonify(ok=False, error="diagnostic has no allow-listed automatic remediation"), 400
+
+        before_result, before_report = _doctor_snapshot()
+        if not before_result.get("ok"):
+            return jsonify(ok=False, error="Doctor preflight failed"), 503
+        before = _check_by_name(before_report, check_name)
+        if not before:
+            return jsonify(ok=False, error="diagnostic is not present in current Doctor report"), 409
+        if before.get("ok"):
+            return jsonify(ok=True, already_healthy=True, check=before)
+        if check_name == "Service: nginx":
+            nginx_config = _check_by_name(before_report, "NGINX configuration")
+            if nginx_config and not nginx_config.get("ok"):
+                return jsonify(ok=False, error="automatic NGINX restart blocked because nginx -t is failing"), 409
+
+        action = agent_call({"action": "service-restart", "name": service}, timeout=40)
+        after_result, after_report = _doctor_snapshot()
+        after = _check_by_name(after_report, check_name) if after_result.get("ok") else None
+        verified = bool(action.get("ok") and after and after.get("ok"))
+        now = int(time.time())
+        with db() as conn:
+            cur = conn.execute(
+                """INSERT INTO doctor_remediations(check_name,service_name,before_ok,before_detail,after_ok,after_detail,status,actor,created_at,updated_at)
+                   VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    check_name,
+                    service,
+                    1 if before.get("ok") else 0,
+                    str(before.get("detail", ""))[:500],
+                    None if after is None else (1 if after.get("ok") else 0),
+                    str((after or {}).get("detail", action.get("error", "")))[:500],
+                    "verified" if verified else ("applied" if action.get("ok") else "failed"),
+                    str(session.get("user", "admin"))[:64],
+                    now,
+                    now,
+                ),
+            )
+            remediation_id = int(cur.lastrowid)
+        audit("doctor-remediation", f"id={remediation_id} check={check_name} service={service} verified={int(verified)}")
+        return jsonify(
+            ok=verified,
+            id=remediation_id,
+            check=check_name,
+            service=service,
+            verified=verified,
+            action={"ok": bool(action.get("ok")), "error": str(action.get("error", ""))[:240]},
+            before=before,
+            after=after or {},
+        ), (200 if verified else 503)
