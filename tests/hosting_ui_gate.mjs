@@ -49,6 +49,11 @@ for(const required of ['email accounts','ftp accounts','cron jobs','ssl/tls','ho
 if(await page.locator('#hostingPolicyPackage option').count()<3) throw new Error('Default hosting packages were not loaded into Feature Manager');
 if(!(await page.locator('#hostingPackageForm button[type="submit"]').isDisabled())) throw new Error('Package mutation must be disabled before Step-Up');
 if(await page.locator('#hosting [data-open-view="security"]').count()<1) throw new Error('Step-Up remediation path missing from Hosting Suite');
+for(const sel of ['#hostingAssignUsername','#hostingAssignPackage','#hostingImpactBtn','#hostingImpactResult']){
+  if(await page.locator(sel).count()!==1) throw new Error(`Package Impact control missing: ${sel}`);
+}
+const assignmentText=await page.locator('.hosting-assignment-panel').innerText();
+if(!assignmentText.includes('IMPACT FIRST')||!assignmentText.includes('معاينة التأثير')) throw new Error('Package Impact workflow is not visible before assignment');
 
 const visiblePages=await page.locator('#workspaceStage>.workspace-page').evaluateAll(nodes=>nodes.filter(el=>getComputedStyle(el).display!=='none').map(el=>el.id));
 if(visiblePages.length!==1||visiblePages[0]!=='hosting') throw new Error(`Workspace visibility invariant failed on Hosting Suite: ${visiblePages.join(',')}`);
@@ -60,6 +65,7 @@ await login(mobile);
 await openHosting(mobile);
 await mobile.waitForFunction(()=>Number(document.querySelector('#hostingFeatureCount')?.textContent||0)>=90,{timeout:15000});
 if(await mobile.locator('#hosting .hosting-feature-card').count()<90) throw new Error('Mobile Hosting Suite feature matrix incomplete');
+if(await mobile.locator('#hostingImpactBtn').count()!==1) throw new Error('Mobile Package Impact control missing');
 await noOverflow(mobile,'hosting mobile');
 await mobile.screenshot({path:`${out}/nexvary-panel-0.7-hosting-suite-mobile.png`,fullPage:false});
 
