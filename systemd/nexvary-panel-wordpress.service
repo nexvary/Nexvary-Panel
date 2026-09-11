@@ -27,7 +27,7 @@ LockPersonality=true
 RestrictRealtime=true
 SystemCallArchitectures=native
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-ReadWritePaths=/var/www /run/nexvary-panel
+ReadWritePaths=/var/www /var/backups/nexvary-panel /run/nexvary-panel
 
 [Install]
 WantedBy=multi-user.target
