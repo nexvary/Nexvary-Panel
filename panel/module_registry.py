@@ -34,6 +34,7 @@ from .routes_transfers import register_transfer_routes
 from .routes_vault import register_vault_routes
 from .routes_webtools import register_webtools_routes
 from .routes_wordpress_lifecycle import register_wordpress_lifecycle_routes
+from .routes_wordpress_updates import register_wordpress_update_routes
 
 SchemaHook = Callable[[], None]
 RouteHook = Callable[[Flask], None]
@@ -80,6 +81,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("deliverability", "Mail Deliverability", "hosting", register_deliverability_routes, depends_on=("mail", "advanced_ops"), feature_prefixes=("email.deliverability", "domains.zone_editor"), provider_services=("nexvary-panel-ops",), ui_view="advancedops", maturity="provider"),
     PanelModule("domain_health", "Domain Readiness", "observability", register_domain_health_routes, depends_on=("domains", "advanced_ops", "autossl", "deliverability"), feature_prefixes=("domains.", "security.ssl", "email.deliverability"), ui_view="advancedops"),
     PanelModule("wordpress_lifecycle", "WordPress Lifecycle", "hosting", register_wordpress_lifecycle_routes, depends_on=("platform", "hosting"), feature_prefixes=("software.wordpress",), provider_services=("nexvary-panel-wordpress",), ui_view="wordpress", maturity="provider"),
+    PanelModule("wordpress_updates", "WordPress Components", "hosting", register_wordpress_update_routes, depends_on=("wordpress_lifecycle",), feature_prefixes=("software.wordpress",), provider_services=("nexvary-panel-wordpress",), ui_view="wordpress", maturity="provider"),
 )
 
 
