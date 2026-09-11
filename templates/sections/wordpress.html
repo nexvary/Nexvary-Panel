@@ -1,6 +1,6 @@
 {% from "macros/icons.html" import icon %}
-<section id="wordpress" class="workspace-page">
-  <div class="workspace-hero gold-hero royal-frame"><span class="hero-icon">{{icon('wordpress')}}</span><div class="hero-copy"><span class="kicker">WORDPRESS TOOLKIT</span><h2>WordPress Manager</h2><p>تهيئة WordPress Core للمواقع PHP، فحص النسخة والحالة، وربط قاعدة البيانات دون حفظ كلمة المرور داخل SQLite.</p></div><div class="hero-stats"><div><small>DOWNLOAD</small><strong>OFFICIAL</strong></div><div><small>FILE EDITOR</small><strong>DISABLED</strong></div></div></div>
+<section id="wordpress" class="workspace-page" data-step-up="{{ '1' if step_up_active else '0' }}">
+  <div class="workspace-hero gold-hero royal-frame"><span class="hero-icon">{{icon('wordpress')}}</span><div class="hero-copy"><span class="kicker">WORDPRESS LIFECYCLE</span><h2>WordPress Manager</h2><p>تهيئة WordPress Core، جرد الإضافات والقوالب، فحص Core checksums الرسمية، والتحكم الآمن في Maintenance Mode دون كشف wp-config أو بيانات الاعتماد.</p></div><div class="hero-stats"><div><small>CORE SOURCE</small><strong>OFFICIAL</strong></div><div><small>INTEGRITY</small><strong>CHECKSUMS</strong></div><div><small>FILE EDITOR</small><strong>DISABLED</strong></div></div></div>
   <div class="wordpress-grid">
     <div class="panel royal-frame">
       <div class="content-toolbar"><div><span class="toolbar-dot"></span><div><b>WordPress Sites</b><small>المواقع المهيأة والمسجلة</small></div></div><span class="pill">{{wordpress_instances|length}} SITES</span></div>
@@ -8,4 +8,25 @@
     </div>
     {% if role != 'viewer' %}<form class="creation-panel royal-frame" method="post" action="/wordpress/prepare" autocomplete="off"><input type="hidden" name="csrf_token" value="{{csrf_token()}}"><div class="creation-head"><span class="creation-icon">{{icon('wordpress')}}</span><div><span class="kicker">CORE PROVISION</span><h3>تهيئة WordPress</h3></div></div><label>موقع PHP</label><select name="domain" required>{% for s in sites if s.kind == 'php' %}<option value="{{s.domain}}">{{s.domain}}</option>{% endfor %}</select><label>Database name</label><input name="db_name" placeholder="wp_site" required pattern="[A-Za-z][A-Za-z0-9_]{0,31}"><label>Database user</label><input name="db_user" placeholder="wp_user" required pattern="[A-Za-z][A-Za-z0-9_]{0,31}"><label>Database password</label><input type="password" name="db_password" minlength="14" required autocomplete="new-password"><button class="primary-create">{{icon('wordpress')}} Prepare Core</button><div class="creation-note">{{icon('shield')}} يستخدم المصدر الرسمي wordpress.org، وينشئ wp-config.php مع مفاتيح عشوائية وDISALLOW_FILE_EDIT.</div></form>{% endif %}
   </div>
+
+  <div class="panel royal-frame wordpress-lifecycle-panel" id="wordpressLifecyclePanel">
+    <div class="content-toolbar"><div><span class="toolbar-dot"></span><div><b>Lifecycle & Integrity</b><small>قراءة الحالة وفحص WordPress Core والتحكم العكسي في Maintenance</small></div></div><span class="pill" id="wpProviderBadge">ISOLATED AGENT</span></div>
+    <div class="adv-form">
+      <label>WordPress Site<select id="wpLifecycleDomain"><option value="">اختر موقعًا…</option>{% for w in wordpress_instances %}<option value="{{w.domain}}">{{w.domain}}</option>{% endfor %}</select></label>
+      <div class="adv-inline">
+        <button id="wpInventoryBtn" type="button" class="tiny ghost">Refresh Inventory</button>
+        {% if role != 'viewer' %}<button id="wpIntegrityBtn" type="button" class="primary royal-action">Verify Core Integrity</button><button id="wpMaintenanceOnBtn" type="button" class="tiny danger" {{'' if step_up_active else 'disabled'}}>Maintenance ON</button><button id="wpMaintenanceOffBtn" type="button" class="tiny ghost" {{'' if step_up_active else 'disabled'}}>Maintenance OFF</button>{% endif %}
+      </div>
+    </div>
+    <div class="metrics-summary" id="wpLifecycleStats">
+      <div><small>CORE VERSION</small><b id="wpCoreVersion">—</b></div>
+      <div><small>PLUGINS</small><b id="wpPluginCount">—</b></div>
+      <div><small>THEMES</small><b id="wpThemeCount">—</b></div>
+      <div><small>MODE</small><b id="wpMaintenanceState">—</b></div>
+    </div>
+    <pre id="wpLifecycleResult" class="adv-result">اختر موقع WordPress لقراءة Inventory. لا يتم عرض wp-config أو كلمات المرور.</pre>
+    <div id="wpLifecycleComponents" class="application-grid"></div>
+    {% if role != 'viewer' and not step_up_active %}<div class="creation-note">{{icon('shield')}} Maintenance ON/OFF يحتاج Step-Up من صفحة Security.</div>{% endif %}
+  </div>
+  <script src="/static/wordpress-lifecycle.js"></script>
 </section>
