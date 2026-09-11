@@ -41,7 +41,11 @@ with tempfile.TemporaryDirectory(prefix='nvp-package-impact-') as tmp:
     with client.session_transaction() as s:
         s.update(auth=True,user='admin',role='admin',csrf=csrf,step_up_user='admin',step_up_until=now+300)
 
-    preview=client.post('/api/hosting/package-impact',json={'username':'client1','package_id':tiny_id})
+    preview=client.post(
+        '/api/hosting/package-impact',
+        json={'username':'client1','package_id':tiny_id},
+        headers={'X-CSRF-Token':csrf},
+    )
     assert preview.status_code==200,preview.data
     impact=preview.get_json()['impact']
     assert impact['current_package']['name']=='NEXVARY Core'
@@ -64,7 +68,11 @@ with tempfile.TemporaryDirectory(prefix='nvp-package-impact-') as tmp:
         assert assigned==core_id
         conn.execute("DELETE FROM sites WHERE domain='two.example.test'")
 
-    safe=client.post('/api/hosting/package-impact',json={'username':'client1','package_id':tiny_id})
+    safe=client.post(
+        '/api/hosting/package-impact',
+        json={'username':'client1','package_id':tiny_id},
+        headers={'X-CSRF-Token':csrf},
+    )
     assert safe.status_code==200,safe.data
     assert safe.get_json()['impact']['safe_to_assign'] is True
     assigned=client.put(
