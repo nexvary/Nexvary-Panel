@@ -70,12 +70,14 @@
       </div>
 
       <div class="panel hosting-assignment-panel">
-        <div class="panel-head"><div><span class="kicker">ACCOUNT ASSIGNMENT</span><h3>تعيين الحزمة للمستخدم</h3></div></div>
+        <div class="panel-head"><div><span class="kicker">ACCOUNT ASSIGNMENT</span><h3>تعيين الحزمة للمستخدم</h3></div><span class="hosting-live-pill">IMPACT FIRST</span></div>
+        <p class="panel-note">Nexvary يحاكي أثر تغيير الحزمة أولًا ويمنع التخفيض إذا تجاوز الاستخدام الفعلي أحد الحدود القابلة للقياس.</p>
         <form id="hostingAssignForm" class="hosting-assign-form">
-          <label>Username<input name="username" maxlength="64" required placeholder="client01"></label>
+          <label>Username<input name="username" id="hostingAssignUsername" maxlength="64" required placeholder="client01"></label>
           <label>Package<select name="package_id" id="hostingAssignPackage" required><option value="">اختر…</option></select></label>
-          <button class="compact-action" type="submit" {{'' if step_up_active else 'disabled'}}>تعيين</button>
+          <div class="adv-inline"><button id="hostingImpactBtn" class="ghost compact-action" type="button">معاينة التأثير</button><button class="compact-action" type="submit" {{'' if step_up_active else 'disabled'}}>تعيين آمن</button></div>
         </form>
+        <div id="hostingImpactResult" class="hosting-status" aria-live="polite">لم تتم محاكاة التأثير بعد.</div>
         <div id="hostingAssignStatus" class="hosting-status" aria-live="polite"></div>
       </div>
       {% endif %}
