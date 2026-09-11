@@ -2,14 +2,14 @@
 Description=Nexvary Panel WordPress Lifecycle Agent
 After=network-online.target nexvary-panel-agent.service
 Wants=network-online.target
-ConditionPathExists=/opt/nexvary-panel-agent/wordpress_agent.py
+ConditionPathExists=/opt/nexvary-panel-agent/wordpress_entry.py
 
 [Service]
 Type=simple
 User=root
 Group=root
 WorkingDirectory=/opt/nexvary-panel-agent
-ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/wordpress_agent.py
+ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/wordpress_entry.py
 Restart=on-failure
 RestartSec=3
 UMask=0077
