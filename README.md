@@ -27,6 +27,7 @@ Current development track: **0.7.0**
 - Scoped File Manager, Git Deploy and key-only chrooted SFTP Transfer Center.
 - Postfix/Dovecot Email Center with mailboxes, forwarders, mail queue controls and deliverability checks for MX/SPF/DKIM/DMARC/MTA-STS/TLS-RPT.
 - WordPress lifecycle: official core checksums, reversible Core Repair, Maintenance Mode, plugin/theme inventory and official WordPress.org component Check/Update/Rollback with snapshots.
+- WordPress Staging/Safe Publish: clone or refresh into another managed PHP site with a separate quota-counted MariaDB database, Preview before publish, live files+database snapshot before replacement and tracked rollback of the latest publish. Current URL rewrite scope is intentionally limited to WordPress `home`/`siteurl` and does not claim serialized-content replacement yet.
 - PHP runtime management, Docker inventory/lifecycle controls, service controls and Fleet foundation.
 - NEXVARY Doctor, Trust Center, CrowdSec/Fail2Ban posture and Site Health inspection.
 
@@ -64,6 +65,8 @@ The same optional provider flags can be supplied during upgrade when those provi
 
 Development changes remain outside `main` until the release gates pass. Platform 0.7 currently gates Python compilation and backend/security tests, a clean Ubuntu 24.04 base installation, Postfix/Dovecot installation, real key-only SFTP, PostgreSQL provider operation and real Chromium UI/overflow checks with screenshots.
 
+A passing gate validates the tested head and environment; it is not a claim of universal production readiness across every distribution, provider or workload.
+
 ## Security boundaries
 
 - Treat the panel as internet-facing administrative infrastructure.
@@ -74,6 +77,7 @@ Development changes remain outside `main` until the release gates pass. Platform
 - Sensitive mutations require Step-Up where appropriate.
 - Validate configuration changes before reload and preserve rollback paths.
 - WordPress component updates accept installed slugs only and fetch packages only from official WordPress.org infrastructure.
+- WordPress Safe Publish snapshots live files and the live database before replacement; staging uses a separate managed MariaDB database counted against account quota.
 
 ## Visual identity
 
