@@ -1,0 +1,16 @@
+import { chromium } from 'playwright';
+import fs from 'node:fs';
+const base=process.env.NVP_BASE_URL||'http://127.0.0.1:8000';
+const password=process.env.NVP_TEST_PASSWORD;if(!password)throw new Error('NVP_TEST_PASSWORD required');
+const out=process.env.NVP_SCREENSHOT_DIR||'tests/artifacts';fs.mkdirSync(out,{recursive:true});
+const browser=await chromium.launch({headless:true});
+const page=await browser.newPage({viewport:{width:1600,height:1050}});
+await page.goto(`${base}/login`,{waitUntil:'networkidle'});await page.fill('input[name="username"]','admin');await page.fill('input[name="password"]',password);await page.locator('button').filter({hasText:'دخول آمن'}).click();await page.waitForURL(u=>u.pathname==='/'||u.pathname==='');
+const nav=page.locator('#nav a[href="#transfers"]');if(await nav.count()!==1)throw new Error('SFTP nav missing');await nav.click();await page.locator('#transfers.active-view').waitFor({state:'visible'});
+for(const sel of ['#transferProviderState','#transferForm','#transferDomain','#transferPublicKey','#transferList','#transferUsage'])if(await page.locator(sel).count()!==1)throw new Error(`SFTP UI missing ${sel}`);
+await page.waitForFunction(()=>['ONLINE','OFFLINE'].includes(document.querySelector('#transferProviderState')?.textContent?.trim()),null,{timeout:10000});
+if((await page.locator('#transferProviderState').innerText()).trim()!=='OFFLINE')throw new Error('UI CI without provider must show OFFLINE');
+if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error('SFTP desktop overflow');
+await page.screenshot({path:`${out}/nexvary-panel-0.7-sftp-transfer-desktop.png`,fullPage:true});
+await page.setViewportSize({width:390,height:844});await page.waitForTimeout(250);if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error('SFTP mobile overflow');await page.screenshot({path:`${out}/nexvary-panel-0.7-sftp-transfer-mobile.png`,fullPage:true});
+await browser.close();console.log('Nexvary Panel SFTP Transfer Chromium Gate: PASS');

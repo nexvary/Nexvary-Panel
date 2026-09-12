@@ -1,0 +1,41 @@
+/* Nexvary Panel 0.7 — operational Web Tools */
+#workspaceStage>#webtools{--rw-accent:#47f3c0!important;--rw-accent-rgb:71,243,192!important}
+#webtools .webtools-hero .hero-icon{color:#47f3c0!important}
+#webtools .webtools-toolbar{display:flex;align-items:end;gap:10px;flex-wrap:wrap}
+#webtools .webtools-toolbar label{display:grid;gap:4px;min-width:260px;color:#8098af;font-size:7px}
+#webtools .webtools-agent-state,#webtools .step-badge,#webtools .webtools-badge{display:inline-flex;align-items:center;gap:5px;min-height:25px;padding:3px 8px;border:1px solid rgba(71,243,192,.30);border-radius:999px;background:rgba(71,243,192,.05);color:#69ffd1;font-size:6.5px;letter-spacing:.1em;white-space:nowrap}
+#webtools .webtools-agent-state i{width:7px;height:7px;border-radius:50%;background:#47f3c0;box-shadow:0 0 9px rgba(71,243,192,.6)}
+#webtools .step-badge.warning{border-color:rgba(255,198,91,.36);color:#ffd06e;background:rgba(255,198,91,.06)}
+#webtools .webtools-badge{border-color:rgba(232,189,79,.32);color:#e8bd4f;background:rgba(232,189,79,.04)}
+#webtools .webtools-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;align-items:start}
+#webtools .webtools-metrics-panel{grid-column:1/-1}
+#webtools .webtools-form{display:grid;grid-template-columns:minmax(110px,.55fr) minmax(180px,1.35fr) 86px auto;gap:7px;align-items:end;margin-top:10px}
+#webtools .webtools-form label{display:grid;gap:4px;color:#7d95ac;font-size:6.5px;min-width:0}
+#webtools .webtools-form input,#webtools .webtools-form select{min-width:0}
+#webtools .error-form{grid-template-columns:130px minmax(0,1fr) auto}
+#webtools .webtools-editor{grid-column:auto}
+#webtools .webtools-editor textarea{resize:vertical;min-height:116px;font:11px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;direction:ltr;text-align:left}
+#webtools .webtools-status{min-height:18px;margin:7px 0;color:#7890a7;font-size:7px}
+#webtools .webtools-status.ok{color:#61ffbd}#webtools .webtools-status.error{color:#ff7894}
+#webtools .webtools-list,#webtools .webtools-code-list{display:grid;gap:6px;margin-top:8px}
+#webtools .webtools-row{display:grid;grid-template-columns:minmax(90px,.7fr) 52px minmax(130px,1.2fr) auto;gap:7px;align-items:center;padding:8px 9px;border:1px solid rgba(146,181,214,.34);border-radius:8px;background:linear-gradient(145deg,#061421,#020811)}
+#webtools .webtools-row:nth-child(even){border-color:rgba(7,29,49,.98);box-shadow:0 0 0 1px rgba(108,148,187,.18),inset 0 0 16px rgba(0,0,0,.54)}
+#webtools .webtools-row code{color:#bfe9ff;font-size:7.5px;overflow-wrap:anywhere}
+#webtools .webtools-row .code{color:#f1ca65;font-size:8px;font-weight:800}
+#webtools .webtools-row .target{color:#84a1bb;font-size:7px;overflow-wrap:anywhere}
+#webtools .webtools-row button{min-height:25px;padding:3px 7px;border:1px solid rgba(255,65,104,.30);background:rgba(255,65,104,.04);color:#ff8097;font-size:6.5px}
+#webtools .webtools-code-card{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 9px;border:1px solid rgba(151,185,216,.34);border-radius:8px;background:#06131f}
+#webtools .webtools-code-card b{color:#f1ca65;font-size:12px}#webtools .webtools-code-card small{color:#7590a8;font-size:6.5px}#webtools .webtools-code-card button{font-size:6.5px}
+#webtools .metrics-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:10px}
+#webtools .metrics-summary>div{min-height:62px;padding:9px;border:1px solid rgba(151,185,216,.35);border-radius:8px;background:linear-gradient(145deg,#061421,#020811);display:flex;flex-direction:column;justify-content:center}
+#webtools .metrics-summary>div:nth-child(even){border-color:rgba(7,29,49,.98);box-shadow:0 0 0 1px rgba(110,151,191,.18),inset 0 0 16px rgba(0,0,0,.55)}
+#webtools .metrics-summary small{color:#7189a0;font-size:6.5px;letter-spacing:.1em}#webtools .metrics-summary b{margin-top:4px;color:#eaf7ff;font-size:13px}
+#webtools .metrics-columns{display:grid;grid-template-columns:1.2fr .8fr;gap:9px;margin-top:10px}
+#webtools .metrics-columns>div{padding:10px;border:1px solid rgba(139,174,207,.27);border-radius:8px;background:#04101b}
+#webtools .metric-list{display:grid;gap:5px;margin-top:7px}
+#webtools .metric-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:6px 7px;border-bottom:1px solid rgba(110,143,175,.13);font-size:7px;color:#86a1ba}
+#webtools .metric-row code{color:#c7e9ff;overflow-wrap:anywhere}.metric-row b{color:#f0c960}
+#webtools .metrics-note{margin:9px 0 0;color:#6d859d;font-size:7px;line-height:1.7}
+#webtools .webtools-step-path{margin-top:0;border-color:rgba(232,189,79,.35)!important}
+@media(max-width:1050px){#webtools .webtools-grid{grid-template-columns:1fr}#webtools .webtools-metrics-panel{grid-column:auto}#webtools .webtools-form{grid-template-columns:1fr 1fr}#webtools .error-form{grid-template-columns:1fr}#webtools .webtools-editor{grid-column:1/-1}}
+@media(max-width:700px){#webtools .webtools-toolbar{align-items:stretch}#webtools .webtools-toolbar label{min-width:100%;width:100%}#webtools .webtools-form{grid-template-columns:1fr}#webtools .webtools-editor{grid-column:auto}#webtools .webtools-row{grid-template-columns:1fr auto}#webtools .webtools-row .target{grid-column:1/-1}#webtools .metrics-summary{grid-template-columns:repeat(2,minmax(0,1fr))}#webtools .metrics-columns{grid-template-columns:1fr}}

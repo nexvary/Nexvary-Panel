@@ -10,11 +10,12 @@ import time
 from functools import wraps
 from urllib.parse import quote
 
-from flask import flash, redirect, request, session, url_for
+from flask import flash, jsonify, redirect, request, session, url_for
 from .config import ADMIN_FILE
 from .db_layer import db
 
 FAILED: dict[str, dict[str, float | int]] = {}
+STEP_UP_TTL_SECONDS = 300
 
 
 def load_admin() -> dict[str, str]:
@@ -96,6 +97,37 @@ def totp_uri(username: str, secret: str) -> str:
     return f"otpauth://totp/{label}?secret={secret}&issuer={quote(issuer)}&algorithm=SHA1&digits=6&period=30"
 
 
+def step_up_active() -> bool:
+    try:
+        return bool(session.get("auth") and int(session.get("step_up_until", 0)) >= int(time.time()))
+    except (TypeError, ValueError):
+        return False
+
+
+def grant_step_up() -> int:
+    until = int(time.time()) + STEP_UP_TTL_SECONDS
+    session["step_up_until"] = until
+    session["step_up_user"] = session.get("user", "")
+    return until
+
+
+def clear_step_up() -> None:
+    session.pop("step_up_until", None)
+    session.pop("step_up_user", None)
+
+
+def verify_step_up_credentials(password: str, otp: str = "") -> bool:
+    username = str(session.get("user", ""))
+    if not username or not isinstance(password, str) or not password:
+        return False
+    ok, role = authenticate(username, password)
+    if not ok or role != session.get("role"):
+        return False
+    if totp_enabled_for(username) and not verify_totp(username, otp.strip()):
+        return False
+    return True
+
+
 def csrf_token() -> str:
     if "csrf" not in session:
         session["csrf"] = secrets.token_urlsafe(32)
@@ -110,11 +142,40 @@ def csrf_guard():
     return None
 
 
+def _api_request() -> bool:
+    return request.path.startswith("/api/") or request.is_json
+
+
+def _session_identity_active() -> bool:
+    if not session.get("auth"):
+        return False
+    username = str(session.get("user", ""))[:64]
+    role = str(session.get("role", ""))
+    if username == "admin":
+        return role == "admin"
+    if not username:
+        return False
+    with db() as conn:
+        row = conn.execute("SELECT role,enabled FROM users WHERE username=?", (username,)).fetchone()
+    return bool(row and row["enabled"] and str(row["role"]) == role)
+
+
+def _revoked_response():
+    session.clear()
+    if _api_request():
+        return jsonify(ok=False, error="session revoked or account disabled"), 401
+    return redirect(url_for("login"))
+
+
 def login_required(fn):
     @wraps(fn)
     def wrapped(*args, **kwargs):
         if not session.get("auth"):
+            if _api_request():
+                return jsonify(ok=False, error="authentication required"), 401
             return redirect(url_for("login"))
+        if not _session_identity_active():
+            return _revoked_response()
         return fn(*args, **kwargs)
     return wrapped
 
@@ -124,10 +185,34 @@ def role_required(*roles: str):
         @wraps(fn)
         def wrapped(*args, **kwargs):
             if not session.get("auth"):
+                if _api_request():
+                    return jsonify(ok=False, error="authentication required"), 401
                 return redirect(url_for("login"))
+            if not _session_identity_active():
+                return _revoked_response()
             if session.get("role") not in roles:
+                if _api_request():
+                    return jsonify(ok=False, error="permission denied"), 403
                 flash("ليس لديك صلاحية لتنفيذ هذه العملية.", "error")
                 return redirect(url_for("home"))
             return fn(*args, **kwargs)
         return wrapped
     return deco
+
+
+def step_up_required(fn):
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        if not session.get("auth"):
+            if _api_request():
+                return jsonify(ok=False, error="authentication required"), 401
+            return redirect(url_for("login"))
+        if not _session_identity_active():
+            return _revoked_response()
+        if session.get("step_up_user") != session.get("user") or not step_up_active():
+            if _api_request():
+                return jsonify(ok=False, error="step-up authentication required"), 428
+            flash("هذه العملية حساسة وتتطلب Step-Up Authentication أولًا.", "error")
+            return redirect(url_for("home") + "#security")
+        return fn(*args, **kwargs)
+    return wrapped

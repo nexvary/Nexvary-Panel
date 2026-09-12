@@ -1,0 +1,51 @@
+{% from "macros/icons.html" import icon %}
+<section id="accounts" class="view workspace-page">
+  <div class="workspace-hero accounts-hero royal-frame">
+    <div class="hero-icon">{{icon('users')}}</div>
+    <div class="hero-copy">
+      <span class="kicker">ACCOUNT & RESELLER CONTROL</span>
+      <h2>الحسابات والموزعون</h2>
+      <p>إدارة حسابات الاستضافة والحزم وحدود الموزعين ضمن Scope واضح، مع Step-Up وAudit لكل تغيير حساس.</p>
+    </div>
+    <div class="hero-stats">
+      <div><small>ACCOUNT SCOPE</small><strong>ISOLATED</strong><span>per reseller</span></div>
+      <div><small>PACKAGE</small><strong>ENFORCED</strong><span>quota + features</span></div>
+      <div><small>MUTATIONS</small><strong>STEP-UP</strong><span>audited</span></div>
+    </div>
+  </div>
+
+  <div class="accounts-layout">
+    <article class="panel account-create royal-frame frame-silver">
+      <div class="panel-head"><div><span class="kicker">CREATE HOSTING ACCOUNT</span><h3>حساب استضافة جديد</h3></div><span class="account-scope-chip">CONTROL PLANE</span></div>
+      <form id="hostingAccountForm" class="account-form">
+        <label>اسم المستخدم<input id="accountUsername" autocomplete="off" minlength="3" maxlength="32" required placeholder="client01"></label>
+        <label>النطاق الأساسي<input id="accountDomain" autocomplete="off" required placeholder="example.com"></label>
+        <label>الحزمة<select id="accountPackage" required><option value="">جاري تحميل الحزم…</option></select></label>
+        <label>كلمة المرور<input id="accountPassword" type="password" autocomplete="new-password" minlength="14" required placeholder="14+ characters"></label>
+        <div class="account-policy-note">إنشاء الحساب لا ينفذ Shell ولا يمنح صلاحية خادم. النطاق يصبح محجوزًا للحساب، وتتم إدارة المواقع لاحقًا ضمن Quota الحزمة.</div>
+        <button class="primary royal-action" type="submit">{{icon('plus')}} إنشاء الحساب</button>
+      </form>
+      <div id="accountStatus" class="account-status" role="status"></div>
+    </article>
+
+    <article class="panel account-inventory royal-frame frame-electric-black">
+      <div class="panel-head"><div><span class="kicker">HOSTING ACCOUNTS</span><h3>الحسابات الحالية</h3></div><div class="account-limit"><small>LIMIT</small><strong id="accountLimit">—</strong></div></div>
+      <div id="accountList" class="account-list"><div class="empty-state">جاري تحميل الحسابات…</div></div>
+    </article>
+  </div>
+
+  {% if role == 'admin' %}
+  <article class="panel reseller-center royal-frame frame-silver">
+    <div class="panel-head"><div><span class="kicker">RESELLER MANAGEMENT</span><h3>إدارة الموزعين</h3></div><span class="account-scope-chip">ADMIN ONLY</span></div>
+    <div class="reseller-grid">
+      <form id="resellerForm" class="account-form reseller-form">
+        <label>اسم الموزع<input id="resellerUsername" minlength="3" maxlength="32" required placeholder="partner01"></label>
+        <label>كلمة المرور<input id="resellerPassword" type="password" minlength="14" autocomplete="new-password" required></label>
+        <label>أقصى عدد حسابات<input id="resellerMaxAccounts" type="number" min="1" max="100000" value="25" required></label>
+        <button class="primary royal-action" type="submit">{{icon('plus')}} إنشاء موزع</button>
+      </form>
+      <div id="resellerList" class="reseller-list"><div class="empty-state">جاري تحميل الموزعين…</div></div>
+    </div>
+  </article>
+  {% endif %}
+</section>

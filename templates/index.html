@@ -13,6 +13,25 @@
   <link rel="stylesheet" href="/static/electric.css">
   <link rel="stylesheet" href="/static/royal-electric.css">
   <link rel="stylesheet" href="/static/platform-controls.css">
+  <link rel="stylesheet" href="/static/fusion.css">
+  <link rel="stylesheet" href="/static/dns.css">
+  <link rel="stylesheet" href="/static/vault.css">
+  <link rel="stylesheet" href="/static/integrations.css">
+  <link rel="stylesheet" href="/static/remote-backup.css">
+  <link rel="stylesheet" href="/static/approved-theme.css">
+  <link rel="stylesheet" href="/static/reference-dashboard.css">
+  <link rel="stylesheet" href="/static/royal-ornaments.css">
+  <link rel="stylesheet" href="/static/royal-workspaces.css">
+  <link rel="stylesheet" href="/static/royal-workspace-entities.css">
+  <link rel="stylesheet" href="/static/hosting-suite.css">
+  <link rel="stylesheet" href="/static/accounts.css">
+  <link rel="stylesheet" href="/static/mail.css">
+  <link rel="stylesheet" href="/static/transfers.css">
+  <link rel="stylesheet" href="/static/advanced-ops.css">
+  <link rel="stylesheet" href="/static/webtools.css">
+  <link rel="stylesheet" href="/static/scheduled-tasks.css">
+  <link rel="stylesheet" href="/static/workspace-visibility.css">
+  <link rel="stylesheet" href="/static/security-intelligence.css">
 </head>
 <body>
 <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div><div class="noise"></div>
@@ -29,22 +48,41 @@
       <span class="live-dot"></span>
     </div>
     <nav id="nav" aria-label="لوحة التحكم">
-      <span class="nav-label">CONTROL CENTER</span>
-      <a class="active" href="#dashboard" data-title="لوحة القيادة" data-subtitle="نظرة تشغيلية موحدة على الخادم والموارد والحماية">{{icon('dashboard')}}<span>لوحة القيادة</span><em></em></a>
-      <a href="#sites" data-title="المواقع والتطبيقات" data-subtitle="إدارة التطبيقات والـRuntime وNGINX والحالة والسجلات">{{icon('sites')}}<span>المواقع والتطبيقات</span><em></em></a>
-      <a href="#databases" data-title="قواعد البيانات" data-subtitle="MariaDB، المستخدمون والربط الآمن بالتطبيقات">{{icon('database')}}<span>قواعد البيانات</span><em></em></a>
-      <a href="#backups" data-title="خزنة النسخ الاحتياطي" data-subtitle="نسخ المواقع وقواعد البيانات وسجل نقاط الاستعادة">{{icon('backup')}}<span>النسخ الاحتياطي</span><em></em></a>
-      <span class="nav-label nav-gap">PLATFORM</span>
-      <a href="#files" data-title="مدير الملفات" data-subtitle="إدارة ملفات المواقع داخل نطاق آمن ومحصور">{{icon('file')}}<span>مدير الملفات</span><em></em></a>
-      <a href="#deploy" data-title="Git Deploy" data-subtitle="نشر مستودعات موثوقة إلى التطبيقات بدون Shell مفتوح">{{icon('git')}}<span>Git Deploy</span><em></em></a>
-      <a href="#wordpress" data-title="WordPress Manager" data-subtitle="تهيئة WordPress وفحص حالته لكل موقع PHP">{{icon('wordpress')}}<span>WordPress Manager</span><em></em></a>
-      <span class="nav-label nav-gap">INFRASTRUCTURE</span>
-      <a href="#security" data-title="مركز الأمان وSSL" data-subtitle="الشهادات وحالة طبقات الحماية والثقة">{{icon('shield')}}<span>الأمان و SSL</span><em></em></a>
-      <a href="#services" data-title="الخدمات وNEXVARY Doctor" data-subtitle="صحة الخدمات والتشخيص والإصلاحات المسموح بها">{{icon('activity')}}<span>الخدمات و Doctor</span><em></em></a>
-      <a href="#docker" data-title="Docker Center" data-subtitle="حالة الحاويات والتحكم التشغيلي المقيد">{{icon('docker')}}<span>Docker Center</span><em></em></a>
-      <a href="#notifications" data-title="مركز التنبيهات" data-subtitle="تنبيهات الصحة والأمان والاستعادة والنشر">{{icon('bell')}}<span>التنبيهات</span>{% if notifications_unread %}<strong class="nav-badge" aria-label="{{notifications_unread}} تنبيه غير مقروء">{{notifications_unread if notifications_unread < 100 else '99+'}}</strong>{% endif %}<em></em></a>
+      <span class="nav-label">لوحة التحكم</span>
+      <a class="active" href="#dashboard" data-title="الرئيسية" data-subtitle="نظرة تشغيلية موحدة على الخادم والموارد والحماية">{{icon('dashboard')}}<span>الرئيسية</span><em></em></a>
+      <a href="#hosting" data-title="Hosting Suite" data-subtitle="مركز وظائف الاستضافة والحزم والحدود والصلاحيات">{{icon('layers')}}<span>Hosting Suite</span><em></em></a>
+      {% if role in ['admin','reseller'] %}<a href="#accounts" data-title="الحسابات والموزعون" data-subtitle="Hosting Accounts والحزم وحدود Reseller ضمن Scope آمن">{{icon('users')}}<span>الحسابات والموزعون</span><em></em></a>{% endif %}
+      {% if role != 'reseller' %}
+      <a href="#mail" data-title="البريد الإلكتروني" data-subtitle="Mailboxes وForwarders وحالة Postfix/Dovecot ضمن Quota الحزمة">{{icon('mail')}}<span>البريد الإلكتروني</span><em></em></a>
+      <a href="#transfers" data-title="نقل الملفات" data-subtitle="SFTP بمفاتيح عامة فقط وChroot مستقل لكل موقع">{{icon('network')}}<span>نقل الملفات SFTP</span><em></em></a>
+      <a href="#advancedops" data-title="Advanced Hosting Ops" data-subtitle="DNS Writes وSSL وMail Queue وPHP وPostgreSQL وMigration وWHM وFleet">{{icon('layers')}}<span>Advanced Hosting Ops</span><em></em></a>
+      <a href="#sites" data-title="المواقع الإلكترونية" data-subtitle="إدارة المواقع والتطبيقات والـRuntime وNGINX">{{icon('globe')}}<span>المواقع الإلكترونية</span><em></em></a>
+      <a href="#webtools" data-title="أدوات الويب" data-subtitle="Redirects وصفحات الأخطاء وإحصاءات الزوار والباندويدث">{{icon('activity')}}<span>أدوات الويب</span><em></em></a>
+      <a href="#schedules" data-title="المهام المجدولة" data-subtitle="Scheduled Tasks آمنة للنسخ والنشر بدون Shell خام">{{icon('activity')}}<span>المهام المجدولة</span><em></em></a>
+      <a href="#databases" data-title="قواعد البيانات" data-subtitle="MariaDB والمستخدمون والربط الآمن بالتطبيقات">{{icon('database')}}<span>قواعد البيانات</span><em></em></a>
+      <a href="#files" data-title="الملفات وإدارة المحتوى" data-subtitle="إدارة ملفات المواقع داخل نطاق آمن ومحصور">{{icon('file')}}<span>الملفات وإدارة المحتوى</span><em></em></a>
+      <a href="#security" data-title="الأمن والحماية" data-subtitle="الشهادات و2FA وStep-Up وحالة طبقات الحماية">{{icon('shield')}}<span>الأمن والحماية</span><em></em></a>
+      <a href="#backups" data-title="النسخ الاحتياطية" data-subtitle="Restore Points محلية وEncrypted Remote Copies عبر Fusion">{{icon('backup')}}<span>النسخ الاحتياطية</span><em></em></a>
       {% if role == 'admin' %}<a href="#users" data-title="المستخدمون والصلاحيات" data-subtitle="إدارة الوصول والأدوار داخل لوحة التحكم">{{icon('users')}}<span>المستخدمون والصلاحيات</span><em></em></a>{% endif %}
-      <a href="#audit" data-title="سجل التدقيق" data-subtitle="تسلسل زمني لكل العمليات الإدارية المهمة">{{icon('audit')}}<span>سجل التدقيق</span><em></em></a>
+
+      <span class="nav-label nav-gap">التطبيقات والتكامل</span>
+      <a href="#fusion" data-title="التطبيقات والتكامل" data-subtitle="مزودو Edge وSecurity وBackup وContainers وDNS ضمن Fusion">{{icon('layers')}}<span>Fusion Center</span><em></em></a>
+      {% if role == 'admin' %}<a href="#integrations" data-title="Integration Targets" data-subtitle="ربط القدرات بالمزود وEndpoint وSecret Reference">{{icon('network')}}<span>Integration Targets</span><em></em></a>{% endif %}
+      <a href="#wordpress" data-title="WordPress Manager" data-subtitle="تهيئة WordPress وفحص حالته لكل موقع PHP">{{icon('wordpress')}}<span>WordPress Manager</span><em></em></a>
+      <a href="#deploy" data-title="Git Deploy" data-subtitle="نشر مستودعات موثوقة إلى التطبيقات بدون Shell مفتوح">{{icon('git')}}<span>Git Deploy</span><em></em></a>
+      <a href="#docker" data-title="Docker Center" data-subtitle="حالة الحاويات والتحكم التشغيلي المقيد">{{icon('docker')}}<span>Docker Center</span><em></em></a>
+
+      <span class="nav-label nav-gap">مراقبة وإدارة السيرفر</span>
+      <a href="#services" data-title="مراقبة السيرفر" data-subtitle="صحة الخدمات وNEXVARY Doctor والتشخيص">{{icon('activity')}}<span>مراقبة السيرفر</span><em></em></a>
+      <a href="#dns" data-title="إدارة DNS" data-subtitle="جرد DNS وMail posture للمواقع المسجلة">{{icon('network')}}<span>إدارة DNS</span><em></em></a>
+      <a href="#notifications" data-title="التنبيهات" data-subtitle="تنبيهات الصحة والأمان والاستعادة والنشر">{{icon('bell')}}<span>التنبيهات</span>{% if notifications_unread %}<strong class="nav-badge" aria-label="{{notifications_unread}} تنبيه غير مقروء">{{notifications_unread if notifications_unread < 100 else '99+'}}</strong>{% endif %}<em></em></a>
+      <a href="#audit" data-title="السجلات والأنشطة" data-subtitle="تسلسل زمني لكل العمليات الإدارية المهمة">{{icon('audit')}}<span>السجلات والأنشطة</span><em></em></a>
+      {% if role == 'admin' %}<a href="#vault" data-title="الإعدادات والأسرار" data-subtitle="Secret Vault root-only لمفاتيح DNS والنسخ والتكاملات">{{icon('key')}}<span>الإعدادات والأسرار</span><em></em></a>{% endif %}
+      {% else %}
+      <a href="#security" data-title="الأمن والحماية" data-subtitle="2FA وStep-Up لحماية عمليات الموزع">{{icon('shield')}}<span>الأمن والحماية</span><em></em></a>
+      <a href="#notifications" data-title="التنبيهات" data-subtitle="تنبيهات الحسابات والعمليات الخاصة بالموزع">{{icon('bell')}}<span>التنبيهات</span>{% if notifications_unread %}<strong class="nav-badge">{{notifications_unread if notifications_unread < 100 else '99+'}}</strong>{% endif %}<em></em></a>
+      <a href="#audit" data-title="السجلات والأنشطة" data-subtitle="عملياتك الإدارية فقط">{{icon('audit')}}<span>السجلات والأنشطة</span><em></em></a>
+      {% endif %}
     </nav>
     <div class="sidebar-bottom">
       <div class="account-chip"><span class="avatar">{{username[:1]|upper}}</span><div><b>{{username}}</b><small>{{role|upper}} ACCOUNT</small></div><span class="account-state"></span></div>
@@ -53,9 +91,10 @@
   </aside>
   <main class="workspace-main">
     <header class="topbar workspace-topbar royal-frame">
-      <div class="topbar-title"><button class="mobile-menu" id="mobileMenu" type="button" aria-label="القائمة">☰</button><div><div class="workspace-breadcrumb"><span>NEXVARY</span><i>/</i><b id="pageCrumb">CONTROL CENTER</b></div><h1 id="pageTitle">لوحة القيادة</h1><p id="pageSubtitle">نظرة تشغيلية موحدة على الخادم والموارد والحماية</p></div></div>
+      <div class="topbar-title"><button class="mobile-menu" id="mobileMenu" type="button" aria-label="القائمة">☰</button><div><div class="workspace-breadcrumb"><span>NEXVARY</span><i>/</i><b id="pageCrumb">CONTROL CENTER</b></div><h1 id="pageTitle">الرئيسية</h1><p id="pageSubtitle">نظرة تشغيلية موحدة على الخادم والموارد والحماية</p></div></div>
+      <div class="basmala-seal" aria-label="بسم الله الرحمن الرحيم"><span class="basmala-wing basmala-wing-right"></span><div><small>﷽</small><strong>بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيمِ</strong><i>نبدأ بعون الله</i></div><span class="basmala-wing basmala-wing-left"></span></div>
       <div class="top-tools">
-        <label class="command-search royal-frame">{{icon('search')}}<input id="globalSearch" type="search" placeholder="انتقل إلى شاشة..." autocomplete="off"><kbd>/</kbd></label>
+        <label class="command-search royal-frame">{{icon('search')}}<input id="globalSearch" type="search" placeholder="البحث في اللوحة..." autocomplete="off"><kbd>/</kbd></label>
         <button class="tool-button royal-action" id="quickCreate" type="button" title="إنشاء تطبيق جديد">{{icon('plus')}}<span>إنشاء</span></button>
         <div class="status royal-frame"><i></i><div><small>SERVER STATUS</small><b>ONLINE</b></div></div>
       </div>
@@ -63,24 +102,50 @@
     {% with ms=get_flashed_messages(with_categories=true) %}{% for c,m in ms %}<div class="flash {{c}}">{{m}}</div>{% endfor %}{% endwith %}
     <div class="workspace-stage" id="workspaceStage">
       {% include "sections/dashboard.html" %}
+      {% include "sections/hosting.html" %}
+      {% if role in ['admin','reseller'] %}{% include "sections/accounts.html" %}{% endif %}
+      {% if role != 'reseller' %}
+      {% include "sections/mail.html" %}
+      {% include "sections/transfers.html" %}
+      {% include "sections/advanced_ops.html" %}
       {% include "sections/sites.html" %}
+      {% include "sections/webtools.html" %}
+      {% include "sections/schedules.html" %}
       {% include "sections/databases.html" %}
       {% include "sections/backups.html" %}
+      {% include "sections/fusion.html" %}
+      {% if role == 'admin' %}{% include "sections/integrations.html" %}{% endif %}
+      {% include "sections/dns.html" %}
+      {% if role == 'admin' %}{% include "sections/vault.html" %}{% endif %}
       {% include "sections/files.html" %}
       {% include "sections/deploy.html" %}
       {% include "sections/wordpress.html" %}
-      {% include "sections/security.html" %}
       {% include "sections/services.html" %}
       {% include "sections/docker.html" %}
-      {% include "sections/notifications.html" %}
       {% if role == 'admin' %}{% include "sections/users.html" %}{% endif %}
+      {% endif %}
+      {% include "sections/security.html" %}
+      {% include "sections/notifications.html" %}
       {% include "sections/audit.html" %}
     </div>
+    <dialog id="healthDialog" class="health-dialog royal-frame"><div class="panel-head"><div><span class="kicker">SITE HEALTH INSPECTOR</span><h3 id="healthTitle">Health</h3></div><button type="button" id="closeHealth" class="tiny ghost">إغلاق</button></div><div id="healthReport" class="health-report"><div class="health-loading">اختر Health من بطاقة موقع لبدء الفحص.</div></div></dialog>
     <dialog id="logDialog" class="log-dialog royal-frame"><div class="panel-head"><div><span class="kicker">SITE LOGS</span><h3 id="logTitle">Logs</h3></div><button type="button" id="closeLogs" class="tiny ghost">إغلاق</button></div><pre id="logContent">Loading…</pre></dialog>
-    <footer><span class="footer-mark brand-footer"><img src="/static/brand/nexvary-panel-primary.jpg" alt=""></span><b>Nexvary Panel</b><span>Build {{panel_version}}</span><i></i><span>Security-first control plane</span></footer>
+    <footer><span class="footer-mark brand-footer"><img src="/static/brand/nexvary-panel-primary.jpg" alt=""></span><b>Nexvary Panel</b><span>Build {{panel_version}}</span><i></i><span>Secure Today, Protect Tomorrow</span></footer>
   </main>
 </div>
 <script src="/static/app.js"></script>
 <script src="/static/platform-controls.js"></script>
+<script src="/static/fusion.js"></script>
+<script src="/static/dns.js"></script>
+<script src="/static/vault.js"></script>
+<script src="/static/integrations.js"></script>
+<script src="/static/remote-backup.js"></script>
+<script src="/static/hosting-suite.js"></script>
+<script src="/static/accounts.js"></script>
+<script src="/static/mail.js"></script>
+<script src="/static/transfers.js"></script>
+<script src="/static/advanced-ops.js"></script>
+<script src="/static/webtools.js"></script>
+<script src="/static/scheduled-tasks.js"></script>
 </body>
 </html>

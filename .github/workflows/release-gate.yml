@@ -21,16 +21,11 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-      - name: Install Python dependencies
-        run: python -m pip install --upgrade pip && pip install -r requirements.txt
-      - name: Python compile gate
-        run: python -m compileall -q app.py panel agent tests
-      - name: Shell syntax gate
-        run: bash -n installer/install.sh installer/upgrade.sh agent/nvpctl
-      - name: Smoke tests
+      - run: python -m pip install --upgrade pip && pip install -r requirements.txt
+      - name: Backend, architecture and security gates
         env:
           NVP_COOKIE_SECURE: '0'
-        run: python tests/smoke_test.py
+        run: bash tests/ci/quality.sh
 
   installation-gate:
     name: Ubuntu 24.04 full installer gate
@@ -38,18 +33,35 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Install Nexvary Panel on clean runner
-        run: sudo bash installer/install.sh
-      - name: Verify services, files and HTTPS login
-        run: |
-          sudo systemctl is-active --quiet nginx
-          sudo systemctl is-active --quiet mariadb
-          sudo systemctl is-active --quiet nexvary-panel-agent
-          sudo systemctl is-active --quiet nexvary-panel
-          test -f /opt/nexvary-panel/panel/__init__.py
-          test -f /opt/nexvary-panel/static/app.css
-          curl -kfsS https://127.0.0.1:8443/login | grep -q 'Nexvary Panel'
-          sudo nginx -t
+      - run: sudo bash installer/install.sh
+      - run: bash tests/ci/verify-install.sh
+
+  mail-installation-gate:
+    name: Ubuntu 24.04 Email Stack gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo bash installer/install.sh --with-mail
+      - run: bash tests/ci/verify-mail.sh
+
+  transfer-installation-gate:
+    name: Ubuntu 24.04 key-only SFTP gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo bash installer/install.sh --with-sftp
+      - run: bash tests/ci/verify-sftp.sh
+
+  postgres-installation-gate:
+    name: Ubuntu 24.04 PostgreSQL provider gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo bash installer/install.sh --with-postgres
+      - run: bash tests/ci/verify-postgres.sh
 
   ui-release-gate:
     name: Real browser UI gate and screenshots
@@ -64,10 +76,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install app dependencies
-        run: python -m pip install --upgrade pip && pip install -r requirements.txt
-      - name: Install Playwright Chromium
-        run: npm install --no-save playwright@1.55.0 && npx playwright install --with-deps chromium
+      - run: python -m pip install --upgrade pip && pip install -r requirements.txt
+      - run: npm install --no-save playwright@1.55.0 && npx playwright install --with-deps chromium
       - name: Prepare isolated CI identity
         shell: bash
         run: |
@@ -87,6 +97,11 @@ jobs:
             echo 'NVP_DATA_DIR=/tmp/nexvary-panel-ci'
             echo 'NVP_DB_PATH=/tmp/nexvary-panel-ci/panel.db'
             echo 'NVP_AGENT_SOCK=/tmp/nexvary-panel-ci/missing-agent.sock'
+            echo 'NVP_VAULT_SOCK=/tmp/nexvary-panel-ci/missing-vault.sock'
+            echo 'NVP_PROVIDER_SOCK=/tmp/nexvary-panel-ci/missing-provider.sock'
+            echo 'NVP_MAIL_SOCK=/tmp/nexvary-panel-ci/missing-mail.sock'
+            echo 'NVP_TRANSFER_SOCK=/tmp/nexvary-panel-ci/missing-transfer.sock'
+            echo 'NVP_OPS_SOCK=/tmp/nexvary-panel-ci/missing-ops.sock'
             echo "NVP_TEST_PASSWORD=$TEST_PASSWORD"
           } >> "$GITHUB_ENV"
       - name: Start Nexvary Panel
@@ -96,8 +111,7 @@ jobs:
           for i in {1..30}; do curl -fsS http://127.0.0.1:8000/login >/dev/null && exit 0; sleep 1; done
           cat /tmp/nexvary-panel.log
           exit 1
-      - name: UI Release Gate
-        run: node tests/ui_gate.mjs
+      - run: bash tests/ci/ui.sh
       - name: Upload real UI screenshots
         if: always()
         uses: actions/upload-artifact@v4

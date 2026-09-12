@@ -81,8 +81,8 @@ def register_ops_routes(app):
         username = request.form.get("username", "").strip()
         role = request.form.get("role", "viewer").strip()
         password = request.form.get("password", "")
-        if username == "admin" or not USER_RE.match(username) or role not in ROLES or len(password) < 14:
-            flash("اسم المستخدم أو الدور أو كلمة المرور غير صالح.", "error")
+        if username == "admin" or not USER_RE.match(username) or role not in ROLES or role == "reseller" or len(password) < 14:
+            flash("اسم المستخدم أو الدور أو كلمة المرور غير صالح. أنشئ الموزعين من مدير الحسابات والموزعين.", "error")
             return redirect(url_for("home") + "#users")
         salt = secrets.token_hex(16)
         try:

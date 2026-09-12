@@ -1,0 +1,67 @@
+{% from "macros/icons.html" import icon %}
+<section id="schedules" class="view workspace-page">
+  <div class="workspace-hero schedules-hero royal-frame">
+    <div class="hero-icon">{{icon('activity')}}</div>
+    <div class="hero-copy">
+      <span class="kicker">SAFE SCHEDULED AUTOMATION</span>
+      <h2>المهام المجدولة</h2>
+      <p>بديل آمن لـCron الخام: جداول زمنية لمهام استضافة معتمدة فقط، بدون Shell أو أوامر حرة.</p>
+    </div>
+    <div class="hero-stats schedules-stats">
+      <div><small>ENGINE</small><strong>SCHEDULER</strong><span>isolated service</span></div>
+      <div><small>POLICY</small><strong>ALLOWLIST</strong><span>no raw shell</span></div>
+      <div><small>TIME</small><strong>UTC</strong><span>hourly / daily / weekly</span></div>
+    </div>
+  </div>
+
+  <div class="schedules-grid">
+    <article class="panel schedules-create royal-frame frame-silver">
+      <div class="panel-head">
+        <div><span class="kicker">CREATE SCHEDULE</span><h3>إضافة مهمة مجدولة</h3></div>
+        <span class="safe-chip">STEP-UP</span>
+      </div>
+      <form id="scheduleForm" class="schedule-form">
+        <label>الموقع
+          <select id="scheduleDomain" required>
+            <option value="">اختر الموقع</option>
+            {% for site in sites %}<option value="{{site.domain}}">{{site.domain}}</option>{% endfor %}
+          </select>
+        </label>
+        <label>نوع المهمة
+          <select id="scheduleTaskType" required>
+            <option value="backup_site">نسخة احتياطية للموقع</option>
+            <option value="git_deploy">إعادة Git Deploy المسجلة</option>
+          </select>
+        </label>
+        <label>التكرار
+          <select id="scheduleCadence" required>
+            <option value="hourly">كل ساعة</option>
+            <option value="daily">يوميًا</option>
+            <option value="weekly">أسبوعيًا</option>
+          </select>
+        </label>
+        <div class="schedule-time-row">
+          <label>الساعة UTC<input id="scheduleHour" type="number" min="0" max="23" value="2"></label>
+          <label>الدقيقة UTC<input id="scheduleMinute" type="number" min="0" max="59" value="0"></label>
+          <label>اليوم
+            <select id="scheduleWeekday">
+              <option value="0">الإثنين</option><option value="1">الثلاثاء</option><option value="2">الأربعاء</option>
+              <option value="3">الخميس</option><option value="4">الجمعة</option><option value="5">السبت</option><option value="6">الأحد</option>
+            </select>
+          </label>
+        </div>
+        <div class="schedule-policy-note">المحرك لا يقبل أوامر shell. كل مهمة ترتبط بموقع مسجل وتخضع لـFeature Manager وQuota الحزمة.</div>
+        <button class="primary royal-action" type="submit">{{icon('plus')}} إنشاء المهمة</button>
+      </form>
+      <div id="scheduleStatus" class="schedule-status" role="status"></div>
+    </article>
+
+    <article class="panel schedules-list-panel royal-frame frame-electric-black">
+      <div class="panel-head">
+        <div><span class="kicker">TASK INVENTORY</span><h3>المهام الحالية</h3></div>
+        <div class="schedule-quota"><small>QUOTA</small><strong id="scheduleQuota">—</strong></div>
+      </div>
+      <div id="scheduleList" class="schedule-list"><div class="empty-state">جاري تحميل المهام…</div></div>
+    </article>
+  </div>
+</section>
