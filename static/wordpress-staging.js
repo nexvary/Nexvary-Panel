@@ -2,7 +2,7 @@
   const root=document.getElementById('wordpress');if(!root)return;
   const $=s=>root.querySelector(s);const sourceSelect=$('#wpLifecycleDomain');const csrf=document.querySelector('meta[name="csrf-token"]')?.content||'';const stepUp=root.dataset.stepUp==='1';
   const out=$('#wpStagingResult');const target=$('#wpStageTarget');const dbInput=$('#wpStageDatabase');let mapping=null;let lastSnapshot='';
-  const text=(sel,value)=>{const node=$(sel);if(node)node.textContent=String(value??'—')};
+  const text=(sel,value)=>{const node=$(sel);if(!node)return;const rendered=String(value??'—');if(node instanceof HTMLInputElement||node instanceof HTMLTextAreaElement)node.value=rendered;else node.textContent=rendered};
   const api=async(url,opt={})=>{const headers={Accept:'application/json',...(opt.headers||{})};if(opt.method&&opt.method!=='GET')headers['X-CSRF-Token']=csrf;if(opt.body&&!headers['Content-Type'])headers['Content-Type']='application/json';const response=await fetch(url,{credentials:'same-origin',...opt,headers});let body={};try{body=await response.json()}catch{}if(!response.ok)throw Object.assign(new Error(body.error||`HTTP ${response.status}`),{status:response.status});return body};
   const source=()=>sourceSelect?.value||'';
   const stageTarget=()=>target?.value||'';
