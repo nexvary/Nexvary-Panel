@@ -79,6 +79,10 @@ A passing gate validates the tested head and environment; it is not a claim of u
 - WordPress component updates accept installed slugs only and fetch packages only from official WordPress.org infrastructure.
 - WordPress Safe Publish snapshots live files and the live database before replacement; staging uses a separate managed MariaDB database counted against account quota.
 
+## Competitive scope note
+
+Platform 0.7 is intentionally closing capability gaps with mature hosting panels through original clean-room workflows. WordPress staging is now operational, but Nexvary Panel still does not claim complete parity with long-established products in serialized WordPress search/replace, bulk fleet orchestration, extension marketplace depth or every mail/server administration workflow.
+
 ## Visual identity
 
 The approved interface direction is deep navy + electric violet with luminous gold framing, electric green for healthy/live states and electric crimson for warnings/danger states. Arabic RTL and desktop/mobile layout are protected by Chromium release gates.
