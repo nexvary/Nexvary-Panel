@@ -57,6 +57,7 @@ install -m 0750 -o root -g root agent/hosting_ops_entry.py /opt/nexvary-panel-ag
 install -m 0750 -o root -g nexvary-panel agent/postgres_agent.py /opt/nexvary-panel-agent/postgres_agent.py
 install -m 0750 -o root -g root agent/wordpress_agent.py /opt/nexvary-panel-agent/wordpress_agent.py
 install -m 0640 -o root -g root agent/wordpress_components.py /opt/nexvary-panel-agent/wordpress_components.py
+install -m 0640 -o root -g root agent/wordpress_staging.py /opt/nexvary-panel-agent/wordpress_staging.py
 install -m 0750 -o root -g root agent/wordpress_entry.py /opt/nexvary-panel-agent/wordpress_entry.py
 install -m 0644 systemd/nexvary-panel.service /etc/systemd/system/nexvary-panel.service
 install -m 0644 systemd/nexvary-panel-agent.service /etc/systemd/system/nexvary-panel-agent.service
