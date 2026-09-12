@@ -29,3 +29,5 @@ python tests/wordpress_agent_test.py
 python tests/wordpress_lifecycle_test.py
 python tests/wordpress_components_test.py
 python tests/wordpress_updates_routes_test.py
+python tests/wordpress_staging_agent_test.py
+python tests/wordpress_staging_test.py
