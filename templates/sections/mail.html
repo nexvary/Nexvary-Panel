@@ -5,7 +5,7 @@
     <div class="hero-copy">
       <span class="kicker">NEXVARY EMAIL CENTER</span>
       <h2>البريد الإلكتروني</h2>
-      <p>Mailboxes وForwarders وPassword Rotation عبر Postfix/Dovecot Provider مع Quota وStep-Up وAudit. كلمات المرور لا تُحفظ داخل قاعدة بيانات اللوحة.</p>
+      <p>Mailboxes وForwarders وPassword Rotation وAutoresponders وFilters عبر Postfix/Dovecot + LMTP/Sieve مع Quota وStep-Up وAudit. كلمات المرور لا تُحفظ داخل قاعدة بيانات اللوحة.</p>
     </div>
     <div class="hero-stats">
       <div><small>PROVIDER</small><strong id="mailProviderState">CHECKING</strong><span id="mailProviderEngine">Postfix / Dovecot</span></div>
@@ -52,6 +52,52 @@
     </article>
   </div>
 
+  <div class="mail-automation-shell royal-frame">
+    <div class="panel-head mail-automation-head">
+      <div><span class="kicker">MAIL AUTOMATION · DOVECOT SIEVE</span><h3>الردود التلقائية والفلاتر وسياسة Spam</h3></div>
+      <div class="mail-automation-picker"><label>Mailbox<select id="mailAutomationMailbox"><option value="">جاري تحميل Mailboxes…</option></select></label><span id="mailAutomationFeatureState" class="mail-chip">POLICY CHECK</span></div>
+    </div>
+    <div class="mail-policy-note mail-automation-note">تُولد اللوحة قواعد Sieve من حقول محددة فقط؛ لا يوجد محرر Script حر. سياسة Spam هنا تتصرف فقط عند وجود <code>X-Spam-Flag: YES</code> من Scanner خارجي مثل Rspamd/SpamAssassin، ولا تدّعي اللوحة تنفيذ Spam scoring بنفسها.</div>
+
+    <div class="mail-automation-grid">
+      <article class="panel frame-electric-black">
+        <div class="panel-head"><div><span class="kicker">AUTORESPONDER</span><h3>رد تلقائي</h3></div><span class="mail-chip">VACATION</span></div>
+        <form id="mailAutoresponderForm" class="mail-form automation-form">
+          <label class="mail-toggle"><input id="mailAutoresponderEnabled" type="checkbox"><span>تفعيل الرد التلقائي</span></label>
+          <label>فاصل الأيام<input id="mailAutoresponderDays" type="number" min="1" max="30" value="1"></label>
+          <label class="full-row">الموضوع<input id="mailAutoresponderSubject" maxlength="180" placeholder="Out of office"></label>
+          <label class="full-row">نص الرد<textarea id="mailAutoresponderBody" maxlength="5000" rows="6" placeholder="سنعاود التواصل معك قريبًا."></textarea></label>
+          <button id="mailAutoresponderSave" class="primary royal-action" type="submit">حفظ Autoresponder</button>
+        </form>
+      </article>
+
+      <article class="panel frame-silver">
+        <div class="panel-head"><div><span class="kicker">MAIL FILTERS</span><h3>فلاتر صندوق البريد</h3></div><span class="mail-chip">MAX 40</span></div>
+        <form id="mailFilterForm" class="mail-form automation-form">
+          <label>الحقل<select id="mailFilterField"><option value="subject">Subject</option><option value="from">From</option><option value="to">To</option><option value="spam_flag">X-Spam-Flag</option></select></label>
+          <label>المطابقة<select id="mailFilterMatch"><option value="contains">Contains</option><option value="is">Is exactly</option></select></label>
+          <label class="full-row">القيمة<input id="mailFilterPattern" maxlength="200" required placeholder="invoice"></label>
+          <label>الإجراء<select id="mailFilterAction"><option value="fileinto">Move to folder</option><option value="redirect">Redirect</option><option value="discard">Discard</option></select></label>
+          <label>الوجهة<input id="mailFilterDestination" maxlength="320" placeholder="Billing أو archive@example.com"></label>
+          <label>الأولوية<input id="mailFilterPriority" type="number" min="1" max="10000" value="100"></label>
+          <button class="primary royal-action" type="submit">إضافة Filter</button>
+        </form>
+        <div id="mailFilterList" class="mail-list automation-list"><div class="empty-state">اختر Mailbox لعرض الفلاتر.</div></div>
+      </article>
+
+      <article class="panel frame-electric-black mail-spam-card">
+        <div class="panel-head"><div><span class="kicker">SPAM ACTION POLICY</span><h3>التعامل مع البريد المعلّم Spam</h3></div><span class="mail-chip">HEADER DRIVEN</span></div>
+        <form id="mailSpamForm" class="mail-form automation-form">
+          <label class="mail-toggle"><input id="mailSpamEnabled" type="checkbox"><span>تفعيل السياسة</span></label>
+          <label>الإجراء<select id="mailSpamAction"><option value="junk">نقل إلى Junk</option><option value="discard">Discard</option></select></label>
+          <div class="mail-policy-note">الوضع الآمن الافتراضي هو Junk. خيار Discard متاح لكنه قد يحذف رسالة علّمها الـscanner خطأً؛ لذلك يتطلب Step-Up مثل باقي تعديلات البريد.</div>
+          <button class="primary royal-action" type="submit">حفظ Spam Policy</button>
+        </form>
+      </article>
+    </div>
+    <div id="mailAutomationStatus" class="mail-status" role="status"></div>
+  </div>
+
   <div class="mail-inventory-grid">
     <article class="panel royal-frame frame-electric-black">
       <div class="panel-head"><div><span class="kicker">MAILBOX INVENTORY</span><h3>صناديق البريد</h3></div><button type="button" id="mailRefresh" class="tiny ghost">تحديث</button></div>
@@ -63,4 +109,5 @@
     </article>
   </div>
   <div id="mailStatus" class="mail-status" role="status"></div>
+  <script src="/static/mail-automation.js"></script>
 </section>
