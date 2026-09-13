@@ -1,8 +1,45 @@
 {% from "macros/icons.html" import icon %}
 <section id="databases" class="workspace-page databases-workspace">
-  <div class="workspace-hero violet-hero"><div class="hero-icon">{{icon('database')}}</div><div class="hero-copy"><span class="kicker">DATA CONTROL</span><h2>قواعد البيانات</h2><p>إدارة MariaDB والمستخدمين والربط بالتطبيقات من مساحة بيانات مستقلة.</p></div><div class="hero-stats"><div><small>DATABASES</small><strong>{{databases|length}}</strong></div><div><small>ENGINE</small><strong>MariaDB</strong></div><div><small>SECRETS</small><strong>EPHEMERAL</strong></div></div></div>
+  <div class="workspace-hero violet-hero"><div class="hero-icon">{{icon('database')}}</div><div class="hero-copy"><span class="kicker">DATA CONTROL</span><h2>قواعد البيانات</h2><p>إدارة MariaDB والمستخدمين المستقلين والصلاحيات وربطها بالتطبيقات من مساحة بيانات آمنة.</p></div><div class="hero-stats"><div><small>DATABASES</small><strong>{{databases|length}}</strong></div><div><small>ENGINE</small><strong>MariaDB</strong></div><div><small>SECRETS</small><strong>EPHEMERAL</strong></div><div><small>ACCESS</small><strong>GRANTS</strong></div></div></div>
   <div class="workspace-grid data-layout">
     <div class="workspace-primary"><div class="content-toolbar"><div><span class="toolbar-dot violet"></span><b>Database Inventory</b><small>قواعد البيانات المسجلة وربطها بالتطبيقات</small></div></div><div class="database-grid">{% for d in databases %}<article class="database-card"><div class="database-orb">{{icon('database')}}</div><div class="database-info"><div class="database-title"><b>{{d.db_name}}</b><span class="live-chip"><i></i>READY</span></div><div class="database-meta"><span>{{icon('user-shield')}} {{d.db_user}}</span><span>{{icon('storage')}} {{d.engine}}</span>{% if d.site_domain %}<span>{{icon('globe')}} {{d.site_domain}}</span>{% else %}<span class="muted-meta">{{icon('layers')}} Unlinked</span>{% endif %}</div></div></article>{% else %}<div class="empty-state full-span"><span class="empty-icon violet">{{icon('database')}}</span><b>لا توجد قواعد بيانات</b><small>أنشئ قاعدة جديدة من اللوحة الجانبية.</small></div>{% endfor %}</div></div>
-    {% if role != 'viewer' %}<div class="creation-panel violet-panel"><div class="creation-head"><span class="creation-icon violet">{{icon('database')}}</span><div><span class="kicker">PROVISION</span><h3>قاعدة جديدة</h3></div></div><form method="post" action="/databases" autocomplete="off"><input type="hidden" name="csrf_token" value="{{csrf_token()}}"><label>اسم القاعدة</label><input name="db_name" placeholder="app_db" required pattern="[A-Za-z][A-Za-z0-9_]{0,31}"><label>المستخدم</label><input name="db_user" placeholder="app_user" required pattern="[A-Za-z][A-Za-z0-9_]{0,31}"><label>كلمة المرور</label><input type="password" name="db_password" minlength="14" required autocomplete="new-password"><label>ربط بالموقع</label><select name="site_domain"><option value="">بدون ربط</option>{% for s in sites %}<option value="{{s.domain}}">{{s.domain}}</option>{% endfor %}</select><button class="primary-create violet-create">{{icon('key')}}<span>إنشاء آمن</span></button><div class="creation-note violet-note">{{icon('shield')}}<span>كلمة المرور تمر إلى Agent عبر stdin ولا تحفظ في SQLite.</span></div></form></div>{% endif %}
+    {% if role != 'viewer' %}<div class="creation-panel violet-panel"><div class="creation-head"><span class="creation-icon violet">{{icon('database')}}</span><div><span class="kicker">PROVISION</span><h3>قاعدة جديدة</h3></div></div><form method="post" action="/databases" autocomplete="off"><input type="hidden" name="csrf_token" value="{{csrf_token()}}"><label>اسم القاعدة</label><input name="db_name" placeholder="app_db" required pattern="[A-Za-z][A-Za-z0-9_]{0,31}"><label>المستخدم الأول</label><input name="db_user" placeholder="app_user" required pattern="[A-Za-z][A-Za-z0-9_]{0,31}"><label>كلمة المرور</label><input type="password" name="db_password" minlength="14" required autocomplete="new-password"><label>ربط بالموقع</label><select name="site_domain"><option value="">بدون ربط</option>{% for s in sites %}<option value="{{s.domain}}">{{s.domain}}</option>{% endfor %}</select><button class="primary-create violet-create">{{icon('key')}}<span>إنشاء آمن</span></button><div class="creation-note violet-note">{{icon('shield')}}<span>كلمة المرور تمر إلى Agent عبر stdin ولا تحفظ في SQLite.</span></div></form></div>{% endif %}
   </div>
+
+  <section id="databaseAccessManager" class="database-access-manager panel" data-step-up="{{ '1' if step_up_active else '0' }}" data-role="{{role}}">
+    <div class="panel-head database-access-head"><div><span class="kicker">DATABASE ACCESS MANAGER</span><h3>المستخدمون والصلاحيات</h3><p>افصل مستخدمي MariaDB عن قواعد البيانات، وامنح أقل قدر من الصلاحيات لكل تطبيق. كلمات المرور لا تحفظ في قاعدة بيانات اللوحة.</p></div><div class="database-provider-badge"><i></i><span id="databaseProviderState">CHECKING</span></div></div>
+    <div class="database-access-stats"><div><small>USERS</small><b id="databaseUserCount">—</b></div><div><small>GRANTS</small><b id="databaseGrantCount">—</b></div><div><small>USER QUOTA</small><b id="databaseUserQuota">—</b></div><div><small>STEP-UP</small><b>{{'ACTIVE' if step_up_active else 'REQUIRED'}}</b></div></div>
+
+    {% if role != 'viewer' %}
+    <div class="database-access-forms">
+      <form id="databaseUserCreateForm" class="database-access-form" autocomplete="off">
+        <span class="kicker">CREATE USER</span><h4>مستخدم MariaDB مستقل</h4>
+        <label>Username<input name="username" required maxlength="32" pattern="[A-Za-z][A-Za-z0-9_]{0,31}" placeholder="report_user"></label>
+        {% if role == 'admin' %}<label>Owner<input name="owner" maxlength="64" placeholder="admin أو اسم الحساب"></label>{% endif %}
+        <label>Password<input type="password" name="password" required minlength="14" autocomplete="new-password"></label>
+        <button type="submit" class="primary-create violet-create" {{'' if step_up_active else 'disabled'}}>إنشاء المستخدم</button>
+      </form>
+
+      <form id="databaseGrantForm" class="database-access-form">
+        <span class="kicker">LEAST PRIVILEGE</span><h4>ربط مستخدم بقاعدة</h4>
+        <label>Database<select name="db_name" id="databaseGrantDb" required><option value="">اختر قاعدة…</option></select></label>
+        <label>User<select name="username" id="databaseGrantUser" required><option value="">اختر مستخدمًا…</option></select></label>
+        <label>Privileges<select name="privileges" id="databaseGrantPrivileges" multiple size="8" required></select></label>
+        <button type="submit" class="primary-create violet-create" {{'' if step_up_active else 'disabled'}}>تطبيق الصلاحيات</button>
+        <button type="button" id="databaseGrantRevoke" class="ghost" {{'' if step_up_active else 'disabled'}}>سحب صلاحيات هذه القاعدة</button>
+      </form>
+
+      <form id="databasePasswordForm" class="database-access-form" autocomplete="off">
+        <span class="kicker">CREDENTIAL ROTATION</span><h4>تدوير كلمة المرور</h4>
+        <label>User<select name="username" id="databasePasswordUser" required><option value="">اختر مستخدمًا…</option></select></label>
+        <label>New Password<input type="password" name="password" required minlength="14" autocomplete="new-password"></label>
+        <button type="submit" class="primary-create violet-create" {{'' if step_up_active else 'disabled'}}>تدوير كلمة المرور</button>
+      </form>
+    </div>
+    {% endif %}
+
+    <div id="databaseAccessStatus" class="database-access-status" aria-live="polite"></div>
+    <div class="database-access-columns"><div><span class="kicker">DATABASE USERS</span><div id="databaseAccessUsers" class="database-access-list"><div class="empty-state">جارٍ تحميل المستخدمين…</div></div></div><div><span class="kicker">ACTIVE GRANTS</span><div id="databaseAccessGrants" class="database-access-list"><div class="empty-state">جارٍ تحميل الصلاحيات…</div></div></div></div>
+    <p class="database-access-note">الحسابات تُنشأ على <code>localhost</code> فقط. حذف المستخدم محظور حتى تُسحب كل Grants المسجلة، وأي تغيير حساس يتطلب Step-Up.</p>
+  </section>
 </section>
