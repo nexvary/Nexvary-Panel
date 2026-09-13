@@ -8,6 +8,8 @@ from flask import Flask
 from .account_schema import ensure_account_schema
 from .doctor_schema import ensure_doctor_schema
 from .domain_schema import ensure_domain_schema
+from .extension_registry import validate_extensions
+from .extension_schema import ensure_extension_schema
 from .hosting_consistency_schema import ensure_hosting_consistency_schema
 from .mail_schema import ensure_mail_schema
 from .ops_schema import ensure_ops_schema
@@ -24,6 +26,7 @@ from .routes_dns import register_dns_routes
 from .routes_domain_health import register_domain_health_routes
 from .routes_domains import register_domain_routes
 from .routes_dnssec import register_dnssec_routes
+from .routes_extensions import register_extension_routes
 from .routes_fleet import register_fleet_routes
 from .routes_fusion import register_fusion_routes
 from .routes_health import register_health_routes
@@ -70,6 +73,7 @@ class PanelModule:
 
 MODULES: tuple[PanelModule, ...] = (
     PanelModule("auth", "Authentication", "core", register_auth_routes),
+    PanelModule("extensions", "Extension Hub", "core", register_extension_routes, schema_hook=ensure_extension_schema, depends_on=("auth",), feature_prefixes=("whm.plugins",), maturity="native", endpoint_namespace="extensions"),
     PanelModule("sites", "Sites", "hosting", register_site_routes, feature_prefixes=("domains.", "software."), provider_services=("nexvary-panel-agent",), ui_view="sites", maturity="provider"),
     PanelModule("operations", "Operations", "core", register_ops_routes, depends_on=("auth",), provider_services=("nexvary-panel-agent",), maturity="provider"),
     PanelModule("platform", "Platform", "core", register_platform_routes, depends_on=("auth",)),
@@ -132,6 +136,7 @@ def validate_modules(modules: Iterable[PanelModule] = MODULES) -> tuple[PanelMod
             raise RuntimeError(f"duplicate-panel-module-provider:{module.id}")
         if module.endpoint_namespace is not None and (not module.endpoint_namespace or not module.endpoint_namespace.replace("_", "").isalnum()):
             raise RuntimeError(f"invalid-panel-module-endpoint-namespace:{module.id}")
+    validate_extensions(known)
     return ordered
 
 
