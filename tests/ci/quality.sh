@@ -15,6 +15,7 @@ python tests/schedules_test.py
 python tests/accounts_scope_test.py
 python tests/mail_policy_test.py
 python tests/mail_password_rotation_test.py
+python tests/mail_queue_controls_test.py
 python tests/transfer_policy_test.py
 python tests/advanced_ops_test.py
 python tests/fleet_orchestration_test.py
