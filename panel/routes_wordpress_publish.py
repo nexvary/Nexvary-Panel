@@ -13,13 +13,17 @@ _ALLOWED_SCOPES = {"plugins_themes"}
 
 
 def _history_rows(conn, source: str) -> list[dict]:
+    # `id` is the control-plane causal order. `created_at` is retained for display,
+    # but can legitimately skew (restored/imported rows, second-resolution clocks,
+    # or provider timestamps). Rollback eligibility must follow the last committed
+    # publish operation, not a wall-clock value supplied by another path.
     rows = conn.execute(
         "SELECT id,source_domain,target_domain,snapshot_id,scope,status,version,detail,created_at,rolled_back_at "
-        "FROM wordpress_publish_history WHERE source_domain=? ORDER BY created_at DESC,id DESC LIMIT 20",
+        "FROM wordpress_publish_history WHERE source_domain=? ORDER BY id DESC LIMIT 20",
         (source,),
     ).fetchall()
     latest = conn.execute(
-        "SELECT id FROM wordpress_publish_history WHERE source_domain=? AND status='published' ORDER BY created_at DESC,id DESC LIMIT 1",
+        "SELECT id FROM wordpress_publish_history WHERE source_domain=? AND status='published' ORDER BY id DESC LIMIT 1",
         (source,),
     ).fetchone()
     latest_id = int(latest["id"]) if latest else 0
@@ -127,7 +131,7 @@ def register_wordpress_publish_routes(app):
                 (source, snapshot),
             ).fetchone()
             latest = conn.execute(
-                "SELECT id,snapshot_id FROM wordpress_publish_history WHERE source_domain=? AND status='published' ORDER BY created_at DESC,id DESC LIMIT 1",
+                "SELECT id,snapshot_id FROM wordpress_publish_history WHERE source_domain=? AND status='published' ORDER BY id DESC LIMIT 1",
                 (source,),
             ).fetchone()
             if not row:
