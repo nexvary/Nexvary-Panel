@@ -28,6 +28,7 @@ from .routes_health import register_health_routes
 from .routes_hosting import register_hosting_routes
 from .routes_integrations import register_integration_routes
 from .routes_mail import register_mail_routes
+from .routes_mail_security import register_mail_security_routes
 from .routes_ops import register_ops_routes
 from .routes_platform import register_platform_routes
 from .routes_remote_backup import register_remote_backup_routes
@@ -81,6 +82,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("schedules", "Scheduled Tasks", "automation", register_schedule_routes, depends_on=("hosting", "sites"), feature_prefixes=("advanced.cron",), provider_services=("nexvary-panel-scheduler",), ui_view="schedules", maturity="provider"),
     PanelModule("accounts", "Accounts and Resellers", "hosting", register_account_routes, schema_hook=ensure_account_schema, depends_on=("hosting",), feature_prefixes=("whm.accounts", "whm.resellers"), ui_view="accounts"),
     PanelModule("mail", "Email Center", "hosting", register_mail_routes, schema_hook=ensure_mail_schema, depends_on=("accounts", "sites"), feature_prefixes=("email.",), provider_services=("nexvary-panel-mail",), ui_view="mail", maturity="provider"),
+    PanelModule("mail_security", "Mail Security Controls", "security", register_mail_security_routes, depends_on=("mail",), feature_prefixes=("email.accounts",), provider_services=("nexvary-panel-mail",), ui_view="mail", maturity="provider"),
     PanelModule("transfers", "Transfer Center", "hosting", register_transfer_routes, schema_hook=ensure_transfer_schema, depends_on=("accounts", "sites"), feature_prefixes=("files.ftp", "files.sftp"), provider_services=("nexvary-panel-transfer",), ui_view="transfers", maturity="provider"),
     PanelModule("advanced_ops", "Advanced Hosting Ops", "server", register_advanced_ops_routes, schema_hook=ensure_ops_schema, depends_on=("hosting", "sites", "integrations"), feature_prefixes=("domains.", "security.ssl", "email.", "software.php", "databases.postgresql", "whm."), provider_services=("nexvary-panel-ops", "nexvary-panel-postgres"), ui_view="advancedops", maturity="provider"),
     PanelModule("autossl", "AutoSSL Policy", "automation", register_autossl_routes, depends_on=("advanced_ops",), feature_prefixes=("security.ssl",), provider_services=("nexvary-panel-autossl.timer", "nexvary-panel-ops"), ui_view="advancedops", maturity="provider"),

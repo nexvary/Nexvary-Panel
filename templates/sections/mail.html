@@ -5,7 +5,7 @@
     <div class="hero-copy">
       <span class="kicker">NEXVARY EMAIL CENTER</span>
       <h2>البريد الإلكتروني</h2>
-      <p>Mailboxes وForwarders عبر Postfix/Dovecot Provider مع Quota وStep-Up وAudit. كلمات المرور لا تُحفظ داخل قاعدة بيانات اللوحة.</p>
+      <p>Mailboxes وForwarders وPassword Rotation عبر Postfix/Dovecot Provider مع Quota وStep-Up وAudit. كلمات المرور لا تُحفظ داخل قاعدة بيانات اللوحة.</p>
     </div>
     <div class="hero-stats">
       <div><small>PROVIDER</small><strong id="mailProviderState">CHECKING</strong><span id="mailProviderEngine">Postfix / Dovecot</span></div>
@@ -37,6 +37,17 @@
         <label>الوجهة<input id="forwarderDestination" type="email" maxlength="320" required placeholder="destination@example.net"></label>
         <div class="mail-policy-note">التحويل الحالي Forward-only. إذا كان المصدر Mailbox موجودًا، يرفض Provider التحويل لتجنب فقد النسخة المحلية بشكل غير مقصود.</div>
         <button class="primary royal-action" type="submit">{{icon('plus')}} إنشاء Forwarder</button>
+      </form>
+    </article>
+
+    <article class="panel royal-frame frame-silver mail-security-panel">
+      <div class="panel-head"><div><span class="kicker">MAILBOX SECURITY</span><h3>تدوير كلمة المرور</h3></div><span class="mail-chip">TRANSIENT SECRET</span></div>
+      <form id="mailPasswordForm" class="mail-form" autocomplete="off">
+        <label>Mailbox<select id="mailPasswordMailbox" required><option value="">جاري تحميل Mailboxes…</option></select></label>
+        <label>كلمة المرور الجديدة<input id="mailPasswordNew" type="password" minlength="14" maxlength="128" autocomplete="new-password" required></label>
+        <label>تأكيد كلمة المرور<input id="mailPasswordConfirm" type="password" minlength="14" maxlength="128" autocomplete="new-password" required></label>
+        <div class="mail-policy-note">لا تُطلب كلمة المرور القديمة ولا تُخزن الجديدة. السر يعبر Unix socket إلى Mail Agent، ويُكتب فقط Hash Dovecot بعد Validation/Reload ناجح.</div>
+        <button class="primary royal-action" type="submit">{{icon('shield')}} تغيير كلمة المرور</button>
       </form>
     </article>
   </div>
