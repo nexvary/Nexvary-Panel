@@ -21,7 +21,7 @@ ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
-ReadWritePaths=/etc/nexvary-panel/mail /var/mail/vhosts /var/spool/postfix /run/nexvary-panel
+ReadWritePaths=/etc/nexvary-panel/mail /var/mail/vhosts /var/spool/postfix -/var/lib/postfix -/run/postfix /run/nexvary-panel
 RestrictAddressFamilies=AF_UNIX
 
 [Install]
