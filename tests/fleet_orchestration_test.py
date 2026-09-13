@@ -43,6 +43,12 @@ with tempfile.TemporaryDirectory(prefix="nvp-fleet-") as tmp:
 
     routes._probe_endpoint = fake_probe
 
+    with db() as conn:
+        conn.execute(
+            "INSERT INTO users(username,role,salt,password_hash,enabled,created_at) VALUES(?,?,?,?,1,?)",
+            ("viewer01", "viewer", "00" * 16, "00" * 32, now),
+        )
+
     with client.session_transaction() as session:
         session.update(auth=True, user="admin", role="admin", csrf=csrf, step_up_user="admin", step_up_until=now + 600)
 
@@ -120,6 +126,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-fleet-") as tmp:
         assert "panel.upgrade" in raw and "password" not in raw.lower()
 
     with client.session_transaction() as session:
+        session.clear()
         session.update(auth=True, user="viewer01", role="viewer", csrf=csrf)
     denied = client.get("/api/fleet")
     assert denied.status_code == 403
