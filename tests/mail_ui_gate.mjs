@@ -21,14 +21,20 @@ await nav.click();
 await page.locator('#mail.active-view').waitFor({state:'visible'});
 if(await page.locator('link[href="/static/mail.css"]').count()!==1)throw new Error('Email Center stylesheet missing');
 if(await page.locator('script[src="/static/mail.js"]').count()!==1)throw new Error('Email Center script missing');
+if(await page.locator('script[src="/static/mail-automation.js"]').count()!==1)throw new Error('Mail Automation script missing');
 if(await page.locator('#mailboxForm').count()!==1||await page.locator('#forwarderForm').count()!==1||await page.locator('#mailPasswordForm').count()!==1)throw new Error('Email Center create/security forms missing');
 if(await page.locator('#mailPasswordMailbox').count()!==1||await page.locator('#mailPasswordNew').count()!==1||await page.locator('#mailPasswordConfirm').count()!==1)throw new Error('Mailbox password rotation controls missing');
 if(await page.locator('#mailboxList').count()!==1||await page.locator('#forwarderList').count()!==1)throw new Error('Email Center inventory panels missing');
+for(const selector of ['#mailAutomationMailbox','#mailAutoresponderForm','#mailFilterForm','#mailSpamForm','#mailFilterList','#mailAutomationStatus']){
+  if(await page.locator(selector).count()!==1)throw new Error(`Mail Automation control missing: ${selector}`);
+}
+const safetyNote=(await page.locator('.mail-automation-note').innerText()).trim();
+if(!safetyNote.includes('X-Spam-Flag')||!safetyNote.includes('Scanner'))throw new Error('Mail spam policy must truthfully disclose upstream scanner dependency');
 await page.waitForFunction(()=>['ONLINE','OFFLINE'].includes(document.querySelector('#mailProviderState')?.textContent?.trim()),null,{timeout:10000});
 const provider=(await page.locator('#mailProviderState').innerText()).trim();
 if(provider!=='OFFLINE')throw new Error(`CI without Mail Agent must truthfully show OFFLINE, got ${provider}`);
 if(!await page.locator('#mail').evaluate(el=>el.classList.contains('mail-provider-offline')))throw new Error('Offline provider guard class missing');
-for(const selector of ['#mailboxForm button[type="submit"]','#mailPasswordForm button[type="submit"]']){
+for(const selector of ['#mailboxForm button[type="submit"]','#mailPasswordForm button[type="submit"]','#mailAutoresponderForm button[type="submit"]','#mailFilterForm button[type="submit"]','#mailSpamForm button[type="submit"]']){
   const disabled=await page.locator(selector).evaluate(el=>getComputedStyle(el).pointerEvents==='none'||el.disabled);
   if(!disabled)throw new Error(`${selector} remains interactive while provider is offline`);
 }
@@ -38,6 +44,8 @@ await page.screenshot({path:`${out}/nexvary-panel-0.7-email-center-desktop.png`,
 await page.setViewportSize({width:390,height:844});
 await page.waitForTimeout(250);
 if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error('Email Center mobile horizontal overflow');
+const autoWidth=await page.locator('.mail-automation-shell').evaluate(el=>el.getBoundingClientRect().width);
+if(autoWidth>392)throw new Error(`Mail Automation mobile panel overflows: ${autoWidth}`);
 await page.screenshot({path:`${out}/nexvary-panel-0.7-email-center-mobile.png`,fullPage:true});
 await browser.close();
 console.log('Nexvary Panel Email Center Chromium Gate: PASS');
