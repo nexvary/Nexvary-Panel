@@ -4,6 +4,7 @@ import ipaddress
 import json
 import re
 import socket
+import sqlite3
 import time
 import urllib.error
 import urllib.parse
@@ -80,7 +81,8 @@ def _public_https(value: str) -> str:
         raise ValueError("fleet endpoint port must be 443 or 8443")
     host = parts.hostname.rstrip(".").lower()
     _resolve_public(host, port)
-    netloc = host if port == 443 else f"{host}:{port}"
+    host_for_url = f"[{host}]" if ":" in host else host
+    netloc = host_for_url if port == 443 else f"{host_for_url}:{port}"
     path = (parts.path or "").rstrip("/")
     if len(path) > 180 or ".." in path.split("/"):
         raise ValueError("invalid fleet endpoint path")
@@ -219,7 +221,7 @@ def register_fleet_routes(app):
     @app.before_request
     def fleet_legacy_guard():
         path = request.path.rstrip("/")
-        if path == "/api/advanced/fleet" or re.fullmatch(r"/api/advanced/fleet/\d+(?:/probe)?", path):
+        if session.get("role") == "admin" and (path == "/api/advanced/fleet" or re.fullmatch(r"/api/advanced/fleet/\d+(?:/probe)?", path)):
             if request.method in {"POST", "DELETE", "PUT", "PATCH"}:
                 return jsonify(ok=False, error="legacy Fleet API retired; use /api/fleet endpoints"), 410
         return None
@@ -262,10 +264,8 @@ def register_fleet_routes(app):
                     (name, endpoint, owner, now, now),
                 )
                 node_id = int(cur.lastrowid)
-        except Exception as exc:
-            if exc.__class__.__name__ == "IntegrityError":
-                return jsonify(ok=False, error="fleet node name already exists"), 409
-            raise
+        except sqlite3.IntegrityError:
+            return jsonify(ok=False, error="fleet node name already exists"), 409
         audit("fleet-node-create", f"id={node_id} name={name} endpoint={endpoint}")
         return jsonify(ok=True, id=node_id, name=name, endpoint=endpoint), 201
 
