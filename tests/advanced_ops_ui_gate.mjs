@@ -24,9 +24,12 @@ if(await page.locator('script[src="/static/advanced-ops.js"]').count()!==1)throw
 
 const required=['#advDnsCard','#advSslCard','#advMailOpsCard','#advPhpCard','#advPostgresCard','#advMigrationCard','#advServicesCard','#advFleetCard'];
 for(const sel of required)if(await page.locator(sel).count()!==1)throw new Error(`Advanced Ops card missing: ${sel}`);
-for(const sel of ['#autoSslEnabled','#autoSslDays','#autoSslSaveBtn','#autoSslPolicyState','#deliverSelector','#deliverMailHost','#deliverMailIpv4','#deliverPrepareBtn','#deliverPreviewList']){
+for(const sel of ['#autoSslEnabled','#autoSslDays','#autoSslSaveBtn','#autoSslPolicyState','#autoSslPreflightBtn','#autoSslPreflightState','#deliverSelector','#deliverMailHost','#deliverMailIpv4','#deliverPrepareBtn','#deliverPreviewList']){
   if(await page.locator(sel).count()!==1)throw new Error(`Advanced Ops lifecycle control missing: ${sel}`);
 }
+const readiness=(await page.locator('#autoSslPreflightState').innerText()).trim();
+if(!readiness.includes('AutoSSL readiness'))throw new Error('AutoSSL readiness posture is not explicit');
+if(await page.locator('#autoSslPreflightBtn').innerText()!=='فحص الجاهزية')throw new Error('AutoSSL preflight action label missing');
 if(await page.locator('#dnsDomain').count()!==1)throw new Error('Legacy DNS Center selector must remain unique');
 if(await page.locator('#advDnsDomain').count()!==1)throw new Error('Advanced DNS selector missing or duplicated');
 if(await page.locator('#dnsInspect').count()!==1)throw new Error('Legacy DNS Inspector control missing');
