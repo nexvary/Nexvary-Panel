@@ -9,6 +9,7 @@ python tests/provider_backup_test.py
 python tests/trust_test.py
 python tests/hosting_features_test.py
 python tests/package_impact_test.py
+python tests/whm_bulk_package_test.py
 python tests/schedules_test.py
 python tests/accounts_scope_test.py
 python tests/mail_policy_test.py

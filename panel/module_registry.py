@@ -8,6 +8,7 @@ from flask import Flask
 from .account_schema import ensure_account_schema
 from .doctor_schema import ensure_doctor_schema
 from .domain_schema import ensure_domain_schema
+from .hosting_consistency_schema import ensure_hosting_consistency_schema
 from .mail_schema import ensure_mail_schema
 from .ops_schema import ensure_ops_schema
 from .transfer_schema import ensure_transfer_schema
@@ -38,6 +39,7 @@ from .routes_sites import register_site_routes
 from .routes_transfers import register_transfer_routes
 from .routes_vault import register_vault_routes
 from .routes_webtools import register_webtools_routes
+from .routes_whm_bulk import register_whm_bulk_routes
 from .routes_wordpress_lifecycle import register_wordpress_lifecycle_routes
 from .routes_wordpress_publish import register_wordpress_publish_routes
 from .routes_wordpress_staging import register_wordpress_staging_routes
@@ -81,6 +83,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("webtools", "Web Tools", "hosting", register_webtools_routes, depends_on=("hosting", "sites"), feature_prefixes=("domains.", "metrics."), provider_services=("nexvary-panel-webtools",), ui_view="webtools", maturity="provider"),
     PanelModule("schedules", "Scheduled Tasks", "automation", register_schedule_routes, depends_on=("hosting", "sites"), feature_prefixes=("advanced.cron",), provider_services=("nexvary-panel-scheduler",), ui_view="schedules", maturity="provider"),
     PanelModule("accounts", "Accounts and Resellers", "hosting", register_account_routes, schema_hook=ensure_account_schema, depends_on=("hosting",), feature_prefixes=("whm.accounts", "whm.resellers"), ui_view="accounts"),
+    PanelModule("whm_bulk", "WHM Bulk Operations", "server", register_whm_bulk_routes, schema_hook=ensure_hosting_consistency_schema, depends_on=("hosting", "accounts"), feature_prefixes=("whm.multi_account", "whm.packages"), ui_view="accounts", maturity="native"),
     PanelModule("mail", "Email Center", "hosting", register_mail_routes, schema_hook=ensure_mail_schema, depends_on=("accounts", "sites"), feature_prefixes=("email.",), provider_services=("nexvary-panel-mail",), ui_view="mail", maturity="provider"),
     PanelModule("mail_security", "Mail Security Controls", "security", register_mail_security_routes, depends_on=("mail",), feature_prefixes=("email.accounts",), provider_services=("nexvary-panel-mail",), ui_view="mail", maturity="provider"),
     PanelModule("transfers", "Transfer Center", "hosting", register_transfer_routes, schema_hook=ensure_transfer_schema, depends_on=("accounts", "sites"), feature_prefixes=("files.ftp", "files.sftp"), provider_services=("nexvary-panel-transfer",), ui_view="transfers", maturity="provider"),
