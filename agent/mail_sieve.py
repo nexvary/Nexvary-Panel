@@ -109,7 +109,7 @@ def _normalize_spam(raw: object) -> dict:
 
 
 def _build_script(address: str, autoresponder: dict, filters: list[dict], spam: dict) -> str:
-    requires: set[str] = []
+    requires: set[str] = set()
     if autoresponder["enabled"]:
         requires.add("vacation")
     if spam["enabled"] and spam["action"] == "junk":
