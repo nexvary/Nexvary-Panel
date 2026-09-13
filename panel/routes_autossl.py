@@ -8,11 +8,13 @@ from flask import jsonify, request, session
 from .config import DOMAIN_RE
 from .core import audit, db
 from .hosting_policy import feature_allowed
+from .ops_client import ops_call
 from .security import role_required, step_up_required
 
 EMAIL_RE = re.compile(r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@[A-Za-z0-9.-]{1,253}$")
 MIN_RENEW_DAYS = 7
 MAX_RENEW_DAYS = 60
+MAX_AUTOSSL_NAMES = 25
 
 
 def _owner_role(conn, owner: str) -> str:
@@ -41,6 +43,16 @@ def _policy_row(conn, domain: str):
            FROM ssl_policies WHERE domain=?""",
         (domain,),
     ).fetchone()
+
+
+def _desired_names(conn, domain: str) -> list[str]:
+    names = [domain]
+    rows = conn.execute("SELECT alias FROM domain_aliases WHERE domain=? ORDER BY alias LIMIT ?", (domain, MAX_AUTOSSL_NAMES - 1)).fetchall()
+    for row in rows:
+        name = str(row["alias"] or "").strip().lower().rstrip(".")
+        if name and DOMAIN_RE.fullmatch(name) and name not in names:
+            names.append(name)
+    return names[:MAX_AUTOSSL_NAMES]
 
 
 def _serialize(row, *, feature_enabled: bool, site_enabled: bool) -> dict:
@@ -90,6 +102,7 @@ def register_autossl_routes(app):
                 return jsonify(
                     ok=True,
                     domain=requested,
+                    names=_desired_names(conn, requested),
                     policy=_serialize(_policy_row(conn, requested), feature_enabled=enabled, site_enabled=bool(site["enabled"])),
                 )
 
@@ -105,9 +118,28 @@ def register_autossl_routes(app):
                 policies.append({
                     "domain": domain,
                     "owner": owner,
+                    "names": _desired_names(conn, domain),
                     **_serialize(_policy_row(conn, domain), feature_enabled=enabled, site_enabled=bool(site["enabled"])),
                 })
         return jsonify(ok=True, policies=policies)
+
+    @app.get("/api/autossl/preflight")
+    @role_required("admin", "operator")
+    def autossl_preflight():
+        domain = str(request.args.get("domain", "")).strip().lower().rstrip(".")
+        with db() as conn:
+            site = _site_context(conn, domain)
+            if not site:
+                return jsonify(ok=False, error="site outside your scope"), 403
+            owner = str(site["owner"])
+            owner_role = _owner_role(conn, owner)
+            if not feature_allowed("security.ssl_tls", username=owner, role=owner_role, connection=conn):
+                return jsonify(ok=False, error="security.ssl_tls disabled by hosting policy"), 403
+            names = _desired_names(conn, domain)
+        result = ops_call({"action": "ssl-preflight", "domain": domain, "domains": names}, timeout=35)
+        if not result.get("ok"):
+            return jsonify(ok=False, error=str(result.get("error", "AutoSSL preflight unavailable"))[:180]), 502
+        return jsonify(ok=True, domain=domain, names=names, preflight=result)
 
     @app.put("/api/autossl/<path:domain>")
     @role_required("admin", "operator")
@@ -161,5 +193,6 @@ def register_autossl_routes(app):
                 (domain, owner, contact_email, 1 if auto_renew else 0, renew_before_days, now),
             )
             row = _policy_row(conn, domain)
-        audit("autossl-policy", f"domain={domain} owner={owner} enabled={int(auto_renew)} renew_before_days={renew_before_days}")
-        return jsonify(ok=True, domain=domain, policy=_serialize(row, feature_enabled=True, site_enabled=bool(site["enabled"])))
+            names = _desired_names(conn, domain)
+        audit("autossl-policy", f"domain={domain} owner={owner} enabled={int(auto_renew)} renew_before_days={renew_before_days} names={len(names)}")
+        return jsonify(ok=True, domain=domain, names=names, policy=_serialize(row, feature_enabled=True, site_enabled=bool(site["enabled"])))
