@@ -105,4 +105,16 @@ def ensure_ops_schema() -> None:
           UNIQUE(owner,name)
         );
         CREATE INDEX IF NOT EXISTS idx_fleet_nodes_owner ON fleet_nodes(owner,enabled);
+
+        CREATE TABLE IF NOT EXISTS fleet_probes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          node_id INTEGER NOT NULL,
+          status TEXT NOT NULL,
+          remote_version TEXT NOT NULL DEFAULT '',
+          capabilities_json TEXT NOT NULL DEFAULT '{}',
+          latency_ms INTEGER NOT NULL DEFAULT 0,
+          checked_at INTEGER NOT NULL,
+          FOREIGN KEY(node_id) REFERENCES fleet_nodes(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_fleet_probes_node ON fleet_probes(node_id,id DESC);
         """)
