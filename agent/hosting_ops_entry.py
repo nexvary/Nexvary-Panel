@@ -200,8 +200,21 @@ def _autossl_preflight(data: dict) -> dict:
             })
     finally:
         challenge.unlink(missing_ok=True)
-    ready = bool(checks) and all(bool(item.get("ready")) for item in checks)
-    return {"ok": True, "ready": ready, "domain": primary, "domains": names, "checks": checks, "challenge": "http-01-webroot", "webroot": str(root)}
+    eligible = [str(item["domain"]) for item in checks if item.get("ready")]
+    excluded = [{"domain": str(item["domain"]), "reason": str(item.get("reason", "not-ready"))[:96]} for item in checks if not item.get("ready")]
+    primary_ready = primary in eligible
+    return {
+        "ok": True,
+        "ready": primary_ready,
+        "fully_ready": len(eligible) == len(names),
+        "domain": primary,
+        "domains": names,
+        "eligible_domains": eligible,
+        "excluded_domains": excluded,
+        "checks": checks,
+        "challenge": "http-01-webroot",
+        "webroot": str(root),
+    }
 
 
 def _ssl_status_with_names(domain: str) -> dict:
@@ -220,41 +233,72 @@ def _ssl_status_with_names(domain: str) -> dict:
     return result
 
 
+def _eligible_from_preflight(preflight: dict, primary: str) -> list[str]:
+    if not preflight.get("ready"):
+        return []
+    values = preflight.get("eligible_domains")
+    if not isinstance(values, list):
+        values = preflight.get("domains") if preflight.get("fully_ready", True) else []
+    eligible: list[str] = []
+    for value in values:
+        name = core._domain(value)
+        if name not in eligible:
+            eligible.append(name)
+    if not eligible or eligible[0] != primary or primary not in eligible:
+        raise RuntimeError("autossl-primary-not-eligible")
+    return eligible[:MAX_AUTOSSL_NAMES]
+
+
 def _ssl_issue_with_names(data: dict, preflight: dict | None = None) -> dict:
-    names = _ssl_names(data)
-    primary = names[0]
+    requested = _ssl_names(data)
+    primary = requested[0]
     email = str(data.get("email", "")).strip().lower()
     if not core.EMAIL_RE.fullmatch(email):
         raise ValueError("invalid-contact-email")
     preflight = preflight or _autossl_preflight(data)
-    if not preflight.get("ready"):
-        return {"ok": False, "error": "autossl-preflight-failed", "preflight": preflight}
+    eligible = _eligible_from_preflight(preflight, primary)
+    if not eligible:
+        return {"ok": False, "error": "autossl-primary-preflight-failed", "preflight": preflight}
     root = _challenge_root(primary)
     args = ["certbot", "certonly", "--webroot", "-w", str(root), "--cert-name", primary]
-    for name in names:
+    for name in eligible:
         args.extend(["-d", name])
     args.extend(["--non-interactive", "--agree-tos", "--email", email])
     cert = Path("/etc/letsencrypt/live") / primary / "fullchain.pem"
     if cert.is_file():
         current = _ssl_status_with_names(primary).get("names") or []
-        args.append("--renew-with-new-domains" if set(current) != set(names) else "--keep-until-expiring")
+        args.append("--renew-with-new-domains" if set(current) != set(eligible) else "--keep-until-expiring")
     core._run(args, 240)
     core._bind_ssl(primary)
     result = _ssl_status_with_names(primary)
     result["preflight"] = preflight
+    result["requested_names"] = requested
+    result["eligible_names"] = eligible
+    result["excluded_names"] = preflight.get("excluded_domains", [])
     return result
 
 
 def _ssl_renew_with_preflight(data: dict, preflight: dict | None = None) -> dict:
-    names = _ssl_names(data)
-    primary = names[0]
+    requested = _ssl_names(data)
+    primary = requested[0]
     preflight = preflight or _autossl_preflight(data)
-    if not preflight.get("ready"):
-        return {"ok": False, "error": "autossl-preflight-failed", "preflight": preflight}
+    eligible = _eligible_from_preflight(preflight, primary)
+    if not eligible:
+        return {"ok": False, "error": "autossl-primary-preflight-failed", "preflight": preflight}
+    current = _ssl_status_with_names(primary)
+    current_names = current.get("names") or []
+    if set(current_names) != set(eligible):
+        email = str(data.get("email", "")).strip().lower()
+        if not core.EMAIL_RE.fullmatch(email):
+            return {"ok": False, "error": "autossl-contact-required-for-san-reconciliation", "preflight": preflight}
+        return _ssl_issue_with_names({**data, "domains": requested[1:], "email": email}, preflight)
     core._run(["certbot", "renew", "--cert-name", primary, "--non-interactive"], 240)
     core._bind_ssl(primary)
     result = _ssl_status_with_names(primary)
     result["preflight"] = preflight
+    result["requested_names"] = requested
+    result["eligible_names"] = eligible
+    result["excluded_names"] = preflight.get("excluded_domains", [])
     return result
 
 
@@ -361,6 +405,7 @@ def composed_status() -> dict:
     capabilities["postgres"] = bool(pg.get("ok") and pg.get("available"))
     capabilities["dnssec"] = True
     capabilities["autossl_preflight"] = True
+    capabilities["autossl_partial_san"] = True
     return body
 
 
