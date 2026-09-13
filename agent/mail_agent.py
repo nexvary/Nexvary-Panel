@@ -6,7 +6,44 @@ import json
 import os
 import re
 import socket
+import subprocess
 from pathlib import Path
+
+import mail_backend as _backend
+
+
+def _validated_mail_reload() -> None:
+    """Validate only what this provider mutates before reloading services.
+
+    Mailbox/forwarder operations change Nexvary-managed lookup maps, not Postfix
+    main.cf/master.cf. postmap validates/builds those maps; postconf -n parses the
+    active Postfix configuration without the writable-system-tree requirements
+    of `postfix check`, preserving the hardened service boundary.
+    """
+    for path in (_backend.DOMAINS_FILE, _backend.VMAILBOX_FILE, _backend.VIRTUAL_FILE):
+        _backend._postmap(path)
+    check = subprocess.run(
+        ["postconf", "-n"], capture_output=True, text=True, timeout=20, check=False,
+        env={"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8"},
+    )
+    if check.returncode != 0:
+        raise RuntimeError("postfix-validation-failed")
+    dove = subprocess.run(
+        ["dovecot", "-n"], capture_output=True, text=True, timeout=20, check=False,
+        env={"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8"},
+    )
+    if dove.returncode != 0:
+        raise RuntimeError("dovecot-validation-failed")
+    for svc in ("postfix", "dovecot"):
+        proc = subprocess.run(
+            ["systemctl", "reload", svc], capture_output=True, text=True, timeout=20, check=False,
+            env={"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8"},
+        )
+        if proc.returncode != 0:
+            raise RuntimeError("mail-service-reload-failed")
+
+
+_backend._reload = _validated_mail_reload
 
 from mail_backend import forwarder_delete, forwarder_upsert, mailbox_delete, mailbox_upsert, provider_status, queue_delete
 from mail_sieve import sieve_sync
