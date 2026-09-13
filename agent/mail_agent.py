@@ -7,11 +7,11 @@ import os
 import socket
 from pathlib import Path
 
-from mail_backend import forwarder_delete, forwarder_upsert, mailbox_delete, mailbox_upsert, provider_status
+from mail_backend import forwarder_delete, forwarder_upsert, mailbox_delete, mailbox_upsert, provider_status, queue_delete
 
 SOCKET_PATH = Path(os.environ.get("NVP_MAIL_SOCK", "/run/nexvary-panel/mail.sock"))
 MAX_REQUEST = 32 * 1024
-ACTIONS = {"status", "mailbox-upsert", "mailbox-delete", "forwarder-upsert", "forwarder-delete"}
+ACTIONS = {"status", "mailbox-upsert", "mailbox-delete", "forwarder-upsert", "forwarder-delete", "queue-delete"}
 
 
 def _dispatch(data: dict) -> dict:
@@ -26,7 +26,9 @@ def _dispatch(data: dict) -> dict:
         return mailbox_delete(str(data.get("address", "")))
     if action == "forwarder-upsert":
         return forwarder_upsert(str(data.get("source", "")), str(data.get("destination", "")))
-    return forwarder_delete(str(data.get("source", "")))
+    if action == "forwarder-delete":
+        return forwarder_delete(str(data.get("source", "")))
+    return queue_delete(str(data.get("queue_id", "")))
 
 
 def _serve_client(conn: socket.socket) -> None:
