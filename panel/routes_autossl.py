@@ -85,6 +85,17 @@ def _serialize(row, *, feature_enabled: bool, site_enabled: bool) -> dict:
     }
 
 
+def _authorized_site(conn, domain: str):
+    site = _site_context(conn, domain)
+    if not site:
+        return None, None, (jsonify(ok=False, error="site outside your scope"), 403)
+    owner = str(site["owner"])
+    owner_role = _owner_role(conn, owner)
+    if not feature_allowed("security.ssl_tls", username=owner, role=owner_role, connection=conn):
+        return None, None, (jsonify(ok=False, error="security.ssl_tls disabled by hosting policy"), 403)
+    return site, owner, None
+
+
 def register_autossl_routes(app):
     @app.get("/api/autossl")
     @role_required("admin", "operator")
@@ -128,18 +139,58 @@ def register_autossl_routes(app):
     def autossl_preflight():
         domain = str(request.args.get("domain", "")).strip().lower().rstrip(".")
         with db() as conn:
-            site = _site_context(conn, domain)
-            if not site:
-                return jsonify(ok=False, error="site outside your scope"), 403
-            owner = str(site["owner"])
-            owner_role = _owner_role(conn, owner)
-            if not feature_allowed("security.ssl_tls", username=owner, role=owner_role, connection=conn):
-                return jsonify(ok=False, error="security.ssl_tls disabled by hosting policy"), 403
+            site, owner, denied = _authorized_site(conn, domain)
+            if denied:
+                return denied
             names = _desired_names(conn, domain)
         result = ops_call({"action": "ssl-preflight", "domain": domain, "domains": names}, timeout=35)
         if not result.get("ok"):
             return jsonify(ok=False, error=str(result.get("error", "AutoSSL preflight unavailable"))[:180]), 502
         return jsonify(ok=True, domain=domain, names=names, preflight=result)
+
+    @app.post("/api/autossl/<path:domain>/issue")
+    @role_required("admin", "operator")
+    @step_up_required
+    def autossl_issue(domain: str):
+        domain = str(domain).strip().lower().rstrip(".")
+        data = request.get_json(silent=True) or {}
+        email = str(data.get("email", "")).strip().lower()
+        if not EMAIL_RE.fullmatch(email) or len(email) > 320:
+            return jsonify(ok=False, error="valid AutoSSL contact email required"), 400
+        with db() as conn:
+            site, owner, denied = _authorized_site(conn, domain)
+            if denied:
+                return denied
+            names = _desired_names(conn, domain)
+        result = ops_call({"action": "ssl-issue", "domain": domain, "domains": names, "email": email}, timeout=240)
+        now = int(time.time())
+        with db() as conn:
+            conn.execute(
+                "INSERT INTO ssl_jobs(domain,action,contact_email,status,detail,owner,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
+                (domain, "autossl-issue", email, "success" if result.get("ok") else "failed", str(result.get("detail", result.get("error", "")))[:1000], owner, now, now),
+            )
+        audit("autossl-issue", f"domain={domain} owner={owner} names={len(names)} status={'ok' if result.get('ok') else 'failed'}")
+        return jsonify(result), (200 if result.get("ok") else 503)
+
+    @app.post("/api/autossl/<path:domain>/renew")
+    @role_required("admin", "operator")
+    @step_up_required
+    def autossl_renew(domain: str):
+        domain = str(domain).strip().lower().rstrip(".")
+        with db() as conn:
+            site, owner, denied = _authorized_site(conn, domain)
+            if denied:
+                return denied
+            names = _desired_names(conn, domain)
+        result = ops_call({"action": "ssl-renew", "domain": domain, "domains": names}, timeout=240)
+        now = int(time.time())
+        with db() as conn:
+            conn.execute(
+                "INSERT INTO ssl_jobs(domain,action,contact_email,status,detail,owner,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
+                (domain, "autossl-renew", "", "success" if result.get("ok") else "failed", str(result.get("detail", result.get("error", "")))[:1000], owner, now, now),
+            )
+        audit("autossl-renew", f"domain={domain} owner={owner} names={len(names)} status={'ok' if result.get('ok') else 'failed'}")
+        return jsonify(result), (200 if result.get("ok") else 503)
 
     @app.put("/api/autossl/<path:domain>")
     @role_required("admin", "operator")
@@ -164,13 +215,9 @@ def register_autossl_routes(app):
 
         now = int(time.time())
         with db() as conn:
-            site = _site_context(conn, domain)
-            if not site:
-                return jsonify(ok=False, error="site outside your scope"), 403
-            owner = str(site["owner"])
-            owner_role = _owner_role(conn, owner)
-            if not feature_allowed("security.ssl_tls", username=owner, role=owner_role, connection=conn):
-                return jsonify(ok=False, error="security.ssl_tls disabled by hosting policy"), 403
+            site, owner, denied = _authorized_site(conn, domain)
+            if denied:
+                return denied
             conn.execute(
                 """INSERT INTO ssl_policies(domain,owner,contact_email,auto_renew,renew_before_days,last_check,last_renewal,last_status,last_detail,updated_at)
                    VALUES(?,?,?,?,?,0,0,'pending','',?)
