@@ -18,13 +18,14 @@ script = mail_sieve._build_script(
     {"enabled": True, "action": "junk"},
 )
 assert 'require [' in script
-assert '"fileinto"' in script and '"mailbox"' in script and '"redirect"' in script and '"vacation"' in script
+assert '"fileinto"' in script and '"mailbox"' in script and '"vacation"' in script
+assert '"redirect"' not in script.split(';',1)[0], "redirect is a core Sieve action, not a require capability"
 assert 'fileinto :create "Junk";' in script
 assert 'fileinto :create "Billing";' in script
 assert 'redirect "archive@example.net";' in script
 assert 'Invoice \\"2026\\"' in script
 assert 'vacation :days 2' in script
-assert '\n..Line two\n.' in script
+assert '\n..Line two\n.\n;' in script
 assert "# Managed by Nexvary Panel" in script
 
 try:
