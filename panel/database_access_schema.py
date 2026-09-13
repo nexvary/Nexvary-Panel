@@ -25,6 +25,7 @@ FULL_PRIVILEGES = (
 
 def ensure_database_access_schema() -> None:
     now = int(time.time())
+    privilege_text = ",".join(FULL_PRIVILEGES)
     with db() as conn:
         conn.executescript(
             """
@@ -53,11 +54,36 @@ def ensure_database_access_schema() -> None:
             """
         )
 
-        # Adopt databases created by the legacy one-database/one-user workflow.
+        # Any database provisioned through the legacy create workflow is adopted immediately.
+        conn.executescript(
+            f"""
+            CREATE TRIGGER IF NOT EXISTS trg_nvp_database_access_insert
+            AFTER INSERT ON databases
+            WHEN NEW.engine='mariadb'
+            BEGIN
+              INSERT OR IGNORE INTO database_access_users(username,engine,owner,created_at,updated_at)
+              VALUES(NEW.db_user,'mariadb',NEW.owner,NEW.created_at,CAST(strftime('%s','now') AS INTEGER));
+              INSERT OR IGNORE INTO database_access_grants(db_name,db_user,privileges,owner,created_at,updated_at)
+              VALUES(NEW.db_name,NEW.db_user,'{privilege_text}',NEW.owner,NEW.created_at,CAST(strftime('%s','now') AS INTEGER));
+            END;
+
+            CREATE TRIGGER IF NOT EXISTS trg_nvp_database_access_delete
+            AFTER DELETE ON databases
+            WHEN OLD.engine='mariadb'
+            BEGIN
+              DELETE FROM database_access_grants WHERE db_name=OLD.db_name;
+              DELETE FROM database_access_users
+               WHERE username=OLD.db_user
+                 AND NOT EXISTS(SELECT 1 FROM database_access_grants WHERE db_user=OLD.db_user)
+                 AND NOT EXISTS(SELECT 1 FROM databases WHERE db_user=OLD.db_user AND engine='mariadb');
+            END;
+            """
+        )
+
+        # Adopt databases that pre-date the access-manager schema.
         rows = conn.execute(
             "SELECT db_name,db_user,owner,created_at FROM databases WHERE engine='mariadb'"
         ).fetchall()
-        privilege_text = ",".join(FULL_PRIVILEGES)
         for row in rows:
             username = str(row["db_user"] or "").strip()
             db_name = str(row["db_name"] or "").strip()
