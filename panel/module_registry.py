@@ -24,6 +24,7 @@ from .routes_dns import register_dns_routes
 from .routes_domain_health import register_domain_health_routes
 from .routes_domains import register_domain_routes
 from .routes_dnssec import register_dnssec_routes
+from .routes_fleet import register_fleet_routes
 from .routes_fusion import register_fusion_routes
 from .routes_health import register_health_routes
 from .routes_hosting import register_hosting_routes
@@ -88,6 +89,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("mail_security", "Mail Security Controls", "security", register_mail_security_routes, depends_on=("mail",), feature_prefixes=("email.accounts",), provider_services=("nexvary-panel-mail",), ui_view="mail", maturity="provider"),
     PanelModule("transfers", "Transfer Center", "hosting", register_transfer_routes, schema_hook=ensure_transfer_schema, depends_on=("accounts", "sites"), feature_prefixes=("files.ftp", "files.sftp"), provider_services=("nexvary-panel-transfer",), ui_view="transfers", maturity="provider"),
     PanelModule("advanced_ops", "Advanced Hosting Ops", "server", register_advanced_ops_routes, schema_hook=ensure_ops_schema, depends_on=("hosting", "sites", "integrations"), feature_prefixes=("domains.", "security.ssl", "email.", "software.php", "databases.postgresql", "whm."), provider_services=("nexvary-panel-ops", "nexvary-panel-postgres"), ui_view="advancedops", maturity="provider"),
+    PanelModule("fleet", "Fleet Orchestration", "server", register_fleet_routes, depends_on=("advanced_ops",), feature_prefixes=("whm.fleet",), ui_view="advancedops", maturity="foundation"),
     PanelModule("autossl", "AutoSSL Policy", "automation", register_autossl_routes, depends_on=("advanced_ops",), feature_prefixes=("security.ssl",), provider_services=("nexvary-panel-autossl.timer", "nexvary-panel-ops"), ui_view="advancedops", maturity="provider"),
     PanelModule("deliverability", "Mail Deliverability", "hosting", register_deliverability_routes, depends_on=("mail", "advanced_ops"), feature_prefixes=("email.deliverability", "domains.zone_editor"), provider_services=("nexvary-panel-ops",), ui_view="advancedops", maturity="provider"),
     PanelModule("domain_health", "Domain Readiness", "observability", register_domain_health_routes, depends_on=("domains", "advanced_ops", "autossl", "deliverability"), feature_prefixes=("domains.", "security.ssl", "email.deliverability"), ui_view="advancedops"),
