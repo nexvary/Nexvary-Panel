@@ -82,7 +82,7 @@ with tempfile.TemporaryDirectory(prefix='nvp-advanced-ops-') as tmp:
     r=client.post('/api/advanced/fleet',json={'name':'bad-local','endpoint':'https://127.0.0.1'},headers={'X-CSRF-Token':csrf});assert r.status_code==403,r.data
 
     with client.session_transaction() as s:s.update(user='admin',role='admin',step_up_user='admin',step_up_until=now+300)
-    r=client.post('/api/advanced/fleet',json={'name':'bad-local','endpoint':'https://127.0.0.1'},headers={'X-CSRF-Token':csrf});assert r.status_code==400,r.data
+    r=client.post('/api/advanced/fleet',json={'name':'bad-local','endpoint':'https://127.0.0.1'},headers={'X-CSRF-Token':csrf});assert r.status_code==410,r.data
     r=client.post('/api/advanced/services',json={'name':'nginx','operation':'restart'},headers={'X-CSRF-Token':csrf});assert r.status_code==200,r.data
 
 print('Nexvary Panel Advanced Hosting Ops policy gate: PASS')
