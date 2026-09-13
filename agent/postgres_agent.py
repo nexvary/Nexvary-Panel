@@ -37,20 +37,17 @@ def _run(args: list[str], timeout: int = 30, stdin: str | None = None) -> subpro
 
 def _name(value: object) -> str:
     value = str(value or "").strip()
-    if not DB_RE.fullmatch(value):
-        raise ValueError("invalid-postgres-identifier")
+    if not DB_RE.fullmatch(value): raise ValueError("invalid-postgres-identifier")
     return value
 
 
 def _password(value: object) -> str:
     value = str(value or "")
-    if not PASSWORD_RE.fullmatch(value):
-        raise ValueError("invalid-database-password")
+    if not PASSWORD_RE.fullmatch(value): raise ValueError("invalid-database-password")
     return value
 
 
-def _qi(value: str) -> str:
-    return '"' + _name(value) + '"'
+def _qi(value: str) -> str: return '"' + _name(value) + '"'
 
 
 def _available() -> bool:
@@ -59,12 +56,9 @@ def _available() -> bool:
 
 def _exists(kind: str, value: str) -> bool:
     value = _name(value)
-    if kind == "role":
-        query = f"SELECT 1 FROM pg_roles WHERE rolname='{value}'"
-    elif kind == "database":
-        query = f"SELECT 1 FROM pg_database WHERE datname='{value}'"
-    else:
-        raise ValueError("invalid-postgres-object")
+    if kind == "role": query = f"SELECT 1 FROM pg_roles WHERE rolname='{value}'"
+    elif kind == "database": query = f"SELECT 1 FROM pg_database WHERE datname='{value}'"
+    else: raise ValueError("invalid-postgres-object")
     return _run(["psql", "-X", "-tAc", query, "-d", "postgres"], 15).stdout.strip() == "1"
 
 
@@ -72,9 +66,19 @@ def _database_owner(name: str) -> str:
     name = _name(name)
     query = f"SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname='{name}'"
     owner = _run(["psql", "-X", "-tAc", query, "-d", "postgres"], 15).stdout.strip()
-    if not owner or not DB_RE.fullmatch(owner):
-        raise RuntimeError("postgres-database-owner-unavailable")
+    if not owner or not DB_RE.fullmatch(owner): raise RuntimeError("postgres-database-owner-unavailable")
     return owner
+
+
+def _lock_down_database(name: str) -> None:
+    dbq = _qi(name)
+    sql = (
+        "BEGIN;\n"
+        f"REVOKE CONNECT,TEMPORARY ON DATABASE {dbq} FROM PUBLIC;\n"
+        "REVOKE CREATE ON SCHEMA public FROM PUBLIC;\n"
+        "COMMIT;\n"
+    )
+    _run(["psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", name], 30, sql)
 
 
 def _create(data: dict) -> dict:
@@ -87,6 +91,7 @@ def _create(data: dict) -> dict:
         _run(["psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "postgres"], 30,
              f"ALTER ROLE {_qi(user)} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT NOREPLICATION NOBYPASSRLS PASSWORD '{password}';\n")
         _run(["createdb", "-O", user, "--", name], 30); db_created = True
+        _lock_down_database(name)
     except Exception:
         if db_created:
             try: _run(["dropdb", "--if-exists", "--", name], 20)
@@ -127,6 +132,8 @@ def _profile_sql(db_name: str, user: str, owner: str, profile: str) -> str:
     dbq, userq, ownerq = _qi(db_name), _qi(user), _qi(owner)
     sql = [
         "BEGIN;",
+        f"REVOKE CONNECT,TEMPORARY ON DATABASE {dbq} FROM PUBLIC;",
+        "REVOKE CREATE ON SCHEMA public FROM PUBLIC;",
         f"REVOKE ALL PRIVILEGES ON DATABASE {dbq} FROM {userq};",
         f"REVOKE ALL PRIVILEGES ON SCHEMA public FROM {userq};",
         f"REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM {userq};",
@@ -172,7 +179,6 @@ def _grant_profile(data: dict) -> dict:
     if not _exists("role", user): return {"ok": False, "error": "postgres-role-not-found"}
     owner = _database_owner(db_name)
     if owner == user: return {"ok": False, "error": "postgres-database-owner-profile-is-managed-by-ownership"}
-    # Database, schema, current-object and default-object ACLs are committed atomically.
     _run(["psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", db_name], 55, _profile_sql(db_name, user, owner, profile))
     return {"ok": True, "db_name": db_name, "username": user, "profile": profile}
 
