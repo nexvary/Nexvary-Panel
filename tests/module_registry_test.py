@@ -19,16 +19,17 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     from panel.module_registry import MODULES, module_catalog, validate_modules
 
     modules = validate_modules()
-    assert len(modules) >= 29
+    assert len(modules) >= 30
     assert tuple(modules) == MODULES
     ids = [m.id for m in modules]
     assert len(ids) == len(set(ids))
-    assert {"extensions", "hosting", "domains", "dnssec", "accounts", "mail", "mail_queue", "transfers", "advanced_ops", "fleet", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_staging", "wordpress_updates", "security", "vault"}.issubset(ids)
+    assert {"extensions", "hosting", "domains", "dnssec", "accounts", "mail", "mail_automation", "mail_queue", "transfers", "advanced_ops", "fleet", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_staging", "wordpress_updates", "security", "vault"}.issubset(ids)
 
     catalog = module_catalog()
     assert len(catalog) == len(modules)
     by_id = {item["id"]: item for item in catalog}
     assert "nexvary-panel-mail" in by_id["mail"]["provider_services"]
+    assert "nexvary-panel-mail" in by_id["mail_automation"]["provider_services"]
     assert "nexvary-panel-mail" in by_id["mail_queue"]["provider_services"]
     assert "nexvary-panel-transfer" in by_id["transfers"]["provider_services"]
     assert "nexvary-panel-postgres" in by_id["advanced_ops"]["provider_services"]
@@ -37,9 +38,12 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     assert "nexvary-panel-wordpress" in by_id["wordpress_staging"]["provider_services"]
     assert by_id["extensions"]["has_schema"] is True
     assert by_id["domains"]["has_schema"] is True
+    assert by_id["mail_automation"]["has_schema"] is True
     assert by_id["wordpress_staging"]["has_schema"] is True
     assert by_id["fleet"]["maturity"] == "foundation"
     assert by_id["fleet"]["depends_on"] == ["advanced_ops"]
+    assert by_id["mail_automation"]["depends_on"] == ["mail", "mail_security"]
+    assert set(by_id["mail_automation"]["feature_prefixes"]) == {"email.autoresponders", "email.filters", "email.spam_filters"}
     assert by_id["fleet"]["endpoint_namespace"] == "fleet"
     assert by_id["mail_queue"]["endpoint_namespace"] == "mail_queue"
     assert by_id["extensions"]["endpoint_namespace"] == "extensions"
@@ -64,6 +68,10 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         "/api/domain-health",
         "/api/accounts",
         "/api/mail",
+        "/api/mail/automation/<int:mailbox_id>",
+        "/api/mail/automation/<int:mailbox_id>/autoresponder",
+        "/api/mail/automation/<int:mailbox_id>/filters",
+        "/api/mail/automation/<int:mailbox_id>/spam",
         "/api/advanced/mail/queue/<queue_id>",
         "/api/transfers",
         "/api/advanced/status",
@@ -85,6 +93,9 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
         assert "extension_states" in tables
         assert "domain_aliases" in tables
+        assert "mail_autoresponders" in tables
+        assert "mail_filters" in tables
+        assert "mail_spam_policies" in tables
         assert "wordpress_staging" in tables
         assert "fleet_nodes" in tables
         assert "fleet_probes" in tables
