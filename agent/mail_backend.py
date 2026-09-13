@@ -16,6 +16,7 @@ DOMAINS_FILE = MAIL_CONFIG / "domains"
 VMAILBOX_FILE = MAIL_CONFIG / "vmailbox"
 VIRTUAL_FILE = MAIL_CONFIG / "virtual"
 ADDRESS_RE = re.compile(r"^([A-Za-z0-9](?:[A-Za-z0-9._+-]{0,62}[A-Za-z0-9])?)@((?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63})$")
+QUEUE_ID_RE = re.compile(r"^[A-Za-z0-9]{5,32}$")
 
 
 def _address(value: str) -> tuple[str, str]:
@@ -281,3 +282,22 @@ def forwarder_delete(source: str) -> dict:
         _rollback(snapshot)
         raise
     return {"ok": True, "source": key}
+
+
+def queue_delete(queue_id: str) -> dict:
+    value = str(queue_id or "").strip()
+    if not QUEUE_ID_RE.fullmatch(value):
+        raise ValueError("invalid-queue-id")
+    if shutil.which("postsuper") is None:
+        return {"ok": False, "error": "postfix-not-installed"}
+    proc = subprocess.run(
+        ["postsuper", "-d", value],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+        env={"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8"},
+    )
+    if proc.returncode != 0:
+        return {"ok": False, "error": "mail-queue-delete-failed"}
+    return {"ok": True, "queue_id": value, "deleted": True}
