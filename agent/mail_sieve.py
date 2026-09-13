@@ -113,10 +113,10 @@ def _build_script(address: str, autoresponder: dict, filters: list[dict], spam: 
     if autoresponder["enabled"]:
         requires.add("vacation")
     if spam["enabled"] and spam["action"] == "junk":
-        requires.add("fileinto")
+        requires.update({"fileinto", "mailbox"})
     for item in filters:
         if item["action"] == "fileinto":
-            requires.add("fileinto")
+            requires.update({"fileinto", "mailbox"})
         if item["action"] == "redirect":
             requires.add("redirect")
 
@@ -127,7 +127,7 @@ def _build_script(address: str, autoresponder: dict, filters: list[dict], spam: 
     if spam["enabled"]:
         lines.append('if header :is "X-Spam-Flag" "YES" {')
         if spam["action"] == "junk":
-            lines.append('  fileinto "Junk";')
+            lines.append('  fileinto :create "Junk";')
         else:
             lines.append("  discard;")
         lines.append("  stop;")
@@ -138,7 +138,7 @@ def _build_script(address: str, autoresponder: dict, filters: list[dict], spam: 
         match = MATCHES[item["match_type"]]
         lines.append(f"if header {match} {_quoted(header, 64)} {_quoted(item['pattern'], MAX_PATTERN)} {{")
         if item["action"] == "fileinto":
-            lines.append(f"  fileinto {_quoted(item['destination'], 64)};")
+            lines.append(f"  fileinto :create {_quoted(item['destination'], 64)};")
         elif item["action"] == "redirect":
             lines.append(f"  redirect {_quoted(item['destination'], 320)};")
         else:
