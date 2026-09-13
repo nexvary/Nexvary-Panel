@@ -6,6 +6,7 @@ from typing import Callable, Iterable
 from flask import Flask
 
 from .account_schema import ensure_account_schema
+from .api_token_schema import ensure_api_token_schema
 from .doctor_schema import ensure_doctor_schema
 from .domain_schema import ensure_domain_schema
 from .extension_registry import validate_extensions
@@ -18,6 +19,7 @@ from .wordpress_publish_schema import ensure_wordpress_publish_schema
 from .wordpress_staging_schema import ensure_wordpress_staging_schema
 from .routes_accounts import register_account_routes
 from .routes_advanced_ops import register_advanced_ops_routes
+from .routes_api_tokens import register_api_token_routes
 from .routes_auth import register_auth_routes
 from .routes_autossl import register_autossl_routes
 from .routes_change_safety import register_change_safety_routes
@@ -74,6 +76,7 @@ class PanelModule:
 MODULES: tuple[PanelModule, ...] = (
     PanelModule("auth", "Authentication", "core", register_auth_routes),
     PanelModule("extensions", "Extension Hub", "core", register_extension_routes, schema_hook=ensure_extension_schema, depends_on=("auth",), feature_prefixes=("whm.plugins",), maturity="native", endpoint_namespace="extensions"),
+    PanelModule("api_tokens", "Scoped API Tokens", "security", register_api_token_routes, schema_hook=ensure_api_token_schema, depends_on=("auth",), feature_prefixes=("whm.api_tokens", "security.api_tokens"), ui_view="security", maturity="native", endpoint_namespace="api_tokens"),
     PanelModule("sites", "Sites", "hosting", register_site_routes, feature_prefixes=("domains.", "software."), provider_services=("nexvary-panel-agent",), ui_view="sites", maturity="provider"),
     PanelModule("operations", "Operations", "core", register_ops_routes, depends_on=("auth",), provider_services=("nexvary-panel-agent",), maturity="provider"),
     PanelModule("platform", "Platform", "core", register_platform_routes, depends_on=("auth",)),
