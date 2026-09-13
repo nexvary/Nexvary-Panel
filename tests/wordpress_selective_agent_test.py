@@ -29,7 +29,10 @@ with tempfile.TemporaryDirectory(prefix="nvp-wp-selective-") as tmp_name:
     entry.wp._wordpress_root = lambda domain: live if domain == "live.example.test" else stage
     entry.wp.inventory = lambda domain: {"ok": True, "version": "6.8.2"}
     entry.staging._config_meta = lambda path: {"db_name": "live_db", "db_user": "wp_user", "db_password": "x", "db_host": "localhost", "table_prefix": "wp_"}
-    entry.staging._publish_dir = lambda wp, domain, snapshot: backups / snapshot
+    def fake_publish_dir(wp, domain, snapshot):
+        backups.mkdir(parents=True, exist_ok=True)
+        return backups / snapshot
+    entry.staging._publish_dir = fake_publish_dir
     entry.staging._dump_db = lambda name, destination: destination.write_bytes(b"-- safe test dump --\n")
     entry.staging._chown_www = lambda path: None
 
