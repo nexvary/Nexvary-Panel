@@ -7,6 +7,7 @@ from flask import Flask
 
 from .account_schema import ensure_account_schema
 from .api_token_schema import ensure_api_token_schema
+from .database_access_schema import ensure_database_access_schema
 from .doctor_schema import ensure_doctor_schema
 from .domain_schema import ensure_domain_schema
 from .extension_registry import validate_extensions
@@ -24,6 +25,7 @@ from .routes_api_tokens import register_api_token_routes
 from .routes_auth import register_auth_routes
 from .routes_autossl import register_autossl_routes
 from .routes_change_safety import register_change_safety_routes
+from .routes_database_access import register_database_access_routes
 from .routes_deliverability import register_deliverability_routes
 from .routes_dns import register_dns_routes
 from .routes_domain_health import register_domain_health_routes
@@ -90,6 +92,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("integrations", "Integration Targets", "providers", register_integration_routes, depends_on=("vault",), provider_services=("nexvary-panel-provider",), ui_view="integrations", maturity="provider"),
     PanelModule("remote_backup", "Remote Backup", "hosting", register_remote_backup_routes, depends_on=("integrations",), feature_prefixes=("files.backups",), provider_services=("nexvary-panel-provider",), ui_view="backups", maturity="provider"),
     PanelModule("hosting", "Hosting Suite", "hosting", register_hosting_routes, depends_on=("auth",), ui_view="hosting"),
+    PanelModule("database_access", "Database Access Manager", "hosting", register_database_access_routes, schema_hook=ensure_database_access_schema, depends_on=("hosting", "platform"), feature_prefixes=("databases.mariadb",), provider_services=("nexvary-panel-database",), ui_view="databases", maturity="provider", endpoint_namespace="database_access"),
     PanelModule("domains", "Domain Lifecycle", "hosting", register_domain_routes, schema_hook=ensure_domain_schema, depends_on=("hosting", "sites"), feature_prefixes=("domains.",), provider_services=("nexvary-panel-webtools",), ui_view="webtools", maturity="provider"),
     PanelModule("dnssec", "DNSSEC Lifecycle", "hosting", register_dnssec_routes, depends_on=("domains", "integrations"), feature_prefixes=("domains.zone_editor",), provider_services=("nexvary-panel-ops",), ui_view="webtools", maturity="provider"),
     PanelModule("webtools", "Web Tools", "hosting", register_webtools_routes, depends_on=("hosting", "sites"), feature_prefixes=("domains.", "metrics."), provider_services=("nexvary-panel-webtools",), ui_view="webtools", maturity="provider"),
