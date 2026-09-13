@@ -28,7 +28,7 @@ if (( WITH_MAIL )); then
   MAILNAME="$(hostname -f 2>/dev/null || hostname)"
   echo "postfix postfix/mailname string ${MAILNAME}" | debconf-set-selections
   echo 'postfix postfix/main_mailer_type select Internet Site' | debconf-set-selections
-  apt-get install -y postfix dovecot-core dovecot-imapd
+  apt-get install -y postfix dovecot-core dovecot-imapd dovecot-lmtpd dovecot-sieve
 fi
 if (( WITH_SFTP )); then apt-get install -y openssh-server acl; fi
 if (( WITH_POSTGRES )); then apt-get install -y postgresql postgresql-client; fi
@@ -56,6 +56,7 @@ install -m 0750 -o root -g root agent/webtools_agent.py /opt/nexvary-panel-agent
 install -m 0750 -o root -g nexvary-panel agent/scheduler_agent.py /opt/nexvary-panel-agent/scheduler_agent.py
 install -m 0750 -o root -g nexvary-panel agent/autossl_scheduler.py /opt/nexvary-panel-agent/autossl_scheduler.py
 install -m 0640 -o root -g root agent/mail_backend.py /opt/nexvary-panel-agent/mail_backend.py
+install -m 0640 -o root -g root agent/mail_sieve.py /opt/nexvary-panel-agent/mail_sieve.py
 install -m 0750 -o root -g root agent/mail_agent.py /opt/nexvary-panel-agent/mail_agent.py
 install -m 0750 -o root -g root agent/transfer_agent.py /opt/nexvary-panel-agent/transfer_agent.py
 install -m 0750 -o root -g root agent/hosting_ops_agent.py /opt/nexvary-panel-agent/hosting_ops_agent.py
