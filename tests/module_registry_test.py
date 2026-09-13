@@ -19,11 +19,11 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     from panel.module_registry import MODULES, module_catalog, validate_modules
 
     modules = validate_modules()
-    assert len(modules) >= 28
+    assert len(modules) >= 29
     assert tuple(modules) == MODULES
     ids = [m.id for m in modules]
     assert len(ids) == len(set(ids))
-    assert {"hosting", "domains", "dnssec", "accounts", "mail", "mail_queue", "transfers", "advanced_ops", "fleet", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_staging", "wordpress_updates", "security", "vault"}.issubset(ids)
+    assert {"extensions", "hosting", "domains", "dnssec", "accounts", "mail", "mail_queue", "transfers", "advanced_ops", "fleet", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_staging", "wordpress_updates", "security", "vault"}.issubset(ids)
 
     catalog = module_catalog()
     assert len(catalog) == len(modules)
@@ -35,12 +35,15 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     assert "nexvary-panel-webtools" in by_id["domains"]["provider_services"]
     assert "nexvary-panel-wordpress" in by_id["wordpress_updates"]["provider_services"]
     assert "nexvary-panel-wordpress" in by_id["wordpress_staging"]["provider_services"]
+    assert by_id["extensions"]["has_schema"] is True
     assert by_id["domains"]["has_schema"] is True
     assert by_id["wordpress_staging"]["has_schema"] is True
     assert by_id["fleet"]["maturity"] == "foundation"
     assert by_id["fleet"]["depends_on"] == ["advanced_ops"]
     assert by_id["fleet"]["endpoint_namespace"] == "fleet"
     assert by_id["mail_queue"]["endpoint_namespace"] == "mail_queue"
+    assert by_id["extensions"]["endpoint_namespace"] == "extensions"
+    assert "whm.plugins" in by_id["extensions"]["feature_prefixes"]
     assert "whm.fleet" in by_id["fleet"]["feature_prefixes"]
     assert "whm.mail_queue" in by_id["mail_queue"]["feature_prefixes"]
     assert set(by_id["domain_health"]["depends_on"]) == {"domains", "advanced_ops", "autossl", "deliverability"}
@@ -55,6 +58,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     routes = {rule.rule for rule in app.url_map.iter_rules()}
     for path in (
         "/login",
+        "/api/extensions",
         "/api/hosting/catalog",
         "/api/domains/aliases",
         "/api/domain-health",
@@ -79,6 +83,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
 
     with db() as conn:
         tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        assert "extension_states" in tables
         assert "domain_aliases" in tables
         assert "wordpress_staging" in tables
         assert "fleet_nodes" in tables
