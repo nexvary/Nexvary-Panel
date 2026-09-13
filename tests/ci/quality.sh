@@ -31,3 +31,5 @@ python tests/wordpress_components_test.py
 python tests/wordpress_updates_routes_test.py
 python tests/wordpress_staging_agent_test.py
 python tests/wordpress_staging_test.py
+python tests/wordpress_selective_agent_test.py
+python tests/wordpress_publish_history_test.py
