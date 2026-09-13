@@ -15,6 +15,8 @@ python tests/schedules_test.py
 python tests/accounts_scope_test.py
 python tests/database_agent_test.py
 python tests/database_access_test.py
+python tests/postgres_access_agent_test.py
+python tests/postgres_access_test.py
 python tests/mail_policy_test.py
 python tests/mail_password_rotation_test.py
 python tests/mail_automation_test.py
