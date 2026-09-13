@@ -2,6 +2,7 @@
 set -euo pipefail
 [[ ${EUID:-999} -eq 0 ]] || { echo 'configure-mail.sh must run as root'; exit 1; }
 [[ -f /etc/nexvary-panel/tls/panel.crt && -f /etc/nexvary-panel/tls/panel.key ]] || { echo 'Panel TLS material is required before mail setup'; exit 2; }
+command -v sievec >/dev/null || { echo 'dovecot-sieve is required for managed mail automation'; exit 2; }
 
 getent group vmail >/dev/null || groupadd --system vmail
 id vmail >/dev/null 2>&1 || useradd --system --gid vmail --home-dir /var/mail/vhosts --shell /usr/sbin/nologin vmail
@@ -39,6 +40,7 @@ postconf -e 'virtual_mailbox_maps = hash:/etc/nexvary-panel/mail/vmailbox'
 postconf -e "virtual_uid_maps = static:${VMAIL_UID}"
 postconf -e "virtual_gid_maps = static:${VMAIL_GID}"
 postconf -e 'virtual_alias_maps = hash:/etc/nexvary-panel/mail/virtual'
+postconf -e 'virtual_transport = lmtp:unix:private/dovecot-lmtp'
 postconf -e 'smtpd_tls_cert_file = /etc/nexvary-panel/tls/panel.crt'
 postconf -e 'smtpd_tls_key_file = /etc/nexvary-panel/tls/panel.key'
 postconf -e 'smtpd_tls_security_level = may'
@@ -61,7 +63,7 @@ EOF
 fi
 
 cat > /etc/dovecot/conf.d/99-nexvary-panel.conf <<EOF
-protocols = imap
+protocols = imap lmtp
 mail_location = maildir:/var/mail/vhosts/%d/%n/Maildir
 first_valid_uid = ${VMAIL_UID}
 last_valid_uid = ${VMAIL_UID}
@@ -85,6 +87,19 @@ service auth {
     user = postfix
     group = postfix
   }
+}
+service lmtp {
+  unix_listener /var/spool/postfix/private/dovecot-lmtp {
+    mode = 0600
+    user = postfix
+    group = postfix
+  }
+}
+protocol lmtp {
+  mail_plugins = \$mail_plugins sieve
+}
+plugin {
+  sieve = file:~/sieve;active=~/.dovecot.sieve
 }
 EOF
 chmod 0644 /etc/dovecot/conf.d/99-nexvary-panel.conf
