@@ -9,6 +9,7 @@ node tests/internal_workspace_ui_gate.mjs
 node tests/hosting_ui_gate.mjs
 node tests/schedules_ui_gate.mjs
 node tests/accounts_ui_gate.mjs
+node tests/database_access_ui_gate.mjs
 node tests/mail_ui_gate.mjs
 node tests/transfer_ui_gate.mjs
 node tests/advanced_ops_ui_gate.mjs
