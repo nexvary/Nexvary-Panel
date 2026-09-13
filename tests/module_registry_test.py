@@ -19,11 +19,11 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     from panel.module_registry import MODULES, module_catalog, validate_modules
 
     modules = validate_modules()
-    assert len(modules) >= 26
+    assert len(modules) >= 27
     assert tuple(modules) == MODULES
     ids = [m.id for m in modules]
     assert len(ids) == len(set(ids))
-    assert {"hosting", "domains", "dnssec", "accounts", "mail", "transfers", "advanced_ops", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_staging", "wordpress_updates", "security", "vault"}.issubset(ids)
+    assert {"hosting", "domains", "dnssec", "accounts", "mail", "transfers", "advanced_ops", "fleet", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_staging", "wordpress_updates", "security", "vault"}.issubset(ids)
 
     catalog = module_catalog()
     assert len(catalog) == len(modules)
@@ -36,6 +36,9 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     assert "nexvary-panel-wordpress" in by_id["wordpress_staging"]["provider_services"]
     assert by_id["domains"]["has_schema"] is True
     assert by_id["wordpress_staging"]["has_schema"] is True
+    assert by_id["fleet"]["maturity"] == "foundation"
+    assert by_id["fleet"]["depends_on"] == ["advanced_ops"]
+    assert "whm.fleet" in by_id["fleet"]["feature_prefixes"]
     assert set(by_id["domain_health"]["depends_on"]) == {"domains", "advanced_ops", "autossl", "deliverability"}
     assert by_id["wordpress_staging"]["depends_on"] == ["wordpress_lifecycle", "sites"]
     assert by_id["wordpress_updates"]["depends_on"] == ["wordpress_lifecycle"]
@@ -55,6 +58,9 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         "/api/mail",
         "/api/transfers",
         "/api/advanced/status",
+        "/api/fleet",
+        "/api/fleet/probe-all",
+        "/api/fleet/plan",
         "/api/wordpress/components/check",
         "/api/wordpress/components/update",
         "/api/wordpress/components/rollback",
@@ -70,5 +76,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
         assert "domain_aliases" in tables
         assert "wordpress_staging" in tables
+        assert "fleet_nodes" in tables
+        assert "fleet_probes" in tables
 
 print("Nexvary Panel module registry architecture gate: PASS")
