@@ -34,7 +34,7 @@ def _multiline(value: object) -> str:
     lines = []
     for line in text.split("\n"):
         lines.append("." + line if line.startswith(".") else line)
-    return "text:\n" + "\n".join(lines) + "\n."
+    return "text:\n" + "\n".join(lines) + "\n.\n"
 
 
 def _mailbox_home(address: str) -> tuple[str, Path]:
@@ -117,8 +117,6 @@ def _build_script(address: str, autoresponder: dict, filters: list[dict], spam: 
     for item in filters:
         if item["action"] == "fileinto":
             requires.update({"fileinto", "mailbox"})
-        if item["action"] == "redirect":
-            requires.add("redirect")
 
     lines = ["# Managed by Nexvary Panel. Do not edit manually."]
     if requires:
