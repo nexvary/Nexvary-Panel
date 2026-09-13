@@ -12,6 +12,7 @@ from .domain_schema import ensure_domain_schema
 from .extension_registry import validate_extensions
 from .extension_schema import ensure_extension_schema
 from .hosting_consistency_schema import ensure_hosting_consistency_schema
+from .mail_automation_schema import ensure_mail_automation_schema
 from .mail_schema import ensure_mail_schema
 from .ops_schema import ensure_ops_schema
 from .transfer_schema import ensure_transfer_schema
@@ -35,6 +36,7 @@ from .routes_health import register_health_routes
 from .routes_hosting import register_hosting_routes
 from .routes_integrations import register_integration_routes
 from .routes_mail import register_mail_routes
+from .routes_mail_automation import register_mail_automation_routes
 from .routes_mail_queue import register_mail_queue_routes
 from .routes_mail_security import register_mail_security_routes
 from .routes_ops import register_ops_routes
@@ -96,6 +98,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("whm_bulk", "WHM Bulk Operations", "server", register_whm_bulk_routes, schema_hook=ensure_hosting_consistency_schema, depends_on=("hosting", "accounts"), feature_prefixes=("whm.multi_account", "whm.packages"), ui_view="accounts", maturity="native"),
     PanelModule("mail", "Email Center", "hosting", register_mail_routes, schema_hook=ensure_mail_schema, depends_on=("accounts", "sites"), feature_prefixes=("email.",), provider_services=("nexvary-panel-mail",), ui_view="mail", maturity="provider"),
     PanelModule("mail_security", "Mail Security Controls", "security", register_mail_security_routes, depends_on=("mail",), feature_prefixes=("email.accounts",), provider_services=("nexvary-panel-mail",), ui_view="mail", maturity="provider"),
+    PanelModule("mail_automation", "Mail Automation", "hosting", register_mail_automation_routes, schema_hook=ensure_mail_automation_schema, depends_on=("mail", "mail_security"), feature_prefixes=("email.autoresponders", "email.filters", "email.spam_filters"), provider_services=("nexvary-panel-mail",), ui_view="mail", maturity="provider"),
     PanelModule("mail_queue", "Mail Queue Controls", "server", register_mail_queue_routes, depends_on=("mail",), feature_prefixes=("whm.mail_queue",), provider_services=("nexvary-panel-mail",), ui_view="advancedops", maturity="provider", endpoint_namespace="mail_queue"),
     PanelModule("transfers", "Transfer Center", "hosting", register_transfer_routes, schema_hook=ensure_transfer_schema, depends_on=("accounts", "sites"), feature_prefixes=("files.ftp", "files.sftp"), provider_services=("nexvary-panel-transfer",), ui_view="transfers", maturity="provider"),
     PanelModule("advanced_ops", "Advanced Hosting Ops", "server", register_advanced_ops_routes, schema_hook=ensure_ops_schema, depends_on=("hosting", "sites", "integrations"), feature_prefixes=("domains.", "security.ssl", "email.", "software.php", "databases.postgresql", "whm."), provider_services=("nexvary-panel-ops", "nexvary-panel-postgres"), ui_view="advancedops", maturity="provider"),
