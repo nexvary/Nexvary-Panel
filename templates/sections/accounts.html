@@ -35,6 +35,19 @@
   </div>
 
   {% if role == 'admin' %}
+  <article class="panel whm-bulk-center royal-frame frame-electric-black" id="whmBulkPanel">
+    <div class="panel-head"><div><span class="kicker">WHM MULTI-ACCOUNT</span><h3>Bulk Package Assignment</h3></div><span class="account-scope-chip">PREVIEW → APPLY</span></div>
+    <div class="whm-bulk-grid">
+      <form id="bulkPackageForm" class="account-form">
+        <label>الحسابات<select id="bulkPackageAccounts" class="bulk-account-select" multiple size="7" required></select></label>
+        <label>الحزمة المستهدفة<select id="bulkPackageTarget" required></select></label>
+        <div class="account-policy-note">All-or-Nothing: Preview يقيس Quotas لكل حساب أولًا. وجود حساب موقوف/مفقود أو Hard Quota واحدة يمنع تغيير الحزمة لكل الدفعة.</div>
+        <div class="bulk-actions"><button id="bulkPackagePreviewBtn" class="tiny ghost" type="submit">Preview Impact</button><button id="bulkPackageApplyBtn" class="primary royal-action" type="button" disabled>Apply Safe Batch</button></div>
+      </form>
+      <pre id="bulkPackagePreview" class="bulk-preview">اختر حسابًا أو أكثر وحزمة مستهدفة ثم نفّذ Preview. الحد الأقصى 100 حساب في العملية الواحدة.</pre>
+    </div>
+  </article>
+
   <article class="panel reseller-center royal-frame frame-silver">
     <div class="panel-head"><div><span class="kicker">RESELLER MANAGEMENT</span><h3>إدارة الموزعين</h3></div><span class="account-scope-chip">ADMIN ONLY</span></div>
     <div class="reseller-grid">
