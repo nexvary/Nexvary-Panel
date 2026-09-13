@@ -17,3 +17,4 @@ node tests/doctor_remediation_ui_gate.mjs
 node tests/change_safety_ui_gate.mjs
 node tests/wordpress_lifecycle_ui_gate.mjs
 node tests/wordpress_selective_ui_gate.mjs
+node tests/extension_hub_ui_gate.mjs
