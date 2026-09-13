@@ -64,6 +64,7 @@ class PanelModule:
     provider_services: tuple[str, ...] = ()
     ui_view: str | None = None
     maturity: str = "native"
+    endpoint_namespace: str | None = None
 
 
 MODULES: tuple[PanelModule, ...] = (
@@ -89,7 +90,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("mail_security", "Mail Security Controls", "security", register_mail_security_routes, depends_on=("mail",), feature_prefixes=("email.accounts",), provider_services=("nexvary-panel-mail",), ui_view="mail", maturity="provider"),
     PanelModule("transfers", "Transfer Center", "hosting", register_transfer_routes, schema_hook=ensure_transfer_schema, depends_on=("accounts", "sites"), feature_prefixes=("files.ftp", "files.sftp"), provider_services=("nexvary-panel-transfer",), ui_view="transfers", maturity="provider"),
     PanelModule("advanced_ops", "Advanced Hosting Ops", "server", register_advanced_ops_routes, schema_hook=ensure_ops_schema, depends_on=("hosting", "sites", "integrations"), feature_prefixes=("domains.", "security.ssl", "email.", "software.php", "databases.postgresql", "whm."), provider_services=("nexvary-panel-ops", "nexvary-panel-postgres"), ui_view="advancedops", maturity="provider"),
-    PanelModule("fleet", "Fleet Orchestration", "server", register_fleet_routes, depends_on=("advanced_ops",), feature_prefixes=("whm.fleet",), ui_view="advancedops", maturity="foundation"),
+    PanelModule("fleet", "Fleet Orchestration", "server", register_fleet_routes, depends_on=("advanced_ops",), feature_prefixes=("whm.fleet",), ui_view="advancedops", maturity="foundation", endpoint_namespace="fleet"),
     PanelModule("autossl", "AutoSSL Policy", "automation", register_autossl_routes, depends_on=("advanced_ops",), feature_prefixes=("security.ssl",), provider_services=("nexvary-panel-autossl.timer", "nexvary-panel-ops"), ui_view="advancedops", maturity="provider"),
     PanelModule("deliverability", "Mail Deliverability", "hosting", register_deliverability_routes, depends_on=("mail", "advanced_ops"), feature_prefixes=("email.deliverability", "domains.zone_editor"), provider_services=("nexvary-panel-ops",), ui_view="advancedops", maturity="provider"),
     PanelModule("domain_health", "Domain Readiness", "observability", register_domain_health_routes, depends_on=("domains", "advanced_ops", "autossl", "deliverability"), feature_prefixes=("domains.", "security.ssl", "email.deliverability"), ui_view="advancedops"),
@@ -127,6 +128,8 @@ def validate_modules(modules: Iterable[PanelModule] = MODULES) -> tuple[PanelMod
             raise RuntimeError(f"duplicate-panel-module-feature-prefix:{module.id}")
         if len(module.provider_services) != len(set(module.provider_services)):
             raise RuntimeError(f"duplicate-panel-module-provider:{module.id}")
+        if module.endpoint_namespace is not None and (not module.endpoint_namespace or not module.endpoint_namespace.replace("_", "").isalnum()):
+            raise RuntimeError(f"invalid-panel-module-endpoint-namespace:{module.id}")
     return ordered
 
 
@@ -136,9 +139,31 @@ def initialize_module_schemas() -> None:
             module.schema_hook()
 
 
+def _register_module_routes(app: Flask, module: PanelModule) -> None:
+    namespace = module.endpoint_namespace
+    if namespace is None:
+        module.route_hook(app)
+        return
+    original = app.add_url_rule
+
+    def namespaced_add_url_rule(rule, endpoint=None, view_func=None, **options):
+        local_endpoint = endpoint
+        if local_endpoint is None and view_func is not None:
+            local_endpoint = view_func.__name__
+        if local_endpoint is not None:
+            local_endpoint = f"{namespace}.{local_endpoint}"
+        return original(rule, endpoint=local_endpoint, view_func=view_func, **options)
+
+    app.add_url_rule = namespaced_add_url_rule  # type: ignore[method-assign]
+    try:
+        module.route_hook(app)
+    finally:
+        app.add_url_rule = original  # type: ignore[method-assign]
+
+
 def register_modules(app: Flask) -> None:
     for module in validate_modules():
-        module.route_hook(app)
+        _register_module_routes(app, module)
 
 
 def module_catalog() -> list[dict[str, object]]:
@@ -153,6 +178,7 @@ def module_catalog() -> list[dict[str, object]]:
             "ui_view": module.ui_view,
             "maturity": module.maturity,
             "has_schema": module.schema_hook is not None,
+            "endpoint_namespace": module.endpoint_namespace,
         }
         for module in validate_modules()
     ]
