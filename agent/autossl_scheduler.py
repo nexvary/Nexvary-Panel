@@ -14,6 +14,7 @@ DB_PATH = Path(os.environ.get("NVP_DB_PATH", "/var/lib/nexvary-panel/panel.db"))
 OPS_SOCK = Path(os.environ.get("NVP_OPS_SOCK", "/run/nexvary-panel/ops.sock"))
 MAX_REPLY = 256 * 1024
 SSL_FEATURE = "security.ssl_tls"
+MAX_NAMES = 25
 
 
 def _ops(payload: dict, timeout: int = 240) -> dict:
@@ -58,12 +59,6 @@ def _expiry_epoch(detail: object) -> int | None:
 
 
 def _ssl_allowed(conn: sqlite3.Connection, owner: str) -> bool:
-    """Mirror the account SSL entitlement without importing Flask/session code.
-
-    Admin always retains server SSL capability. Non-admin users must be enabled and
-    have an enabled package. The explicit package feature override wins; otherwise
-    SSL/TLS is part of the default account feature set used by the control plane.
-    """
     if owner == "admin":
         return True
     user = conn.execute("SELECT role,enabled FROM users WHERE username=?", (owner,)).fetchone()
@@ -84,6 +79,30 @@ def _ssl_allowed(conn: sqlite3.Connection, owner: str) -> bool:
     return bool(int(explicit["enabled"])) if explicit is not None else True
 
 
+def _desired_names(conn: sqlite3.Connection, domain: str) -> list[str]:
+    names = [domain]
+    try:
+        rows = conn.execute("SELECT alias FROM domain_aliases WHERE domain=? ORDER BY alias LIMIT ?", (domain, MAX_NAMES - 1)).fetchall()
+    except sqlite3.OperationalError:
+        rows = []
+    for row in rows:
+        name = str(row["alias"] or "").strip().lower().rstrip(".")
+        if name and name not in names:
+            names.append(name)
+    return names[:MAX_NAMES]
+
+
+def _preflight_detail(result: dict) -> str:
+    if result.get("ready"):
+        return "AutoSSL HTTP-01 preflight passed"
+    checks = result.get("checks") if isinstance(result.get("checks"), list) else []
+    failed = []
+    for item in checks[:8]:
+        if isinstance(item, dict) and not item.get("ready"):
+            failed.append(f"{item.get('domain','?')}:{item.get('reason','not-ready')}")
+    return ("; ".join(failed) or str(result.get("error", "AutoSSL preflight failed")))[:700]
+
+
 def _record(conn: sqlite3.Connection, domain: str, owner: str, status: str, detail: str, *, renewed: bool = False) -> None:
     now = int(time.time())
     conn.execute(
@@ -95,6 +114,10 @@ def _record(conn: sqlite3.Connection, domain: str, owner: str, status: str, deta
         "INSERT INTO audit(ts,actor,action,detail,ip) VALUES(?,?,?,?,?)",
         (now, "autossl", "autossl-check", f"domain={domain} status={status}"[:700], ""),
     )
+
+
+def _preflight(domain: str, names: list[str]) -> dict:
+    return _ops({"action": "ssl-preflight", "domain": domain, "domains": names}, timeout=35)
 
 
 def run_once() -> int:
@@ -113,6 +136,7 @@ def run_once() -> int:
         for row in rows:
             domain = str(row["domain"])
             owner = str(row["owner"])
+            names = _desired_names(conn, domain)
             if int(row["last_check"] or 0) > now - 3600:
                 continue
             if not _ssl_allowed(conn, owner):
@@ -124,16 +148,38 @@ def run_once() -> int:
                 _record(conn, domain, owner, "check-failed", str(status.get("error", "ssl status unavailable")))
                 conn.commit()
                 continue
+            contact = str(row["contact_email"] or "").strip().lower()
             if not status.get("installed"):
-                contact = str(row["contact_email"] or "").strip().lower()
                 if not contact:
                     _record(conn, domain, owner, "needs-contact", "certificate missing; contact email required for automatic issuance")
                     conn.commit()
                     continue
-                result = _ops({"action": "ssl-issue", "domain": domain, "email": contact})
+                preflight = _preflight(domain, names)
+                if not preflight.get("ok") or not preflight.get("ready"):
+                    _record(conn, domain, owner, "preflight-failed", _preflight_detail(preflight))
+                    conn.commit()
+                    continue
+                result = _ops({"action": "ssl-issue", "domain": domain, "domains": names, "email": contact})
                 _record(conn, domain, owner, "valid" if result.get("ok") else "issue-failed", str(result.get("detail", result.get("error", ""))), renewed=bool(result.get("ok")))
                 conn.commit()
                 continue
+
+            current_names = [str(value).lower().rstrip(".") for value in (status.get("names") or []) if isinstance(value, str)]
+            if current_names and set(current_names) != set(names):
+                if not contact:
+                    _record(conn, domain, owner, "needs-contact", "certificate names changed; contact email required for SAN reissue")
+                    conn.commit()
+                    continue
+                preflight = _preflight(domain, names)
+                if not preflight.get("ok") or not preflight.get("ready"):
+                    _record(conn, domain, owner, "preflight-failed", _preflight_detail(preflight))
+                    conn.commit()
+                    continue
+                result = _ops({"action": "ssl-issue", "domain": domain, "domains": names, "email": contact})
+                _record(conn, domain, owner, "valid" if result.get("ok") else "san-update-failed", str(result.get("detail", result.get("error", ""))), renewed=bool(result.get("ok")))
+                conn.commit()
+                continue
+
             expiry = _expiry_epoch(status.get("detail"))
             if expiry is None:
                 _record(conn, domain, owner, "parse-failed", "certificate expiry could not be parsed")
@@ -142,11 +188,16 @@ def run_once() -> int:
             remaining = max(0, expiry - now)
             threshold = int(row["renew_before_days"] or 30) * 86400
             if remaining <= threshold:
-                result = _ops({"action": "ssl-renew", "domain": domain})
+                preflight = _preflight(domain, names)
+                if not preflight.get("ok") or not preflight.get("ready"):
+                    _record(conn, domain, owner, "preflight-failed", _preflight_detail(preflight))
+                    conn.commit()
+                    continue
+                result = _ops({"action": "ssl-renew", "domain": domain, "domains": names})
                 _record(conn, domain, owner, "valid" if result.get("ok") else "renew-failed", str(result.get("detail", result.get("error", ""))), renewed=bool(result.get("ok")))
             else:
                 days = remaining // 86400
-                _record(conn, domain, owner, "valid", f"certificate valid; {days} day(s) remaining")
+                _record(conn, domain, owner, "valid", f"certificate valid; {days} day(s) remaining; names={len(names)}")
             conn.commit()
         return 0
     finally:
