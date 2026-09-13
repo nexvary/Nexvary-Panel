@@ -50,6 +50,11 @@ with tempfile.TemporaryDirectory(prefix="nvp-db-access-") as tmp:
         assert conn.execute("SELECT 1 FROM database_access_users WHERE username='legacy_user' AND owner='dbclient'").fetchone()
         legacy = conn.execute("SELECT privileges FROM database_access_grants WHERE db_name='client_db' AND db_user='legacy_user'").fetchone()
         assert legacy and "SELECT" in legacy["privileges"] and "ALTER" in legacy["privileges"]
+        # The compatibility trigger must adopt databases created after startup immediately.
+        conn.execute("INSERT INTO databases(db_name,db_user,engine,site_domain,owner,created_at) VALUES(?,?,?,?,?,?)", ("trigger_db", "trigger_user", "mariadb", "", "dbclient", now))
+        assert conn.execute("SELECT 1 FROM database_access_users WHERE username='trigger_user' AND owner='dbclient'").fetchone()
+        trigger_grant = conn.execute("SELECT privileges FROM database_access_grants WHERE db_name='trigger_db' AND db_user='trigger_user'").fetchone()
+        assert trigger_grant and "SELECT" in trigger_grant["privileges"] and "TRIGGER" in trigger_grant["privileges"]
 
     with client.session_transaction() as sess:
         sess.update(auth=True, user="dbclient", role="operator", csrf=csrf)
@@ -80,7 +85,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-db-access-") as tmp:
     body = catalog.get_json()
     assert body["provider"]["online"] is True
     assert all(row["owner"] == "dbclient" for row in body["databases"])
-    assert {row["username"] for row in body["users"]} >= {"legacy_user", "report_user"}
+    assert {row["username"] for row in body["users"]} >= {"legacy_user", "trigger_user", "report_user"}
     assert "TRIGGER" in body["privilege_catalog"]
 
     cross = client.put(
