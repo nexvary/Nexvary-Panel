@@ -90,14 +90,19 @@ with tempfile.TemporaryDirectory(prefix="nvp-autossl-routes-") as tmp:
     seen = []
     def fake_ops(payload, timeout=35):
         seen.append(dict(payload))
-        return {
-            "ok": True,
-            "ready": True,
-            "domain": payload["domain"],
-            "domains": payload["domains"],
-            "checks": [{"domain": name, "ready": True, "dns": ["203.0.113.1"], "http_status": 200, "reason": ""} for name in payload["domains"]],
-        }
+        if payload["action"] == "ssl-preflight":
+            return {
+                "ok": True,
+                "ready": True,
+                "domain": payload["domain"],
+                "domains": payload["domains"],
+                "checks": [{"domain": name, "ready": True, "dns": ["203.0.113.1"], "http_status": 200, "reason": ""} for name in payload["domains"]],
+            }
+        if payload["action"] in {"ssl-issue", "ssl-renew"}:
+            return {"ok": True, "installed": True, "domain": payload["domain"], "names": payload["domains"], "detail": "test certificate action"}
+        raise AssertionError(payload)
     routes_autossl.ops_call = fake_ops
+
     response = client.get("/api/autossl/preflight?domain=ssl.example.test")
     assert response.status_code == 200, response.data
     preflight = response.get_json()
@@ -105,6 +110,23 @@ with tempfile.TemporaryDirectory(prefix="nvp-autossl-routes-") as tmp:
     assert preflight["preflight"]["ready"] is True
     assert seen and seen[-1]["action"] == "ssl-preflight"
     assert seen[-1]["domains"] == preflight["names"]
+
+    response = client.post(
+        "/api/autossl/ssl.example.test/issue",
+        json={"email": "ops@example.test"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert response.status_code == 200, response.data
+    assert seen[-1]["action"] == "ssl-issue"
+    assert seen[-1]["domains"] == ["ssl.example.test", "www2.ssl.example.test"]
+    response = client.post(
+        "/api/autossl/ssl.example.test/renew",
+        json={},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert response.status_code == 200, response.data
+    assert seen[-1]["action"] == "ssl-renew"
+    assert seen[-1]["domains"] == ["ssl.example.test", "www2.ssl.example.test"]
 
     response = client.put(
         "/api/autossl/ssl.example.test",
