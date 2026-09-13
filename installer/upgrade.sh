@@ -44,6 +44,7 @@ install -m 0750 -o root -g root agent/root_agent.py /opt/nexvary-panel-agent/roo
 install -m 0640 -o root -g root agent/secret_vault.py /opt/nexvary-panel-agent/secret_vault.py
 install -m 0750 -o root -g root agent/vault_agent.py /opt/nexvary-panel-agent/vault_agent.py
 install -m 0750 -o root -g root agent/provider_agent.py /opt/nexvary-panel-agent/provider_agent.py
+install -m 0750 -o root -g root agent/database_agent.py /opt/nexvary-panel-agent/database_agent.py
 install -m 0640 -o root -g root agent/webtools.py /opt/nexvary-panel-agent/webtools.py
 install -m 0640 -o root -g root agent/domain_ops.py /opt/nexvary-panel-agent/domain_ops.py
 install -m 0750 -o root -g root agent/webtools_agent.py /opt/nexvary-panel-agent/webtools_agent.py
@@ -64,6 +65,7 @@ install -m 0644 systemd/nexvary-panel.service /etc/systemd/system/nexvary-panel.
 install -m 0644 systemd/nexvary-panel-agent.service /etc/systemd/system/nexvary-panel-agent.service
 install -m 0644 systemd/nexvary-panel-vault.service /etc/systemd/system/nexvary-panel-vault.service
 install -m 0644 systemd/nexvary-panel-provider.service /etc/systemd/system/nexvary-panel-provider.service
+install -m 0644 systemd/nexvary-panel-database.service /etc/systemd/system/nexvary-panel-database.service
 install -m 0644 systemd/nexvary-panel-webtools.service /etc/systemd/system/nexvary-panel-webtools.service
 install -m 0644 systemd/nexvary-panel-scheduler.service /etc/systemd/system/nexvary-panel-scheduler.service
 install -m 0644 systemd/nexvary-panel-autossl.service /etc/systemd/system/nexvary-panel-autossl.service
@@ -76,18 +78,18 @@ install -m 0644 systemd/nexvary-panel-wordpress.service /etc/systemd/system/nexv
 if (( WITH_MAIL )); then bash installer/configure-mail.sh; fi
 if (( WITH_SFTP )); then bash installer/configure-sftp.sh; fi
 systemctl daemon-reload
-systemctl enable --now mariadb fail2ban nginx nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel-ops nexvary-panel-wordpress
+systemctl enable --now mariadb fail2ban nginx nexvary-panel-vault nexvary-panel-provider nexvary-panel-database nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel-ops nexvary-panel-wordpress
 systemctl enable --now nexvary-panel-autossl.timer
 if (( WITH_DOCKER )); then systemctl enable --now docker; fi
 if (( WITH_MAIL )); then systemctl enable --now nexvary-panel-mail; fi
 if (( WITH_SFTP )); then systemctl enable --now nexvary-panel-transfer; fi
 if (( WITH_POSTGRES )); then systemctl enable --now postgresql nexvary-panel-postgres; fi
-systemctl restart nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel-ops nexvary-panel-wordpress nexvary-panel
+systemctl restart nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-database nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel-ops nexvary-panel-wordpress nexvary-panel
 if (( WITH_MAIL )); then systemctl restart nexvary-panel-mail; fi
 if (( WITH_SFTP )); then systemctl restart nexvary-panel-transfer; fi
 if (( WITH_POSTGRES )); then systemctl restart nexvary-panel-postgres; fi
 nginx -t
-printf '\nNexvary Panel %s upgrade complete. Existing admin credentials, Secret Vault, Integration Targets, AutoSSL policies and SQLite data were preserved.\n' "$PANEL_VERSION"
+printf '\nNexvary Panel %s upgrade complete. Existing admin credentials, Secret Vault, Integration Targets, AutoSSL policies, database grants metadata and SQLite data were preserved.\n' "$PANEL_VERSION"
 if (( ! WITH_BACKUP_PROVIDERS )); then printf 'restic/rclone package state was preserved. Use --with-backup-providers to install/enable the curated backup engines.\n'; fi
 if (( ! WITH_MAIL )); then printf 'Existing mail package state was preserved. Use --with-mail to install/configure the Nexvary Email Stack.\n'; fi
 if (( ! WITH_SFTP )); then printf 'Existing SFTP provider state was preserved. Use --with-sftp to install/configure the key-only Transfer Center.\n'; fi
