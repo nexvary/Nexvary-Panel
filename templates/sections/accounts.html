@@ -36,15 +36,23 @@
 
   {% if role == 'admin' %}
   <article class="panel whm-bulk-center royal-frame frame-electric-black" id="whmBulkPanel">
-    <div class="panel-head"><div><span class="kicker">WHM MULTI-ACCOUNT</span><h3>Bulk Package Assignment</h3></div><span class="account-scope-chip">PREVIEW → APPLY</span></div>
+    <div class="panel-head"><div><span class="kicker">WHM MULTI-ACCOUNT</span><h3>Bulk Account Operations</h3></div><span class="account-scope-chip">PREVIEW → APPLY</span></div>
     <div class="whm-bulk-grid">
       <form id="bulkPackageForm" class="account-form">
         <label>الحسابات<select id="bulkPackageAccounts" class="bulk-account-select" multiple size="7" required></select></label>
         <label>الحزمة المستهدفة<select id="bulkPackageTarget" required></select></label>
         <div class="account-policy-note">All-or-Nothing: Preview يقيس Quotas لكل حساب أولًا. وجود حساب موقوف/مفقود أو Hard Quota واحدة يمنع تغيير الحزمة لكل الدفعة.</div>
-        <div class="bulk-actions"><button id="bulkPackagePreviewBtn" class="tiny ghost" type="submit">Preview Impact</button><button id="bulkPackageApplyBtn" class="primary royal-action" type="button" disabled>Apply Safe Batch</button></div>
+        <div class="bulk-actions"><button id="bulkPackagePreviewBtn" class="tiny ghost" type="submit">Preview Package Impact</button><button id="bulkPackageApplyBtn" class="primary royal-action" type="button" disabled>Apply Safe Package Batch</button></div>
       </form>
       <pre id="bulkPackagePreview" class="bulk-preview">اختر حسابًا أو أكثر وحزمة مستهدفة ثم نفّذ Preview. الحد الأقصى 100 حساب في العملية الواحدة.</pre>
+    </div>
+    <div class="whm-bulk-grid">
+      <form id="bulkStatusForm" class="account-form">
+        <label>الحالة المستهدفة<select id="bulkStatusTarget" required><option value="suspended">SUSPENDED · تعليق الحسابات والمواقع الفعالة</option><option value="active">ACTIVE · إعادة الحالة السابقة للمواقع</option></select></label>
+        <div class="account-policy-note">يستخدم نفس الحسابات المختارة أعلاه. التعليق يحفظ حالة المواقع قبل إيقافها؛ إعادة التفعيل تعيد فقط المواقع التي كانت فعالة قبل التعليق. إذا فشل Provider في منتصف الدفعة تُنفذ محاولة Rollback لما سبق تغييره.</div>
+        <div class="bulk-actions"><button id="bulkStatusPreviewBtn" class="tiny ghost" type="submit">Preview Lifecycle</button><button id="bulkStatusApplyBtn" class="primary royal-action" type="button" disabled>Apply Account Lifecycle</button></div>
+      </form>
+      <pre id="bulkStatusPreview" class="bulk-preview">اختيار الحسابات مشترك مع Bulk Package. نفّذ Lifecycle Preview قبل التعليق أو إعادة التفعيل.</pre>
     </div>
   </article>
 
