@@ -17,6 +17,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-autossl-routes-") as tmp:
 
     from panel import create_app
     from panel.db_layer import db
+    import panel.routes_autossl as routes_autossl
 
     app = create_app()
     app.testing = True
@@ -49,7 +50,9 @@ with tempfile.TemporaryDirectory(prefix="nvp-autossl-routes-") as tmp:
 
     response = client.get("/api/autossl?domain=ssl.example.test")
     assert response.status_code == 200, response.data
-    policy = response.get_json()["policy"]
+    body = response.get_json()
+    policy = body["policy"]
+    assert body["names"] == ["ssl.example.test"]
     assert policy["configured"] is False
     assert policy["feature_enabled"] is True
 
@@ -79,6 +82,29 @@ with tempfile.TemporaryDirectory(prefix="nvp-autossl-routes-") as tmp:
         assert row and row["owner"] == "sslclient" and int(row["auto_renew"]) == 1
         audit_text = " ".join(str(r[0]) for r in conn.execute("SELECT detail FROM audit").fetchall())
         assert "ops@example.test" not in audit_text
+        conn.execute(
+            "INSERT INTO domain_aliases(domain,alias,owner,created_at,updated_at) VALUES(?,?,?,?,?)",
+            ("ssl.example.test", "www2.ssl.example.test", "sslclient", now, now),
+        )
+
+    seen = []
+    def fake_ops(payload, timeout=35):
+        seen.append(dict(payload))
+        return {
+            "ok": True,
+            "ready": True,
+            "domain": payload["domain"],
+            "domains": payload["domains"],
+            "checks": [{"domain": name, "ready": True, "dns": ["203.0.113.1"], "http_status": 200, "reason": ""} for name in payload["domains"]],
+        }
+    routes_autossl.ops_call = fake_ops
+    response = client.get("/api/autossl/preflight?domain=ssl.example.test")
+    assert response.status_code == 200, response.data
+    preflight = response.get_json()
+    assert preflight["names"] == ["ssl.example.test", "www2.ssl.example.test"]
+    assert preflight["preflight"]["ready"] is True
+    assert seen and seen[-1]["action"] == "ssl-preflight"
+    assert seen[-1]["domains"] == preflight["names"]
 
     response = client.put(
         "/api/autossl/ssl.example.test",
@@ -103,6 +129,8 @@ with tempfile.TemporaryDirectory(prefix="nvp-autossl-routes-") as tmp:
     response = client.get("/api/autossl?domain=ssl.example.test")
     assert response.status_code == 200, response.data
     assert response.get_json()["policy"]["feature_enabled"] is False
+    response = client.get("/api/autossl/preflight?domain=ssl.example.test")
+    assert response.status_code == 403, response.data
     response = client.put(
         "/api/autossl/ssl.example.test",
         json={"auto_renew": False, "contact_email": "", "renew_before_days": 30},
