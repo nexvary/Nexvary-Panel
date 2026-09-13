@@ -103,13 +103,18 @@
     </article>
 
     <article class="panel royal-frame frame-electric-black adv-card" id="advFleetCard">
-      <div class="panel-head"><div><span class="kicker">FLEET</span><h3>Fleet / Cluster Foundation</h3></div><span class="adv-chip">HTTPS ONLY</span></div>
-      <form id="fleetForm" class="adv-form"><input id="fleetName" maxlength="64" placeholder="Node name" required><input id="fleetEndpoint" type="url" placeholder="https://node.example.com" required><button class="primary royal-action" type="submit">إضافة Node</button></form>
-      <div id="fleetList" class="adv-list"><div class="empty-state">لا توجد Nodes.</div></div>
+      <div class="panel-head"><div><span class="kicker">FLEET ORCHESTRATION</span><h3>Fleet / Cluster Foundation</h3></div><span class="adv-chip">HEALTH + CAPABILITY PLAN</span></div>
+      <div class="metrics-summary fleet-summary"><div><small>NODES</small><b id="fleetNodeCount">0</b></div><div><small>ONLINE</small><b id="fleetOnlineCount">0</b></div><div><small>DEGRADED</small><b id="fleetDegradedCount">0</b></div><div><small>OFFLINE</small><b id="fleetOfflineCount">0</b></div></div>
+      <form id="fleetCreateForm" class="adv-form"><input id="fleetName" maxlength="64" placeholder="Node name" required><input id="fleetEndpoint" type="url" placeholder="https://node.example.com:8443" required><button class="primary royal-action" type="submit">إضافة Node</button></form>
+      <div class="adv-inline"><button id="fleetProbeAllBtn" type="button" class="tiny ghost">Probe All</button><select id="fleetPlanOperation"><option value="reload-nginx">Plan: Reload NGINX</option><option value="renew-autossl">Plan: Renew AutoSSL</option><option value="upgrade-panel">Plan: Panel Upgrade</option><option value="flush-mail-queue">Plan: Flush Mail Queue</option></select><button id="fleetPlanBtn" type="button" class="tiny ghost">Preview Orchestration</button></div>
+      <div class="account-policy-note">Fleet Apply غير مفعّل عمدًا في 0.7 حتى يتم اعتماد مصادقة node-to-node قوية. Preview يقارن Online state والنسخة والـCapabilities فقط ولا يرسل أوامر Remote.</div>
+      <pre id="fleetPlanResult" class="adv-result">لا توجد Orchestration Preview بعد.</pre>
+      <div id="fleetOrchestrationList" class="adv-list"><div class="empty-state">لا توجد Nodes.</div></div>
     </article>
     {% endif %}
   </div>
   <div id="advStatus" class="adv-status" role="status"></div>
   <script src="/static/domain-readiness.js"></script>
   <script src="/static/change-safety.js"></script>
+  {% if role == 'admin' %}<script src="/static/fleet-orchestration.js"></script>{% endif %}
 </section>
