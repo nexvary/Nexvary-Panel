@@ -92,14 +92,23 @@ def _desired_names(conn: sqlite3.Connection, domain: str) -> list[str]:
     return names[:MAX_NAMES]
 
 
+def _eligible(preflight: dict, fallback: list[str]) -> list[str]:
+    values = preflight.get("eligible_domains")
+    if isinstance(values, list):
+        return [str(v).lower().rstrip(".") for v in values if isinstance(v, str)]
+    return list(fallback) if preflight.get("ready") else []
+
+
 def _preflight_detail(result: dict) -> str:
-    if result.get("ready"):
-        return "AutoSSL HTTP-01 preflight passed"
     checks = result.get("checks") if isinstance(result.get("checks"), list) else []
     failed = []
     for item in checks[:8]:
         if isinstance(item, dict) and not item.get("ready"):
             failed.append(f"{item.get('domain','?')}:{item.get('reason','not-ready')}")
+    if result.get("ready") and not failed:
+        return "AutoSSL HTTP-01 preflight passed for all names"
+    if result.get("ready") and failed:
+        return ("AutoSSL primary ready; excluded SANs: " + "; ".join(failed))[:700]
     return ("; ".join(failed) or str(result.get("error", "AutoSSL preflight failed")))[:700]
 
 
@@ -160,25 +169,32 @@ def run_once() -> int:
                     conn.commit()
                     continue
                 result = _ops({"action": "ssl-issue", "domain": domain, "domains": names, "email": contact})
-                _record(conn, domain, owner, "valid" if result.get("ok") else "issue-failed", str(result.get("detail", result.get("error", ""))), renewed=bool(result.get("ok")))
+                state = "valid-partial" if result.get("ok") and result.get("excluded_names") else "valid" if result.get("ok") else "issue-failed"
+                detail = _preflight_detail(result.get("preflight") or preflight) if result.get("ok") else str(result.get("detail", result.get("error", "")))
+                _record(conn, domain, owner, state, detail, renewed=bool(result.get("ok")))
                 conn.commit()
                 continue
 
             current_names = [str(value).lower().rstrip(".") for value in (status.get("names") or []) if isinstance(value, str)]
+            preflight = None
             if current_names and set(current_names) != set(names):
-                if not contact:
-                    _record(conn, domain, owner, "needs-contact", "certificate names changed; contact email required for SAN reissue")
-                    conn.commit()
-                    continue
                 preflight = _preflight(domain, names)
                 if not preflight.get("ok") or not preflight.get("ready"):
                     _record(conn, domain, owner, "preflight-failed", _preflight_detail(preflight))
                     conn.commit()
                     continue
-                result = _ops({"action": "ssl-issue", "domain": domain, "domains": names, "email": contact})
-                _record(conn, domain, owner, "valid" if result.get("ok") else "san-update-failed", str(result.get("detail", result.get("error", ""))), renewed=bool(result.get("ok")))
-                conn.commit()
-                continue
+                eligible = _eligible(preflight, names)
+                if set(current_names) != set(eligible):
+                    if not contact:
+                        _record(conn, domain, owner, "needs-contact", "certificate names changed; contact email required for SAN reconciliation")
+                        conn.commit()
+                        continue
+                    result = _ops({"action": "ssl-issue", "domain": domain, "domains": names, "email": contact})
+                    state = "valid-partial" if result.get("ok") and (result.get("excluded_names") or not preflight.get("fully_ready", True)) else "valid" if result.get("ok") else "san-update-failed"
+                    detail = _preflight_detail(result.get("preflight") or preflight) if result.get("ok") else str(result.get("detail", result.get("error", "")))
+                    _record(conn, domain, owner, state, detail, renewed=bool(result.get("ok")))
+                    conn.commit()
+                    continue
 
             expiry = _expiry_epoch(status.get("detail"))
             if expiry is None:
@@ -188,16 +204,21 @@ def run_once() -> int:
             remaining = max(0, expiry - now)
             threshold = int(row["renew_before_days"] or 30) * 86400
             if remaining <= threshold:
-                preflight = _preflight(domain, names)
+                preflight = preflight or _preflight(domain, names)
                 if not preflight.get("ok") or not preflight.get("ready"):
                     _record(conn, domain, owner, "preflight-failed", _preflight_detail(preflight))
                     conn.commit()
                     continue
-                result = _ops({"action": "ssl-renew", "domain": domain, "domains": names})
-                _record(conn, domain, owner, "valid" if result.get("ok") else "renew-failed", str(result.get("detail", result.get("error", ""))), renewed=bool(result.get("ok")))
+                result = _ops({"action": "ssl-renew", "domain": domain, "domains": names, "email": contact})
+                state = "valid-partial" if result.get("ok") and (result.get("excluded_names") or not preflight.get("fully_ready", True)) else "valid" if result.get("ok") else "renew-failed"
+                detail = _preflight_detail(result.get("preflight") or preflight) if result.get("ok") else str(result.get("detail", result.get("error", "")))
+                _record(conn, domain, owner, state, detail, renewed=bool(result.get("ok")))
             else:
                 days = remaining // 86400
-                _record(conn, domain, owner, "valid", f"certificate valid; {days} day(s) remaining; names={len(names)}")
+                if preflight and not preflight.get("fully_ready", True):
+                    _record(conn, domain, owner, "valid-partial", f"certificate valid; {days} day(s) remaining; {_preflight_detail(preflight)}")
+                else:
+                    _record(conn, domain, owner, "valid", f"certificate valid; {days} day(s) remaining; names={len(names)}")
             conn.commit()
         return 0
     finally:
