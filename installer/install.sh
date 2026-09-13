@@ -50,6 +50,7 @@ install -m 0750 -o root -g root agent/root_agent.py /opt/nexvary-panel-agent/roo
 install -m 0640 -o root -g root agent/secret_vault.py /opt/nexvary-panel-agent/secret_vault.py
 install -m 0750 -o root -g root agent/vault_agent.py /opt/nexvary-panel-agent/vault_agent.py
 install -m 0750 -o root -g root agent/provider_agent.py /opt/nexvary-panel-agent/provider_agent.py
+install -m 0750 -o root -g root agent/database_agent.py /opt/nexvary-panel-agent/database_agent.py
 install -m 0640 -o root -g root agent/webtools.py /opt/nexvary-panel-agent/webtools.py
 install -m 0640 -o root -g root agent/domain_ops.py /opt/nexvary-panel-agent/domain_ops.py
 install -m 0750 -o root -g root agent/webtools_agent.py /opt/nexvary-panel-agent/webtools_agent.py
@@ -92,6 +93,7 @@ install -m 0644 systemd/nexvary-panel.service /etc/systemd/system/nexvary-panel.
 install -m 0644 systemd/nexvary-panel-agent.service /etc/systemd/system/nexvary-panel-agent.service
 install -m 0644 systemd/nexvary-panel-vault.service /etc/systemd/system/nexvary-panel-vault.service
 install -m 0644 systemd/nexvary-panel-provider.service /etc/systemd/system/nexvary-panel-provider.service
+install -m 0644 systemd/nexvary-panel-database.service /etc/systemd/system/nexvary-panel-database.service
 install -m 0644 systemd/nexvary-panel-webtools.service /etc/systemd/system/nexvary-panel-webtools.service
 install -m 0644 systemd/nexvary-panel-scheduler.service /etc/systemd/system/nexvary-panel-scheduler.service
 install -m 0644 systemd/nexvary-panel-autossl.service /etc/systemd/system/nexvary-panel-autossl.service
@@ -138,7 +140,7 @@ ln -sfn /etc/nginx/sites-available/nexvary-panel.conf /etc/nginx/sites-enabled/n
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl daemon-reload
-systemctl enable --now nginx mariadb fail2ban nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel-ops nexvary-panel-wordpress nexvary-panel
+systemctl enable --now nginx mariadb fail2ban nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-database nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel-ops nexvary-panel-wordpress nexvary-panel
 systemctl enable --now nexvary-panel-autossl.timer
 if (( WITH_DOCKER )); then systemctl enable --now docker; fi
 if (( WITH_MAIL )); then systemctl enable --now nexvary-panel-mail; fi
