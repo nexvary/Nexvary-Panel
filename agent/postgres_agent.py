@@ -78,25 +78,15 @@ def _database_owner(name: str) -> str:
 
 
 def _create(data: dict) -> dict:
-    name = _name(data.get("db_name"))
-    user = _name(data.get("db_user"))
-    password = _password(data.get("password"))
-    if not _available():
-        return {"ok": False, "error": "postgresql-not-installed"}
-    if _exists("role", user) or _exists("database", name):
-        return {"ok": False, "error": "postgres-resource-conflict"}
-    role_created = False
-    db_created = False
+    name = _name(data.get("db_name")); user = _name(data.get("db_user")); password = _password(data.get("password"))
+    if not _available(): return {"ok": False, "error": "postgresql-not-installed"}
+    if _exists("role", user) or _exists("database", name): return {"ok": False, "error": "postgres-resource-conflict"}
+    role_created = False; db_created = False
     try:
-        _run(["createuser", "--no-password", "--login", "--", user], 30)
-        role_created = True
-        _run(
-            ["psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "postgres"],
-            30,
-            f"ALTER ROLE {_qi(user)} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT NOREPLICATION NOBYPASSRLS PASSWORD '{password}';\n",
-        )
-        _run(["createdb", "-O", user, "--", name], 30)
-        db_created = True
+        _run(["createuser", "--no-password", "--login", "--", user], 30); role_created = True
+        _run(["psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "postgres"], 30,
+             f"ALTER ROLE {_qi(user)} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT NOREPLICATION NOBYPASSRLS PASSWORD '{password}';\n")
+        _run(["createdb", "-O", user, "--", name], 30); db_created = True
     except Exception:
         if db_created:
             try: _run(["dropdb", "--if-exists", "--", name], 20)
@@ -111,8 +101,7 @@ def _create(data: dict) -> dict:
 def _delete(data: dict) -> dict:
     name = _name(data.get("db_name")); user = _name(data.get("db_user"))
     if not _available(): return {"ok": False, "error": "postgresql-not-installed"}
-    _run(["dropdb", "--if-exists", "--", name], 30)
-    _run(["dropuser", "--if-exists", "--", user], 30)
+    _run(["dropdb", "--if-exists", "--", name], 30); _run(["dropuser", "--if-exists", "--", user], 30)
     return {"ok": True, "deleted": True}
 
 
@@ -133,12 +122,12 @@ def _role_rotate(data: dict) -> dict:
     return {"ok": True, "username": user}
 
 
-def _profile_sql(db_name: str, user: str, owner: str, profile: str) -> tuple[str, str]:
+def _profile_sql(db_name: str, user: str, owner: str, profile: str) -> str:
     if profile not in GRANT_PROFILES: raise ValueError("invalid-postgres-grant-profile")
     dbq, userq, ownerq = _qi(db_name), _qi(user), _qi(owner)
-    global_sql = ["BEGIN;", f"REVOKE ALL PRIVILEGES ON DATABASE {dbq} FROM {userq};"]
-    database_sql = [
+    sql = [
         "BEGIN;",
+        f"REVOKE ALL PRIVILEGES ON DATABASE {dbq} FROM {userq};",
         f"REVOKE ALL PRIVILEGES ON SCHEMA public FROM {userq};",
         f"REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM {userq};",
         f"REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM {userq};",
@@ -146,8 +135,8 @@ def _profile_sql(db_name: str, user: str, owner: str, profile: str) -> tuple[str
         f"ALTER DEFAULT PRIVILEGES FOR ROLE {ownerq} IN SCHEMA public REVOKE ALL PRIVILEGES ON SEQUENCES FROM {userq};",
     ]
     if profile == "readonly":
-        global_sql.append(f"GRANT CONNECT ON DATABASE {dbq} TO {userq};")
-        database_sql.extend([
+        sql.extend([
+            f"GRANT CONNECT ON DATABASE {dbq} TO {userq};",
             f"GRANT USAGE ON SCHEMA public TO {userq};",
             f"GRANT SELECT ON ALL TABLES IN SCHEMA public TO {userq};",
             f"GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO {userq};",
@@ -155,8 +144,8 @@ def _profile_sql(db_name: str, user: str, owner: str, profile: str) -> tuple[str
             f"ALTER DEFAULT PRIVILEGES FOR ROLE {ownerq} IN SCHEMA public GRANT SELECT ON SEQUENCES TO {userq};",
         ])
     elif profile == "readwrite":
-        global_sql.append(f"GRANT CONNECT,TEMPORARY ON DATABASE {dbq} TO {userq};")
-        database_sql.extend([
+        sql.extend([
+            f"GRANT CONNECT,TEMPORARY ON DATABASE {dbq} TO {userq};",
             f"GRANT USAGE ON SCHEMA public TO {userq};",
             f"GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO {userq};",
             f"GRANT USAGE,SELECT,UPDATE ON ALL SEQUENCES IN SCHEMA public TO {userq};",
@@ -164,39 +153,27 @@ def _profile_sql(db_name: str, user: str, owner: str, profile: str) -> tuple[str
             f"ALTER DEFAULT PRIVILEGES FOR ROLE {ownerq} IN SCHEMA public GRANT USAGE,SELECT,UPDATE ON SEQUENCES TO {userq};",
         ])
     elif profile == "developer":
-        global_sql.append(f"GRANT CONNECT,TEMPORARY ON DATABASE {dbq} TO {userq};")
-        database_sql.extend([
+        sql.extend([
+            f"GRANT CONNECT,TEMPORARY ON DATABASE {dbq} TO {userq};",
             f"GRANT USAGE,CREATE ON SCHEMA public TO {userq};",
             f"GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON ALL TABLES IN SCHEMA public TO {userq};",
             f"GRANT USAGE,SELECT,UPDATE ON ALL SEQUENCES IN SCHEMA public TO {userq};",
             f"ALTER DEFAULT PRIVILEGES FOR ROLE {ownerq} IN SCHEMA public GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON TABLES TO {userq};",
             f"ALTER DEFAULT PRIVILEGES FOR ROLE {ownerq} IN SCHEMA public GRANT USAGE,SELECT,UPDATE ON SEQUENCES TO {userq};",
         ])
-    global_sql.append("COMMIT;"); database_sql.append("COMMIT;")
-    return "\n".join(global_sql) + "\n", "\n".join(database_sql) + "\n"
-
-
-def _apply_profile(db_name: str, user: str, owner: str, profile: str) -> None:
-    global_sql, database_sql = _profile_sql(db_name, user, owner, profile)
-    _run(["psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", "postgres"], 30, global_sql)
-    _run(["psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", db_name], 45, database_sql)
+    sql.append("COMMIT;")
+    return "\n".join(sql) + "\n"
 
 
 def _grant_profile(data: dict) -> dict:
-    db_name = _name(data.get("db_name")); user = _name(data.get("username"))
-    profile = str(data.get("profile", "")).strip().lower()
-    previous = str(data.get("previous_profile", "none")).strip().lower()
-    if profile not in GRANT_PROFILES or previous not in GRANT_PROFILES: raise ValueError("invalid-postgres-grant-profile")
+    db_name = _name(data.get("db_name")); user = _name(data.get("username")); profile = str(data.get("profile", "")).strip().lower()
+    if profile not in GRANT_PROFILES: raise ValueError("invalid-postgres-grant-profile")
     if not _exists("database", db_name): return {"ok": False, "error": "postgres-database-not-found"}
     if not _exists("role", user): return {"ok": False, "error": "postgres-role-not-found"}
     owner = _database_owner(db_name)
     if owner == user: return {"ok": False, "error": "postgres-database-owner-profile-is-managed-by-ownership"}
-    try:
-        _apply_profile(db_name, user, owner, profile)
-    except Exception:
-        try: _apply_profile(db_name, user, owner, previous)
-        except Exception: pass
-        raise
+    # Database, schema, current-object and default-object ACLs are committed atomically.
+    _run(["psql", "-X", "-v", "ON_ERROR_STOP=1", "-d", db_name], 55, _profile_sql(db_name, user, owner, profile))
     return {"ok": True, "db_name": db_name, "username": user, "profile": profile}
 
 
