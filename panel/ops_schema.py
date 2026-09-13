@@ -118,3 +118,7 @@ def ensure_ops_schema() -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_fleet_probes_node ON fleet_probes(node_id,id DESC);
         """)
+        # database_access is initialized before advanced_ops in the module registry.
+        # Once postgres_resources exists, complete the cross-module adoption bridge.
+        from .database_access_schema import ensure_postgres_access_bridge
+        ensure_postgres_access_bridge(conn)
