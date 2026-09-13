@@ -39,13 +39,15 @@ with tempfile.TemporaryDirectory(prefix="nvp-autossl-") as tmp:
     def missing_then_issue(payload, timeout=240):
         calls.append(dict(payload))
         if payload["action"] == "ssl-status":
-            return {"ok": True, "installed": False, "domain": "example.com"}
+            return {"ok": True, "installed": False, "domain": "example.com", "names": []}
+        if payload["action"] == "ssl-preflight":
+            return {"ok": True, "ready": True, "checks": [{"domain": "example.com", "ready": True}]}
         if payload["action"] == "ssl-issue":
-            return {"ok": True, "installed": True, "detail": "issued"}
+            return {"ok": True, "installed": True, "detail": "issued", "names": ["example.com"]}
         raise AssertionError(payload)
     mod._ops = missing_then_issue
     assert mod.run_once() == 0
-    assert [x["action"] for x in calls] == ["ssl-status", "ssl-issue"]
+    assert [x["action"] for x in calls] == ["ssl-status", "ssl-preflight", "ssl-issue"]
     with db() as conn:
         row = conn.execute("SELECT last_status,last_renewal FROM ssl_policies WHERE domain='example.com'").fetchone()
         assert row["last_status"] == "valid" and int(row["last_renewal"]) > 0
@@ -54,7 +56,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-autossl-") as tmp:
     future = datetime.now(timezone.utc) + timedelta(days=80)
     detail = "notAfter=" + future.strftime("%b %d %H:%M:%S %Y GMT")
     calls.clear()
-    mod._ops = lambda payload, timeout=240: calls.append(dict(payload)) or {"ok": True, "installed": True, "detail": detail}
+    mod._ops = lambda payload, timeout=240: calls.append(dict(payload)) or {"ok": True, "installed": True, "detail": detail, "names": ["example.com"]}
     mod.run_once()
     assert [x["action"] for x in calls] == ["ssl-status"]
 
@@ -64,15 +66,57 @@ with tempfile.TemporaryDirectory(prefix="nvp-autossl-") as tmp:
     def expiring_then_renew(payload, timeout=240):
         calls.append(dict(payload))
         if payload["action"] == "ssl-status":
-            return {"ok": True, "installed": True, "detail": expiring_detail}
+            return {"ok": True, "installed": True, "detail": expiring_detail, "names": ["example.com"]}
+        if payload["action"] == "ssl-preflight":
+            return {"ok": True, "ready": True, "checks": [{"domain": "example.com", "ready": True}]}
         if payload["action"] == "ssl-renew":
-            return {"ok": True, "detail": "renewed"}
+            return {"ok": True, "detail": "renewed", "names": ["example.com"]}
         raise AssertionError(payload)
     with db() as conn:
         conn.execute("UPDATE ssl_policies SET last_check=0")
     mod._ops = expiring_then_renew
     mod.run_once()
-    assert [x["action"] for x in calls] == ["ssl-status", "ssl-renew"]
+    assert [x["action"] for x in calls] == ["ssl-status", "ssl-preflight", "ssl-renew"]
+
+    # Failed preflight must block Certbot/renewal provider actions.
+    calls.clear()
+    with db() as conn:
+        conn.execute("UPDATE ssl_policies SET last_check=0")
+    def blocked_preflight(payload, timeout=240):
+        calls.append(dict(payload))
+        if payload["action"] == "ssl-status":
+            return {"ok": True, "installed": True, "detail": expiring_detail, "names": ["example.com"]}
+        if payload["action"] == "ssl-preflight":
+            return {"ok": True, "ready": False, "checks": [{"domain": "example.com", "ready": False, "reason": "no-public-dns-address"}]}
+        raise AssertionError("renew must not execute after failed preflight")
+    mod._ops = blocked_preflight
+    mod.run_once()
+    assert [x["action"] for x in calls] == ["ssl-status", "ssl-preflight"]
+    with db() as conn:
+        row = conn.execute("SELECT last_status,last_detail FROM ssl_policies WHERE domain='example.com'").fetchone()
+        assert row["last_status"] == "preflight-failed"
+        assert "no-public-dns-address" in row["last_detail"]
+
+    # Alias/subdomain changes must reconcile SAN names before waiting for expiry.
+    calls.clear()
+    with db() as conn:
+        conn.execute("INSERT INTO domain_aliases(domain,alias,owner,created_at,updated_at) VALUES(?,?,?,?,?)",
+                     ("example.com", "shop.example.com", "admin", now, now))
+        conn.execute("UPDATE ssl_policies SET last_check=0")
+    def san_reconcile(payload, timeout=240):
+        calls.append(dict(payload))
+        if payload["action"] == "ssl-status":
+            return {"ok": True, "installed": True, "detail": detail, "names": ["example.com"]}
+        if payload["action"] == "ssl-preflight":
+            assert payload["domains"] == ["example.com", "shop.example.com"]
+            return {"ok": True, "ready": True, "checks": []}
+        if payload["action"] == "ssl-issue":
+            assert payload["domains"] == ["example.com", "shop.example.com"]
+            return {"ok": True, "detail": "SAN certificate updated", "names": payload["domains"]}
+        raise AssertionError(payload)
+    mod._ops = san_reconcile
+    mod.run_once()
+    assert [x["action"] for x in calls] == ["ssl-status", "ssl-preflight", "ssl-issue"]
 
     # A package policy change must stop the background worker before any provider call.
     calls.clear()
