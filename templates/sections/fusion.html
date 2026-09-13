@@ -22,6 +22,20 @@
     <div class="fusion-loading royal-frame">جاري قراءة مزودي Nexvary Fusion…</div>
   </div>
 
+  {% if role == 'admin' %}
+  <div class="fusion-capability-panel royal-frame" id="extensionHubPanel">
+    <div class="fusion-policy-head"><span>{{icon('settings')}}</span><div><small>CURATED EXTENSION HUB</small><h3>الإضافات الموثوقة وسياسة التشغيل</h3></div></div>
+    <p class="fusion-capability-intro">Extension Hub لا يرفع ZIP ولا يشغّل Python عشوائيًا داخل اللوحة. كل إضافة Manifest معتمد مسبقًا، ويمكن تعطيل API الخاص بها فورًا كـKill Switch. تغيير الحالة يتطلب Step‑Up.</p>
+    <div class="fusion-summary-grid">
+      <article class="fusion-summary-card royal-frame"><span>{{icon('layers')}}</span><div><small>EXTENSIONS</small><strong id="extensionTotal">—</strong></div></article>
+      <article class="fusion-summary-card royal-frame"><span>{{icon('activity')}}</span><div><small>ENABLED</small><strong id="extensionEnabled">—</strong></div></article>
+      <article class="fusion-summary-card royal-frame"><span>{{icon('shield')}}</span><div><small>EXECUTION MODEL</small><strong>CURATED</strong></div></article>
+    </div>
+    <div id="extensionNotice" class="fusion-loading">جاري قراءة Extension Registry…</div>
+    <div id="extensionGrid" class="fusion-provider-grid"></div>
+  </div>
+  {% endif %}
+
   <div class="fusion-capability-panel royal-frame">
     <div class="fusion-policy-head"><span>{{icon('network')}}</span><div><small>CAPABILITY ENGINE</small><h3>اختر القدرة أولًا، وليس اسم المنتج</h3></div></div>
     <p class="fusion-capability-intro">كل قدرة يمكن أن ينفذها مزود أو أكثر. الواجهة تعتمد على Capability Contract ثابت، لذلك يمكن استبدال Caddy/Traefik أو Docker/Podman أو restic/rclone دون إعادة بناء صفحات Nexvary.</p>
