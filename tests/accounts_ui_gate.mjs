@@ -22,11 +22,14 @@ if (await nav.count() !== 1) throw new Error('Account & Reseller navigation miss
 await nav.click();
 await page.locator('#accounts.active-view').waitFor({ state: 'visible' });
 
-for (const id of ['hostingAccountForm','accountUsername','accountDomain','accountPackage','accountPassword','accountList','accountLimit','whmBulkPanel','bulkPackageForm','bulkPackageAccounts','bulkPackageTarget','bulkPackagePreviewBtn','bulkPackageApplyBtn','bulkPackagePreview','resellerForm','resellerList']) {
+for (const id of ['hostingAccountForm','accountUsername','accountDomain','accountPackage','accountPassword','accountList','accountLimit','whmBulkPanel','bulkPackageForm','bulkPackageAccounts','bulkPackageTarget','bulkPackagePreviewBtn','bulkPackageApplyBtn','bulkPackagePreview','bulkStatusForm','bulkStatusTarget','bulkStatusPreviewBtn','bulkStatusApplyBtn','bulkStatusPreview','resellerForm','resellerList']) {
   if (await page.locator(`#${id}`).count() !== 1) throw new Error(`Account workspace control missing: ${id}`);
 }
 if (!(await page.locator('#bulkPackageAccounts').getAttribute('multiple')) && await page.locator('#bulkPackageAccounts').getAttribute('multiple') !== '') throw new Error('Bulk account selector is not multi-select');
-if (!(await page.locator('#bulkPackageApplyBtn').isDisabled())) throw new Error('Bulk Apply must remain disabled before Preview');
+if (!(await page.locator('#bulkPackageApplyBtn').isDisabled())) throw new Error('Bulk Package Apply must remain disabled before Preview');
+if (!(await page.locator('#bulkStatusApplyBtn').isDisabled())) throw new Error('Bulk Lifecycle Apply must remain disabled before Preview');
+const lifecycleOptions = await page.locator('#bulkStatusTarget option').evaluateAll(nodes => nodes.map(n => n.value));
+if (lifecycleOptions.join(',') !== 'suspended,active') throw new Error(`Unexpected lifecycle options: ${lifecycleOptions.join(',')}`);
 const hero = page.locator('#accounts .workspace-hero');
 if (await hero.count() !== 1) throw new Error('Account workspace Royal hero missing');
 if (!(await hero.innerText()).includes('الحسابات والموزعون')) throw new Error('Account workspace title missing');
