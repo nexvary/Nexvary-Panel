@@ -19,16 +19,17 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     from panel.module_registry import MODULES, module_catalog, validate_modules
 
     modules = validate_modules()
-    assert len(modules) >= 27
+    assert len(modules) >= 28
     assert tuple(modules) == MODULES
     ids = [m.id for m in modules]
     assert len(ids) == len(set(ids))
-    assert {"hosting", "domains", "dnssec", "accounts", "mail", "transfers", "advanced_ops", "fleet", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_staging", "wordpress_updates", "security", "vault"}.issubset(ids)
+    assert {"hosting", "domains", "dnssec", "accounts", "mail", "mail_queue", "transfers", "advanced_ops", "fleet", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_staging", "wordpress_updates", "security", "vault"}.issubset(ids)
 
     catalog = module_catalog()
     assert len(catalog) == len(modules)
     by_id = {item["id"]: item for item in catalog}
     assert "nexvary-panel-mail" in by_id["mail"]["provider_services"]
+    assert "nexvary-panel-mail" in by_id["mail_queue"]["provider_services"]
     assert "nexvary-panel-transfer" in by_id["transfers"]["provider_services"]
     assert "nexvary-panel-postgres" in by_id["advanced_ops"]["provider_services"]
     assert "nexvary-panel-webtools" in by_id["domains"]["provider_services"]
@@ -38,7 +39,10 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     assert by_id["wordpress_staging"]["has_schema"] is True
     assert by_id["fleet"]["maturity"] == "foundation"
     assert by_id["fleet"]["depends_on"] == ["advanced_ops"]
+    assert by_id["fleet"]["endpoint_namespace"] == "fleet"
+    assert by_id["mail_queue"]["endpoint_namespace"] == "mail_queue"
     assert "whm.fleet" in by_id["fleet"]["feature_prefixes"]
+    assert "whm.mail_queue" in by_id["mail_queue"]["feature_prefixes"]
     assert set(by_id["domain_health"]["depends_on"]) == {"domains", "advanced_ops", "autossl", "deliverability"}
     assert by_id["wordpress_staging"]["depends_on"] == ["wordpress_lifecycle", "sites"]
     assert by_id["wordpress_updates"]["depends_on"] == ["wordpress_lifecycle"]
@@ -56,6 +60,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         "/api/domain-health",
         "/api/accounts",
         "/api/mail",
+        "/api/advanced/mail/queue/<queue_id>",
         "/api/transfers",
         "/api/advanced/status",
         "/api/fleet",
