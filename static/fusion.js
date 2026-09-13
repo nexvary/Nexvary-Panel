@@ -1,7 +1,7 @@
 (()=>{
   'use strict';
   const $=(s,r=document)=>r.querySelector(s);
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const grid=$('#fusionGrid'),capGrid=$('#fusionCapabilityGrid'),extensionGrid=$('#extensionGrid'),extensionNotice=$('#extensionNotice');
   const csrf=document.querySelector('meta[name="csrf-token"]')?.content||'';
   function setText(id,value){const el=$(id);if(el)el.textContent=value}
