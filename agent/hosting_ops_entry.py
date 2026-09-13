@@ -77,6 +77,27 @@ def _configured_server_names(primary: str) -> set[str]:
     return names
 
 
+def _challenge_root(primary: str) -> Path:
+    primary = core._domain(primary)
+    site_root = core._site_root(primary).resolve()
+    text = core._nginx_conf(primary).read_text(encoding="utf-8")
+    candidates = re.findall(r"\broot\s+([^;\s]+)\s*;", text)
+    for value in candidates:
+        if "$" in value or not value.startswith("/"):
+            continue
+        path = Path(value)
+        try:
+            if not path.is_dir() or path.is_symlink():
+                continue
+            resolved = path.resolve()
+            if os.path.commonpath((str(site_root), str(resolved))) != str(site_root):
+                continue
+        except (OSError, ValueError):
+            continue
+        return resolved
+    raise ValueError("managed-http-webroot-not-found")
+
+
 def _resolve_public(host: str) -> list[str]:
     try:
         infos = socket.getaddrinfo(host, 80, type=socket.SOCK_STREAM)
@@ -131,7 +152,7 @@ def _probe_http(host: str, ip: str, path: str, token: str) -> dict:
 def _autossl_preflight(data: dict) -> dict:
     names = _ssl_names(data)
     primary = names[0]
-    root = core._site_root(primary)
+    root = _challenge_root(primary)
     configured = _configured_server_names(primary)
     challenge_parent = root / ".well-known"
     challenge_dir = challenge_parent / "acme-challenge"
@@ -141,8 +162,19 @@ def _autossl_preflight(data: dict) -> dict:
     challenge_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
     token = "nexvary-autossl-" + secrets.token_hex(16)
     challenge = challenge_dir / token
-    challenge.write_text(token, encoding="ascii")
-    os.chmod(challenge, 0o644)
+    fd = os.open(challenge, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o644)
+    try:
+        with os.fdopen(fd, "w", encoding="ascii") as handle:
+            handle.write(token)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        challenge.unlink(missing_ok=True)
+        raise
     path = f"/.well-known/acme-challenge/{token}"
     checks: list[dict] = []
     try:
@@ -169,7 +201,7 @@ def _autossl_preflight(data: dict) -> dict:
     finally:
         challenge.unlink(missing_ok=True)
     ready = bool(checks) and all(bool(item.get("ready")) for item in checks)
-    return {"ok": True, "ready": ready, "domain": primary, "domains": names, "checks": checks, "challenge": "http-01-webroot"}
+    return {"ok": True, "ready": ready, "domain": primary, "domains": names, "checks": checks, "challenge": "http-01-webroot", "webroot": str(root)}
 
 
 def _ssl_status_with_names(domain: str) -> dict:
@@ -197,13 +229,15 @@ def _ssl_issue_with_names(data: dict, preflight: dict | None = None) -> dict:
     preflight = preflight or _autossl_preflight(data)
     if not preflight.get("ready"):
         return {"ok": False, "error": "autossl-preflight-failed", "preflight": preflight}
-    root = core._site_root(primary)
+    root = _challenge_root(primary)
     args = ["certbot", "certonly", "--webroot", "-w", str(root), "--cert-name", primary]
     for name in names:
         args.extend(["-d", name])
-    args.extend(["--non-interactive", "--agree-tos", "--email", email, "--keep-until-expiring"])
-    if (Path("/etc/letsencrypt/live") / primary / "fullchain.pem").is_file():
-        args.append("--force-renewal")
+    args.extend(["--non-interactive", "--agree-tos", "--email", email])
+    cert = Path("/etc/letsencrypt/live") / primary / "fullchain.pem"
+    if cert.is_file():
+        current = _ssl_status_with_names(primary).get("names") or []
+        args.append("--renew-with-new-domains" if set(current) != set(names) else "--keep-until-expiring")
     core._run(args, 240)
     core._bind_ssl(primary)
     result = _ssl_status_with_names(primary)
