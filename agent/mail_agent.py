@@ -8,10 +8,11 @@ import socket
 from pathlib import Path
 
 from mail_backend import forwarder_delete, forwarder_upsert, mailbox_delete, mailbox_upsert, provider_status, queue_delete
+from mail_sieve import sieve_sync
 
 SOCKET_PATH = Path(os.environ.get("NVP_MAIL_SOCK", "/run/nexvary-panel/mail.sock"))
-MAX_REQUEST = 32 * 1024
-ACTIONS = {"status", "mailbox-upsert", "mailbox-delete", "forwarder-upsert", "forwarder-delete", "queue-delete"}
+MAX_REQUEST = 64 * 1024
+ACTIONS = {"status", "mailbox-upsert", "mailbox-delete", "forwarder-upsert", "forwarder-delete", "queue-delete", "sieve-sync"}
 
 
 def _dispatch(data: dict) -> dict:
@@ -28,7 +29,14 @@ def _dispatch(data: dict) -> dict:
         return forwarder_upsert(str(data.get("source", "")), str(data.get("destination", "")))
     if action == "forwarder-delete":
         return forwarder_delete(str(data.get("source", "")))
-    return queue_delete(str(data.get("queue_id", "")))
+    if action == "queue-delete":
+        return queue_delete(str(data.get("queue_id", "")))
+    return sieve_sync(
+        str(data.get("address", "")),
+        data.get("autoresponder", {}),
+        data.get("filters", []),
+        data.get("spam", {}),
+    )
 
 
 def _serve_client(conn: socket.socket) -> None:
