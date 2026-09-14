@@ -60,4 +60,20 @@
 #hosting .empty-state{color:#6f879e;font-size:8px;padding:14px;border:1px dashed rgba(110,144,177,.22);border-radius:8px;text-align:center}
 @media(max-width:1120px){#hosting .hosting-layout{grid-template-columns:1fr}#hosting .hosting-side{grid-template-columns:repeat(2,minmax(0,1fr))}#hosting .hosting-admin-panel{grid-column:1/-1}}
 @media(max-width:780px){#hosting .hosting-toolbar{grid-template-columns:1fr 1fr}#hosting .hosting-search-wrap,#hosting .hosting-current-package{grid-column:1/-1}#hosting .hosting-feature-grid{grid-template-columns:1fr}#hosting .hosting-side{grid-template-columns:1fr}#hosting .hosting-admin-panel{grid-column:auto}#hosting .hosting-limit-pairs{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:460px){#hosting .hosting-toolbar{grid-template-columns:1fr}#hosting .hosting-search-wrap,#hosting .hosting-current-package{grid-column:auto}#hosting .hosting-quota-grid,#hosting .hosting-limit-pairs{grid-template-columns:1fr}}
+@media(max-width:460px){
+  #hosting .hosting-toolbar{grid-template-columns:1fr}
+  #hosting .hosting-search-wrap,#hosting .hosting-current-package{grid-column:auto}
+  #hosting .hosting-quota-grid,#hosting .hosting-limit-pairs{grid-template-columns:1fr}
+  #hosting .hosting-layout,#hosting .hosting-catalog-panel,#hosting .hosting-side,#hosting .hosting-side>.panel,#hosting .hosting-toolbar,#hosting .hosting-package-form,#hosting .hosting-assign-form{min-width:0;max-width:100%}
+  #hosting input,#hosting select,#hosting textarea,#hosting button{max-width:100%;min-width:0;box-sizing:border-box}
+  #hosting .hosting-feature-card{grid-template-columns:32px minmax(0,1fr);column-gap:8px;row-gap:7px}
+  #hosting .hosting-feature-state{grid-column:1/-1;white-space:normal;justify-self:start;max-width:100%;overflow-wrap:anywhere}
+  #hosting .hosting-feature-meta{min-width:0}
+  #hosting .hosting-feature-meta span{max-width:100%;overflow-wrap:anywhere}
+  #hosting .panel-head{flex-wrap:wrap;gap:7px;min-width:0}
+  #hosting .hosting-live-pill,#hosting .step-badge{max-width:100%;white-space:normal;text-align:center;overflow-wrap:anywhere}
+  #hosting .hosting-policy-row{grid-template-columns:minmax(0,1fr) 34px}
+  #hosting .hosting-switch{min-width:34px}
+  #hosting .adv-inline{display:grid!important;grid-template-columns:1fr!important;gap:7px;min-width:0}
+  #hosting .adv-inline>*{width:100%;min-width:0;max-width:100%}
+}
