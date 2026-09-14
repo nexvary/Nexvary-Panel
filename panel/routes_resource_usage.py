@@ -69,10 +69,15 @@ def register_resource_usage_routes(app):
 
         disk_bytes = 0
         bandwidth_sample_bytes = 0
+        monthly_bandwidth_bytes = 0
+        monthly_period: str | None = None
+        monthly_complete = True
         measured_sites = 0
         failures: list[str] = []
         site_rows: list[dict] = []
         capped = len(domains) > MAX_SITES_PER_MEASUREMENT
+        if capped:
+            monthly_complete = False
         for domain in domains[:MAX_SITES_PER_MEASUREMENT]:
             try:
                 result = webtools_call({"action": "site-resource-usage", "domain": domain}, timeout=25)
@@ -80,6 +85,7 @@ def register_resource_usage_routes(app):
                 result = {"ok": False, "error": "provider unavailable"}
             if not result.get("ok"):
                 failures.append(domain)
+                monthly_complete = False
                 site_rows.append({"domain": domain, "measured": False})
                 continue
             measured_sites += 1
@@ -89,17 +95,37 @@ def register_resource_usage_routes(app):
             disk_bytes += site_disk
             if sample_value is not None:
                 bandwidth_sample_bytes += sample_value
+
+            monthly_value = result.get("monthly_bandwidth_bytes")
+            site_monthly_complete = bool(result.get("monthly_bandwidth_complete", False)) and monthly_value is not None
+            site_period = str(result.get("monthly_bandwidth_period") or "") or None
+            if not site_monthly_complete:
+                monthly_complete = False
+            else:
+                monthly_bandwidth_bytes += max(0, int(monthly_value))
+                if monthly_period is None:
+                    monthly_period = site_period
+                elif site_period != monthly_period:
+                    monthly_complete = False
             site_rows.append({
                 "domain": domain,
                 "measured": True,
                 "disk_bytes": site_disk,
                 "bandwidth_sample_bytes": sample_value,
                 "bandwidth_scope": str(result.get("bandwidth_scope") or "unavailable"),
+                "monthly_bandwidth_bytes": max(0, int(monthly_value)) if monthly_value is not None else None,
+                "monthly_bandwidth_period": site_period,
+                "monthly_bandwidth_complete": site_monthly_complete,
+                "monthly_bandwidth_reason": str(result.get("monthly_bandwidth_reason") or "unknown")[:80],
                 "filesystem_entries": max(0, int(result.get("filesystem_entries") or 0)),
             })
 
         disk_complete = not capped and measured_sites == len(domains)
         disk_mb = int(math.ceil(disk_bytes / (1024 * 1024))) if disk_complete else None
+        if measured_sites != len(domains):
+            monthly_complete = False
+        monthly_mb = int(math.ceil(monthly_bandwidth_bytes / (1024 * 1024))) if monthly_complete else None
+        bandwidth_ratio = _ratio(monthly_mb, limits["bandwidth_mb"])
         telemetry = {
             "disk": {
                 **_ratio(disk_mb, limits["disk_mb"]),
@@ -108,11 +134,13 @@ def register_resource_usage_routes(app):
                 "hard_quota_safe": disk_complete,
             },
             "bandwidth": {
+                **bandwidth_ratio,
+                "monthly_bytes": monthly_bandwidth_bytes if monthly_complete else None,
+                "monthly_period": monthly_period,
                 "sample_bytes": bandwidth_sample_bytes,
-                "limit_mb": limits["bandwidth_mb"],
-                "scope": "latest-nginx-log-window-per-site",
-                "hard_quota_safe": False,
-                "note": "Telemetry only until persistent monthly accounting across log rotation is available.",
+                "scope": "monthly-persistent-ledger" if monthly_complete else "latest-nginx-log-window-per-site",
+                "hard_quota_safe": monthly_complete,
+                "note": "Monthly hard quota is eligible only when every managed site has a continuous ledger for the same period.",
             },
         }
         quota = {key: _ratio(value, limits[key]) for key, value in counts.items()}
@@ -128,5 +156,8 @@ def register_resource_usage_routes(app):
             telemetry=telemetry,
             quota=quota,
             sites=site_rows,
-            enforcement={"disk": "eligible-when-complete", "bandwidth": "telemetry-only"},
+            enforcement={
+                "disk": "eligible-when-complete" if disk_complete else "telemetry-incomplete",
+                "bandwidth": "eligible-when-month-complete" if monthly_complete else "telemetry-only",
+            },
         )
