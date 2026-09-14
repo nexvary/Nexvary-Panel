@@ -18,6 +18,7 @@ from .mail_automation_schema import ensure_mail_automation_schema
 from .mail_schema import ensure_mail_schema
 from .ops_schema import ensure_ops_schema
 from .server_lifecycle_schema import ensure_server_lifecycle_schema
+from .site_controls_schema import ensure_site_controls_schema
 from .transfer_schema import ensure_transfer_schema
 from .wordpress_publish_schema import ensure_wordpress_publish_schema
 from .wordpress_staging_schema import ensure_wordpress_staging_schema
@@ -54,6 +55,7 @@ from .routes_resource_usage import register_resource_usage_routes
 from .routes_schedules import register_schedule_routes
 from .routes_security import register_security_routes
 from .routes_server_lifecycle import register_server_lifecycle_routes
+from .routes_site_controls import register_site_control_routes
 from .routes_sites import register_site_routes
 from .routes_transfers import register_transfer_routes
 from .routes_vault import register_vault_routes
@@ -106,6 +108,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("domains", "Domain Lifecycle", "hosting", register_domain_routes, schema_hook=ensure_domain_schema, depends_on=("hosting", "sites"), feature_prefixes=("domains.",), provider_services=("nexvary-panel-webtools",), ui_view="webtools", maturity="provider"),
     PanelModule("dnssec", "DNSSEC Lifecycle", "hosting", register_dnssec_routes, depends_on=("domains", "integrations"), feature_prefixes=("domains.zone_editor",), provider_services=("nexvary-panel-ops",), ui_view="webtools", maturity="provider"),
     PanelModule("webtools", "Web Tools", "hosting", register_webtools_routes, depends_on=("hosting", "sites"), feature_prefixes=("domains.", "metrics."), provider_services=("nexvary-panel-webtools",), ui_view="webtools", maturity="provider"),
+    PanelModule("site_controls", "Site Control Center", "hosting", register_site_control_routes, schema_hook=ensure_site_controls_schema, depends_on=("hosting", "sites", "webtools"), feature_prefixes=("files.directory_privacy", "security.hotlink", "advanced.indexes", "advanced.mime_types", "metrics.raw_access"), provider_services=("nexvary-panel-webtools",), ui_view="sitecontrols", maturity="provider", endpoint_namespace="site_controls"),
     PanelModule("schedules", "Scheduled Tasks", "automation", register_schedule_routes, depends_on=("hosting", "sites"), feature_prefixes=("advanced.cron",), provider_services=("nexvary-panel-scheduler",), ui_view="schedules", maturity="provider"),
     PanelModule("accounts", "Accounts and Resellers", "hosting", register_account_routes, schema_hook=ensure_account_schema, depends_on=("hosting",), feature_prefixes=("whm.accounts", "whm.resellers"), ui_view="accounts"),
     PanelModule("whm_bulk", "WHM Bulk Operations", "server", register_whm_bulk_routes, schema_hook=ensure_hosting_consistency_schema, depends_on=("hosting", "accounts"), feature_prefixes=("whm.multi_account", "whm.packages"), ui_view="accounts", maturity="native"),
