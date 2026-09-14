@@ -17,6 +17,7 @@ from .hosting_consistency_schema import ensure_hosting_consistency_schema
 from .mail_automation_schema import ensure_mail_automation_schema
 from .mail_schema import ensure_mail_schema
 from .ops_schema import ensure_ops_schema
+from .server_lifecycle_schema import ensure_server_lifecycle_schema
 from .transfer_schema import ensure_transfer_schema
 from .wordpress_publish_schema import ensure_wordpress_publish_schema
 from .wordpress_staging_schema import ensure_wordpress_staging_schema
@@ -52,6 +53,7 @@ from .routes_remote_backup import register_remote_backup_routes
 from .routes_resource_usage import register_resource_usage_routes
 from .routes_schedules import register_schedule_routes
 from .routes_security import register_security_routes
+from .routes_server_lifecycle import register_server_lifecycle_routes
 from .routes_sites import register_site_routes
 from .routes_transfers import register_transfer_routes
 from .routes_vault import register_vault_routes
@@ -113,6 +115,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("mail_queue", "Mail Queue Controls", "server", register_mail_queue_routes, depends_on=("mail",), feature_prefixes=("whm.mail_queue",), provider_services=("nexvary-panel-mail",), ui_view="advancedops", maturity="provider", endpoint_namespace="mail_queue"),
     PanelModule("transfers", "Transfer Center", "hosting", register_transfer_routes, schema_hook=ensure_transfer_schema, depends_on=("accounts", "sites"), feature_prefixes=("files.ftp", "files.sftp"), provider_services=("nexvary-panel-transfer",), ui_view="transfers", maturity="provider"),
     PanelModule("advanced_ops", "Advanced Hosting Ops", "server", register_advanced_ops_routes, schema_hook=ensure_ops_schema, depends_on=("hosting", "sites", "integrations"), feature_prefixes=("domains.", "security.ssl", "email.", "software.php", "databases.postgresql", "whm."), provider_services=("nexvary-panel-ops", "nexvary-panel-postgres"), ui_view="advancedops", maturity="provider"),
+    PanelModule("server_lifecycle", "Server Lifecycle", "server", register_server_lifecycle_routes, schema_hook=ensure_server_lifecycle_schema, depends_on=("advanced_ops",), feature_prefixes=("whm.server_time", "whm.updates", "whm.networking", "whm.ip_functions", "whm.processes"), provider_services=("nexvary-panel-server",), ui_view="advancedops", maturity="foundation", endpoint_namespace="server_lifecycle"),
     PanelModule("php_ini", "PHP INI Manager", "hosting", register_php_ini_routes, depends_on=("hosting", "sites"), feature_prefixes=("software.php_ini",), provider_services=("nexvary-panel-phpini",), ui_view="advancedops", maturity="provider", endpoint_namespace="php_ini"),
     PanelModule("database_lifecycle", "Database Lifecycle", "hosting", register_database_lifecycle_routes, schema_hook=ensure_database_lifecycle_schema, depends_on=("database_access", "advanced_ops"), feature_prefixes=("databases.", "files.backups"), provider_services=("nexvary-panel-database", "nexvary-panel-postgres"), ui_view="databases", maturity="provider", endpoint_namespace="database_lifecycle"),
     PanelModule("fleet", "Fleet Orchestration", "server", register_fleet_routes, depends_on=("advanced_ops",), feature_prefixes=("whm.fleet",), ui_view="advancedops", maturity="foundation", endpoint_namespace="fleet"),
