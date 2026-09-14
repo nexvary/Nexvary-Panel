@@ -30,6 +30,7 @@
   <link rel="stylesheet" href="/static/advanced-ops.css">
   <link rel="stylesheet" href="/static/webtools.css">
   <link rel="stylesheet" href="/static/site-controls.css">
+  <link rel="stylesheet" href="/static/parity-center.css">
   <link rel="stylesheet" href="/static/scheduled-tasks.css">
   <link rel="stylesheet" href="/static/database-access.css">
   <link rel="stylesheet" href="/static/workspace-visibility.css">
@@ -78,6 +79,7 @@
       <span class="nav-label nav-gap">مراقبة وإدارة السيرفر</span>
       <a href="#services" data-title="مراقبة السيرفر" data-subtitle="صحة الخدمات وNEXVARY Doctor والتشخيص">{{icon('activity')}}<span>مراقبة السيرفر</span><em></em></a>
       <a href="#dns" data-title="إدارة DNS" data-subtitle="جرد DNS وMail posture للمواقع المسجلة">{{icon('network')}}<span>إدارة DNS</span><em></em></a>
+      {% if role == 'admin' %}<a href="#parity" data-title="Parity Center" data-subtitle="قياس داخلي لتغطية القدرات ونضجها والفجوات المتبقية">{{icon('layers')}}<span>Parity Center</span><em></em></a>{% endif %}
       <a href="#notifications" data-title="التنبيهات" data-subtitle="تنبيهات الصحة والأمان والاستعادة والنشر">{{icon('bell')}}<span>التنبيهات</span>{% if notifications_unread %}<strong class="nav-badge" aria-label="{{notifications_unread}} تنبيه غير مقروء">{{notifications_unread if notifications_unread < 100 else '99+'}}</strong>{% endif %}<em></em></a>
       <a href="#audit" data-title="السجلات والأنشطة" data-subtitle="تسلسل زمني لكل العمليات الإدارية المهمة">{{icon('audit')}}<span>السجلات والأنشطة</span><em></em></a>
       {% if role == 'admin' %}<a href="#vault" data-title="الإعدادات والأسرار" data-subtitle="Secret Vault root-only لمفاتيح DNS والنسخ والتكاملات">{{icon('key')}}<span>الإعدادات والأسرار</span><em></em></a>{% endif %}
@@ -120,6 +122,7 @@
       {% include "sections/fusion.html" %}
       {% if role == 'admin' %}{% include "sections/integrations.html" %}{% endif %}
       {% include "sections/dns.html" %}
+      {% if role == 'admin' %}{% include "sections/parity.html" %}{% endif %}
       {% if role == 'admin' %}{% include "sections/vault.html" %}{% endif %}
       {% include "sections/files.html" %}
       {% include "sections/deploy.html" %}
@@ -151,6 +154,7 @@
 <script src="/static/advanced-ops.js"></script>
 <script src="/static/webtools.js"></script>
 <script src="/static/site-controls.js"></script>
+<script src="/static/parity-center.js"></script>
 <script src="/static/scheduled-tasks.js"></script>
 <script src="/static/database-access.js"></script>
 </body>
