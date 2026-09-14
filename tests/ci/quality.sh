@@ -58,3 +58,4 @@ python tests/wordpress_staging_test.py
 python tests/wordpress_selective_agent_test.py
 python tests/wordpress_publish_history_test.py
 python tests/wordpress_smart_guard_test.py
+python tests/release_contract_test.py
