@@ -31,6 +31,20 @@ with tempfile.TemporaryDirectory(prefix="nvp-hosting-") as tmp:
     assert len(feature_catalog("account")) > 50
     assert len(feature_catalog("server")) > 25
 
+    # These capabilities have concrete routes/providers/tests in Platform 0.7 and must
+    # never regress to a Roadmap-only label in Feature Manager.
+    operational_foundations = {
+        "email.autoresponders",
+        "email.filters",
+        "email.spam_filters",
+        "databases.postgresql",
+        "whm.multi_account",
+        "whm.mail_queue",
+        "whm.api_tokens",
+    }
+    for feature_id in operational_foundations:
+        assert FEATURES[feature_id].maturity in {"native", "foundation"}, (feature_id, FEATURES[feature_id].maturity)
+
     app = create_app()
     app.testing = True
     client = app.test_client()
@@ -53,6 +67,8 @@ with tempfile.TemporaryDirectory(prefix="nvp-hosting-") as tmp:
     assert len(body["catalog"]) == len(FEATURES)
     assert any(row["feature_id"] == "email.accounts" for row in body["catalog"])
     assert next(row for row in body["catalog"] if row["feature_id"] == "email.mailing_lists")["operational"] is False
+    for feature_id in operational_foundations:
+        assert next(row for row in body["catalog"] if row["feature_id"] == feature_id)["operational"] is True
 
     r = client.get("/api/hosting/packages")
     assert r.status_code == 200
