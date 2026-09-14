@@ -7,15 +7,15 @@ import time
 from flask import jsonify, request, session
 
 from .core import audit, db
-from .ops_client import ops_call
 from .security import role_required, step_up_required
+from .server_client import server_call
 
 PREVIEW_TTL_SECONDS = 15 * 60
 MAINTENANCE_KINDS = {"system-updates", "reboot"}
 
 
 def _provider(action: str, *, timeout: int = 20) -> tuple[dict, int]:
-    result = ops_call({"action": action}, timeout=timeout)
+    result = server_call({"action": action}, timeout=timeout)
     if not result.get("ok"):
         return {"ok": False, "error": str(result.get("error", "server lifecycle provider unavailable"))[:180]}, 503
     return result, 200
@@ -23,7 +23,7 @@ def _provider(action: str, *, timeout: int = 20) -> tuple[dict, int]:
 
 def _snapshot_for(kind: str) -> tuple[dict, str] | tuple[None, str]:
     if kind == "system-updates":
-        result = ops_call({"action": "server-updates-preview"}, timeout=90)
+        result = server_call({"action": "server-updates-preview"}, timeout=90)
         if not result.get("ok"):
             return None, str(result.get("error", "update preview unavailable"))[:180]
         snapshot = {
@@ -37,7 +37,7 @@ def _snapshot_for(kind: str) -> tuple[dict, str] | tuple[None, str]:
             fingerprint = hashlib.sha256(json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         return snapshot, fingerprint
 
-    result = ops_call({"action": "server-overview"}, timeout=15)
+    result = server_call({"action": "server-overview"}, timeout=15)
     if not result.get("ok"):
         return None, str(result.get("error", "server overview unavailable"))[:180]
     snapshot = {
@@ -81,7 +81,7 @@ def register_server_lifecycle_routes(app):
     @role_required("admin")
     @step_up_required
     def server_lifecycle_enable_ntp():
-        result = ops_call({"action": "server-time-enable-ntp"}, timeout=25)
+        result = server_call({"action": "server-time-enable-ntp"}, timeout=25)
         if not result.get("ok"):
             return jsonify(ok=False, error=str(result.get("error", "NTP enable failed"))[:180]), 503
         audit("server-time-enable-ntp", "scope=server-lifecycle")
