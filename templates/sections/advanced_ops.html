@@ -16,6 +16,13 @@
 
   <div id="advNotice" class="adv-notice royal-frame">جاري قراءة حالة Advanced Ops…</div>
 
+  <div class="adv-section-tabs royal-frame" role="tablist" aria-label="Advanced Hosting Ops sections">
+    <button type="button" class="adv-section-tab active" data-adv-tab="trust" role="tab" aria-selected="true">Trust &amp; Safety</button>
+    <button type="button" class="adv-section-tab" data-adv-tab="edge" role="tab" aria-selected="false">DNS &amp; TLS</button>
+    <button type="button" class="adv-section-tab" data-adv-tab="runtime" role="tab" aria-selected="false">Runtime &amp; Data</button>
+    {% if role == 'admin' %}<button type="button" class="adv-section-tab" data-adv-tab="server" role="tab" aria-selected="false">Server &amp; Fleet</button>{% endif %}
+  </div>
+
   <div class="adv-grid">
     <article class="panel royal-frame frame-electric-black adv-card" id="advDomainReadinessCard">
       <div class="panel-head"><div><span class="kicker">DOMAIN READINESS</span><h3>Control-plane Health</h3></div><span class="adv-chip">UNIFIED HEALTH</span></div>
