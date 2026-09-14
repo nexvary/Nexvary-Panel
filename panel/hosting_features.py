@@ -24,7 +24,7 @@ class HostingFeature:
 _FEATURES: tuple[HostingFeature, ...] = (
     HostingFeature("files.file_manager", "files", "File Manager", "account", "native", description="Scoped site-root file management"),
     HostingFeature("files.images", "files", "Images", "account", "planned"),
-    HostingFeature("files.directory_privacy", "files", "Directory Privacy", "account", "planned"),
+    HostingFeature("files.directory_privacy", "files", "Directory Privacy", "account", "foundation", provider="webtools", description="NGINX Basic Auth with transient password handling and rollback"),
     HostingFeature("files.disk_usage", "files", "Disk Usage", "account", "foundation"),
     HostingFeature("files.web_disk", "files", "Web Disk", "account", "planned"),
     HostingFeature("files.ftp_accounts", "files", "FTP Accounts", "account", "foundation", provider="ftp"),
@@ -61,15 +61,15 @@ _FEATURES: tuple[HostingFeature, ...] = (
     HostingFeature("metrics.visitors", "metrics", "Visitors", "account", "foundation"),
     HostingFeature("metrics.errors", "metrics", "Errors", "account", "foundation"),
     HostingFeature("metrics.bandwidth", "metrics", "Bandwidth", "account", "foundation"),
-    HostingFeature("metrics.raw_access", "metrics", "Raw Access", "account", "planned"),
+    HostingFeature("metrics.raw_access", "metrics", "Raw Access", "account", "foundation", provider="webtools", description="Bounded site-scoped NGINX raw access viewer"),
     HostingFeature("metrics.analytics", "metrics", "Web Analytics", "account", "planned", provider="analytics"),
     HostingFeature("metrics.resource_usage", "metrics", "Resource Usage", "account", "native"),
 
     HostingFeature("security.ssh", "security", "SSH Access", "account", "foundation", risk="sensitive"),
     HostingFeature("security.ip_blocker", "security", "IP Blocker", "account", "foundation", risk="sensitive"),
     HostingFeature("security.ssl_tls", "security", "SSL/TLS", "account", "foundation", risk="sensitive"),
-    HostingFeature("security.api_tokens", "security", "API Tokens", "account", "planned", risk="sensitive"),
-    HostingFeature("security.hotlink", "security", "Hotlink Protection", "account", "planned"),
+    HostingFeature("security.api_tokens", "security", "API Tokens", "account", "foundation", risk="sensitive", description="Scoped API tokens with explicit permission boundaries"),
+    HostingFeature("security.hotlink", "security", "Hotlink Protection", "account", "foundation", provider="webtools", description="NGINX referer policy for selected static extensions"),
     HostingFeature("security.leech", "security", "Leech Protection", "account", "planned"),
     HostingFeature("security.waf", "security", "Web Application Firewall", "account", "foundation", risk="sensitive", provider="waf"),
     HostingFeature("security.two_factor", "security", "Two-Factor Authentication", "account", "native", risk="sensitive"),
@@ -78,7 +78,7 @@ _FEATURES: tuple[HostingFeature, ...] = (
 
     HostingFeature("software.wordpress", "software", "WordPress Manager", "account", "native"),
     HostingFeature("software.php_manager", "software", "PHP Version Manager", "account", "foundation", risk="sensitive"),
-    HostingFeature("software.php_ini", "software", "PHP INI Editor", "account", "planned", risk="sensitive"),
+    HostingFeature("software.php_ini", "software", "PHP INI Editor", "account", "foundation", risk="sensitive", provider="phpini"),
     HostingFeature("software.node", "software", "Node.js Apps", "account", "native"),
     HostingFeature("software.python", "software", "Python Apps", "account", "native"),
     HostingFeature("software.ruby", "software", "Ruby Apps", "account", "planned"),
@@ -86,9 +86,9 @@ _FEATURES: tuple[HostingFeature, ...] = (
 
     HostingFeature("advanced.cron", "advanced", "Cron Jobs", "account", "foundation", risk="sensitive"),
     HostingFeature("advanced.dns_trace", "advanced", "DNS Trace", "account", "foundation"),
-    HostingFeature("advanced.indexes", "advanced", "Indexes", "account", "planned"),
+    HostingFeature("advanced.indexes", "advanced", "Indexes", "account", "foundation", provider="webtools", description="Site-scoped NGINX directory indexing control"),
     HostingFeature("advanced.error_pages", "advanced", "Error Pages", "account", "foundation"),
-    HostingFeature("advanced.mime_types", "advanced", "MIME Types", "account", "planned"),
+    HostingFeature("advanced.mime_types", "advanced", "MIME Types", "account", "foundation", provider="webtools", description="Validated MIME overrides with sensitive extension denylist"),
     HostingFeature("advanced.handlers", "advanced", "Web Handlers", "account", "planned"),
     HostingFeature("advanced.virus_scan", "advanced", "Virus Scanner", "account", "planned", provider="antivirus"),
 
