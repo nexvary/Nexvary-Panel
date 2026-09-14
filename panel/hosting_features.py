@@ -35,7 +35,7 @@ _FEATURES: tuple[HostingFeature, ...] = (
     HostingFeature("domains.domains", "domains", "Domains", "account", "native"),
     HostingFeature("domains.redirects", "domains", "Redirects", "account", "foundation"),
     HostingFeature("domains.zone_editor", "domains", "Zone Editor", "account", "foundation", risk="sensitive", provider="dns"),
-    HostingFeature("domains.dynamic_dns", "domains", "Dynamic DNS", "account", "planned", provider="dns"),
+    HostingFeature("domains.dynamic_dns", "domains", "Dynamic DNS", "account", "foundation", provider="dns", description="Record-scoped A/AAAA updates through existing Cloudflare/PowerDNS zone bindings"),
 
     HostingFeature("email.accounts", "email", "Email Accounts", "account", "foundation", provider="mail"),
     HostingFeature("email.forwarders", "email", "Forwarders", "account", "foundation", provider="mail"),
