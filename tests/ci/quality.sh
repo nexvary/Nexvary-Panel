@@ -26,6 +26,7 @@ python tests/mail_password_rotation_test.py
 python tests/mail_automation_test.py
 python tests/mail_sieve_test.py
 python tests/mail_queue_controls_test.py
+python tests/mail_delivery_trace_test.py
 python tests/transfer_policy_test.py
 python tests/advanced_ops_test.py
 python tests/fleet_orchestration_test.py
