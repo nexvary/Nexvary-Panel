@@ -3,14 +3,17 @@ set -euo pipefail
 
 run_ui_gate() {
   local test_file="$1"
+  local code=0
   echo "::group::UI gate ${test_file}"
-  if ! timeout --signal=TERM --kill-after=10s 120s node "$test_file"; then
+  if timeout --signal=TERM --kill-after=10s 120s node "$test_file"; then
+    echo "::endgroup::"
+    return 0
+  else
     code=$?
     echo "UI gate failed or timed out: ${test_file} (exit=${code})" >&2
     echo "::endgroup::"
-    return 1
+    return "$code"
   fi
-  echo "::endgroup::"
 }
 
 for test_file in \
