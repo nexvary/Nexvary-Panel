@@ -5,7 +5,9 @@ for svc in postgresql nexvary-panel-postgres nexvary-panel-ops; do
   sudo systemctl is-active --quiet "$svc" || exit 1
 done
 test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/ops.sock)" = "660 root nexvary-panel"
+test "$(sudo stat -c '%a %U %G' /run/nexvary-panel-postgres)" = "750 postgres nexvary-panel"
 test "$(sudo stat -c '%a %U %G' /run/nexvary-panel-postgres/postgres.sock)" = "660 postgres nexvary-panel"
+sudo -u nexvary-panel test -x /run/nexvary-panel-postgres
 
 sudo -u nexvary-panel python3 - <<'PY'
 import json,socket
