@@ -9,6 +9,9 @@ Type=simple
 User=root
 Group=root
 WorkingDirectory=/opt/nexvary-panel-agent
+StateDirectory=nexvary-panel-database
+StateDirectoryMode=0700
+Environment=NVP_DATABASE_SNAPSHOT_DIR=/var/lib/nexvary-panel-database/snapshots
 ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/database_agent.py
 Restart=on-failure
 RestartSec=3
@@ -27,7 +30,7 @@ LockPersonality=true
 RestrictRealtime=true
 SystemCallArchitectures=native
 RestrictAddressFamilies=AF_UNIX
-ReadWritePaths=/run/nexvary-panel /var/backups/nexvary-panel/database-snapshots/mariadb
+ReadWritePaths=/run/nexvary-panel /var/lib/nexvary-panel-database
 
 [Install]
 WantedBy=multi-user.target
