@@ -48,6 +48,12 @@ call({
   'filters':[{'priority':10,'field':'subject','match_type':'contains','pattern':'invoice','action':'fileinto','destination':'Billing','enabled':1}],
   'spam':{'enabled':True,'action':'junk'},
 })
+trace=call({'action':'delivery-trace','domain':'example.test','limit':25})
+assert trace.get('domain')=='example.test', trace
+assert trace.get('source') in {'mail.log','journalctl'}, trace
+assert isinstance(trace.get('events'),list), trace
+assert len(trace['events'])<=25, trace
+assert all('raw' not in event for event in trace['events']), trace
 PY
 SIEVE=/var/mail/vhosts/example.test/ci/.dovecot.sieve
 SVBIN=/var/mail/vhosts/example.test/ci/.dovecot.svbin
