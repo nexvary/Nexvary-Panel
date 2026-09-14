@@ -7,12 +7,11 @@ ConditionPathExists=/opt/nexvary-panel-agent/postgres_agent.py
 [Service]
 Type=simple
 User=postgres
-Group=postgres
-SupplementaryGroups=nexvary-panel
+Group=nexvary-panel
+SupplementaryGroups=postgres
 WorkingDirectory=/opt/nexvary-panel-agent
 RuntimeDirectory=nexvary-panel-postgres
 RuntimeDirectoryMode=0750
-ExecStartPre=/usr/bin/chgrp nexvary-panel /run/nexvary-panel-postgres
 ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/postgres_agent.py
 Restart=on-failure
 RestartSec=3
