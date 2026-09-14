@@ -122,6 +122,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-release-contract-") as tmp:
             assert (ROOT / "systemd" / filename).is_file(), f"missing provider unit for {module_id}: {filename}"
 
     app = create_app()
+    app.testing = True
     routes = {rule.rule for rule in app.url_map.iter_rules()}
     critical_routes = {
         "/api/advanced/dns/preview",
@@ -135,6 +136,26 @@ with tempfile.TemporaryDirectory(prefix="nvp-release-contract-") as tmp:
     }
     missing_routes = critical_routes - routes
     assert not missing_routes, f"critical operational routes missing: {sorted(missing_routes)}"
+
+    # Critical destructive/privileged writes must remain Step-Up protected even for
+    # an authenticated administrator. CSRF is valid here on purpose so the expected
+    # failure is specifically the missing Step-Up window (HTTP 428).
+    client = app.test_client()
+    csrf = "release-contract-csrf"
+    with client.session_transaction() as sess:
+        sess.update(auth=True, user="admin", role="admin", csrf=csrf)
+        sess.pop("step_up_until", None)
+        sess.pop("step_up_user", None)
+    headers = {"X-CSRF-Token": csrf}
+    guarded_requests = [
+        ("/api/advanced/dns/1/apply", {}),
+        ("/api/autossl/example.com/issue", {"email": "security@example.com"}),
+        ("/api/domain-guardian/prepare", {"domain": "example.com"}),
+        ("/api/wordpress/smart-guard/1/verify", {}),
+    ]
+    for path, payload in guarded_requests:
+        response = client.post(path, json=payload, headers=headers)
+        assert response.status_code == 428, (path, response.status_code, response.get_data(as_text=True)[:200])
 
     # Enforce the architectural promise that no generic browser-to-root terminal
     # endpoint appears under obvious shell/exec route names.
