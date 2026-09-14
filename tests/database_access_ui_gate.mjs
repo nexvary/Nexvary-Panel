@@ -28,13 +28,26 @@ await page.locator('#databases.active-view').waitFor({state:'visible'});
 for(const sel of ['#databaseAccessManager','#databaseProviderState','#databaseUserCount','#databaseGrantCount','#databaseUserQuota','#databaseAccessUsers','#databaseAccessGrants']){
   if(await page.locator(sel).count()!==1) throw new Error(`Database Access Manager missing ${sel}`);
 }
+for(const sel of ['#postgresAccessManager','#postgresProviderState','#postgresRoleCount','#postgresGrantCount','#postgresRoleQuota','#postgresAccessRoles','#postgresAccessGrants','#postgresRoleCreateForm','#postgresGrantForm','#postgresPasswordForm']){
+  if(await page.locator(sel).count()!==1) throw new Error(`PostgreSQL Access Manager missing ${sel}`);
+}
 if(await page.locator('link[href="/static/database-access.css"]').count()!==1) throw new Error('database-access.css missing');
 if(await page.locator('script[src="/static/database-access.js"]').count()!==1) throw new Error('database-access.js missing');
+if(await page.locator('script[src="/static/postgres-access.js"]').count()!==1) throw new Error('postgres-access.js missing');
 
-const payload=await page.evaluate(async()=>{const r=await fetch('/api/database-access',{headers:{Accept:'application/json'}});return {status:r.status,body:await r.json()};});
-if(payload.status!==200||payload.body.ok!==true) throw new Error(`Database Access API failed: ${payload.status}`);
-if(!Array.isArray(payload.body.privilege_catalog)||!payload.body.privilege_catalog.includes('SELECT')||payload.body.privilege_catalog.includes('SUPER')) throw new Error('Database privilege catalog is unsafe/incomplete');
-if(!payload.body.provider||payload.body.provider.engine!=='mariadb') throw new Error('MariaDB provider posture missing');
+const maria=await page.evaluate(async()=>{const r=await fetch('/api/database-access',{headers:{Accept:'application/json'}});return {status:r.status,body:await r.json()};});
+if(maria.status!==200||maria.body.ok!==true) throw new Error(`Database Access API failed: ${maria.status}`);
+if(!Array.isArray(maria.body.privilege_catalog)||!maria.body.privilege_catalog.includes('SELECT')||maria.body.privilege_catalog.includes('SUPER')) throw new Error('Database privilege catalog is unsafe/incomplete');
+if(!maria.body.provider||maria.body.provider.engine!=='mariadb') throw new Error('MariaDB provider posture missing');
+
+const postgres=await page.evaluate(async()=>{const r=await fetch('/api/database-access/postgresql',{headers:{Accept:'application/json'}});return {status:r.status,body:await r.json()};});
+if(postgres.status!==200||postgres.body.ok!==true) throw new Error(`PostgreSQL Access API failed: ${postgres.status}`);
+const profiles=new Set(postgres.body.profiles||[]);
+for(const profile of ['readonly','readwrite','developer']) if(!profiles.has(profile)) throw new Error(`PostgreSQL profile missing: ${profile}`);
+for(const forbidden of ['superuser','createdb','createrole','bypassrls']) if(profiles.has(forbidden)) throw new Error(`Unsafe PostgreSQL profile exposed: ${forbidden}`);
+if(!postgres.body.provider||postgres.body.provider.engine!=='postgresql') throw new Error('PostgreSQL provider posture missing');
+
+await page.waitForTimeout(150);
 await noOverflow(page,'database access desktop');
 await page.screenshot({path:`${out}/nexvary-panel-0.7-database-access-desktop.png`,fullPage:false});
 
@@ -44,7 +57,8 @@ await mobile.locator('#nav a[href="#databases"]').evaluate(el=>el.click());
 await mobile.locator('#databases.active-view').waitFor({state:'visible'});
 await noOverflow(mobile,'database access mobile');
 if(!(await mobile.locator('#databaseAccessManager').isVisible())) throw new Error('Database Access Manager hidden on mobile');
+if(!(await mobile.locator('#postgresAccessManager').isVisible())) throw new Error('PostgreSQL Access Manager hidden on mobile');
 await mobile.screenshot({path:`${out}/nexvary-panel-0.7-database-access-mobile.png`,fullPage:false});
 
 await browser.close();
-console.log('Nexvary Panel Database Access Manager Chromium gate: PASS');
+console.log('Nexvary Panel MariaDB + PostgreSQL Access Manager Chromium gate: PASS');
