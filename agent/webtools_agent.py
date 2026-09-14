@@ -9,6 +9,7 @@ from pathlib import Path
 
 from domain_ops import sync_domain_aliases
 from resource_usage import site_resource_usage
+from site_controls import raw_access, sync_directory_privacy, sync_hotlink, sync_indexing, sync_mime_overrides
 from webtools import site_metrics, sync_error_pages, sync_redirects
 
 SOCK = Path(os.environ.get("NVP_WEBTOOLS_SOCK", "/run/nexvary-panel/webtools.sock"))
@@ -37,6 +38,22 @@ def handle(req: dict) -> dict:
             return site_resource_usage(req.get("domain", ""))
         except (ValueError, OSError):
             return {"ok": False, "error": "resource usage request failed"}
+    if action == "site-control-privacy":
+        return sync_directory_privacy(
+            req.get("domain", ""),
+            enabled=bool(req.get("enabled")),
+            path=req.get("path", "/"),
+            username=req.get("username"),
+            password=req.get("password"),
+        )
+    if action == "site-control-hotlink":
+        return sync_hotlink(req.get("domain", ""), enabled=bool(req.get("enabled")), extensions=req.get("extensions", []))
+    if action == "site-control-indexing":
+        return sync_indexing(req.get("domain", ""), mode=req.get("mode", "off"))
+    if action == "site-control-mime":
+        return sync_mime_overrides(req.get("domain", ""), mappings=req.get("mappings", {}))
+    if action == "site-control-raw-access":
+        return raw_access(req.get("domain", ""), lines=req.get("lines", 200))
     return {"ok": False, "error": "action not allowed"}
 
 
