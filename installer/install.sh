@@ -54,6 +54,7 @@ install -m 0750 -o root -g root agent/provider_agent.py /opt/nexvary-panel-agent
 install -m 0750 -o root -g root agent/database_agent.py /opt/nexvary-panel-agent/database_agent.py
 install -m 0640 -o root -g root agent/webtools.py /opt/nexvary-panel-agent/webtools.py
 install -m 0640 -o root -g root agent/resource_usage.py /opt/nexvary-panel-agent/resource_usage.py
+install -m 0640 -o root -g root agent/site_controls.py /opt/nexvary-panel-agent/site_controls.py
 install -m 0750 -o root -g root agent/bandwidth_accounting.py /opt/nexvary-panel-agent/bandwidth_accounting.py
 install -m 0640 -o root -g root agent/domain_ops.py /opt/nexvary-panel-agent/domain_ops.py
 install -m 0750 -o root -g root agent/webtools_agent.py /opt/nexvary-panel-agent/webtools_agent.py
