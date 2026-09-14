@@ -46,6 +46,7 @@ from .routes_mail_automation import register_mail_automation_routes
 from .routes_mail_queue import register_mail_queue_routes
 from .routes_mail_security import register_mail_security_routes
 from .routes_ops import register_ops_routes
+from .routes_php_ini import register_php_ini_routes
 from .routes_platform import register_platform_routes
 from .routes_remote_backup import register_remote_backup_routes
 from .routes_resource_usage import register_resource_usage_routes
@@ -112,6 +113,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("mail_queue", "Mail Queue Controls", "server", register_mail_queue_routes, depends_on=("mail",), feature_prefixes=("whm.mail_queue",), provider_services=("nexvary-panel-mail",), ui_view="advancedops", maturity="provider", endpoint_namespace="mail_queue"),
     PanelModule("transfers", "Transfer Center", "hosting", register_transfer_routes, schema_hook=ensure_transfer_schema, depends_on=("accounts", "sites"), feature_prefixes=("files.ftp", "files.sftp"), provider_services=("nexvary-panel-transfer",), ui_view="transfers", maturity="provider"),
     PanelModule("advanced_ops", "Advanced Hosting Ops", "server", register_advanced_ops_routes, schema_hook=ensure_ops_schema, depends_on=("hosting", "sites", "integrations"), feature_prefixes=("domains.", "security.ssl", "email.", "software.php", "databases.postgresql", "whm."), provider_services=("nexvary-panel-ops", "nexvary-panel-postgres"), ui_view="advancedops", maturity="provider"),
+    PanelModule("php_ini", "PHP INI Manager", "hosting", register_php_ini_routes, depends_on=("hosting", "sites"), feature_prefixes=("software.php_ini",), provider_services=("nexvary-panel-phpini",), ui_view="advancedops", maturity="provider", endpoint_namespace="php_ini"),
     PanelModule("database_lifecycle", "Database Lifecycle", "hosting", register_database_lifecycle_routes, schema_hook=ensure_database_lifecycle_schema, depends_on=("database_access", "advanced_ops"), feature_prefixes=("databases.", "files.backups"), provider_services=("nexvary-panel-database", "nexvary-panel-postgres"), ui_view="databases", maturity="provider", endpoint_namespace="database_lifecycle"),
     PanelModule("fleet", "Fleet Orchestration", "server", register_fleet_routes, depends_on=("advanced_ops",), feature_prefixes=("whm.fleet",), ui_view="advancedops", maturity="foundation", endpoint_namespace="fleet"),
     PanelModule("autossl", "AutoSSL Policy", "automation", register_autossl_routes, depends_on=("advanced_ops",), feature_prefixes=("security.ssl",), provider_services=("nexvary-panel-autossl.timer", "nexvary-panel-ops"), ui_view="advancedops", maturity="provider"),
