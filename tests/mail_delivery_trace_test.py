@@ -8,6 +8,7 @@ import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "agent"))
 
 with tempfile.TemporaryDirectory(prefix="nvp-mail-trace-") as tmp:
     os.environ["NVP_DATA_DIR"] = tmp
@@ -17,7 +18,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-mail-trace-") as tmp:
     from panel import create_app
     from panel.db_layer import db
     import panel.routes_mail_queue as trace_routes
-    import agent.mail_agent as mail_agent
+    import mail_agent
 
     app = create_app()
     app.testing = True
