@@ -59,23 +59,47 @@ async function reviewWorkspace(page,id,label){
     const escaped=controls.filter(el=>{
       const r=el.getBoundingClientRect();
       return r.left < -3 || r.right > viewport + 3;
-    }).slice(0,8).map(el=>({tag:el.tagName,id:el.id||'',text:(el.textContent||'').trim().slice(0,40)}));
+    }).slice(0,8).map(el=>({tag:el.tagName,id:el.id||'',classes:el.className||'',text:(el.textContent||'').trim().slice(0,40),left:Math.round(el.getBoundingClientRect().left),right:Math.round(el.getBoundingClientRect().right),width:Math.round(el.getBoundingClientRect().width)}));
+    const rootRect=root.getBoundingClientRect();
+    const offenders=Array.from(root.querySelectorAll('*')).filter(el=>{
+      const s=getComputedStyle(el);const r=el.getBoundingClientRect();
+      if(s.display==='none'||s.visibility==='hidden'||r.width<=0||r.height<=0) return false;
+      const ownOverflow=el.scrollWidth>el.clientWidth+3;
+      const outsideRoot=r.left<rootRect.left-3||r.right>rootRect.right+3;
+      return ownOverflow||outsideRoot;
+    }).map(el=>{
+      const r=el.getBoundingClientRect();
+      return {
+        tag:el.tagName,
+        id:el.id||'',
+        classes:String(el.className||'').slice(0,120),
+        clientWidth:el.clientWidth,
+        scrollWidth:el.scrollWidth,
+        left:Math.round(r.left),
+        right:Math.round(r.right),
+        width:Math.round(r.width),
+        text:(el.textContent||'').trim().replace(/\s+/g,' ').slice(0,90),
+      };
+    }).sort((a,b)=>(b.scrollWidth-b.clientWidth)-(a.scrollWidth-a.clientWidth)).slice(0,12);
     return {
       visible,
       missing:false,
       direction:getComputedStyle(root).direction,
       pageOverflow:root.scrollWidth>root.clientWidth+3,
+      pageClientWidth:root.clientWidth,
+      pageScrollWidth:root.scrollWidth,
       documentOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+3,
       headingSize,
       rect:{left:rect.left,right:rect.right,width:rect.width},
       escaped,
+      offenders,
     };
   },id);
   if(result.missing) throw new Error(`${label}/${id}: workspace missing`);
   if(result.visible.length!==1||result.visible[0]!==id) throw new Error(`${label}/${id}: exactly one workspace must be visible (${result.visible.join(',')})`);
   if(result.direction!=='rtl') throw new Error(`${label}/${id}: RTL direction lost (${result.direction})`);
-  if(result.pageOverflow) throw new Error(`${label}/${id}: workspace horizontal overflow`);
-  if(result.documentOverflow) throw new Error(`${label}/${id}: document horizontal overflow`);
+  if(result.pageOverflow) throw new Error(`${label}/${id}: workspace horizontal overflow ${result.pageScrollWidth}/${result.pageClientWidth}; offenders=${JSON.stringify(result.offenders)}`);
+  if(result.documentOverflow) throw new Error(`${label}/${id}: document horizontal overflow; offenders=${JSON.stringify(result.offenders)}`);
   if(id!=='dashboard'&&result.headingSize<18) throw new Error(`${label}/${id}: primary heading is too small (${result.headingSize}px)`);
   if(result.escaped.length) throw new Error(`${label}/${id}: visible controls escape viewport: ${JSON.stringify(result.escaped)}`);
 }
