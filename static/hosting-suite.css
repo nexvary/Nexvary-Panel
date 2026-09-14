@@ -8,8 +8,8 @@
 #hosting .hosting-current-package{display:flex;flex-direction:column;justify-content:center;min-height:40px;padding:6px 10px;border:1px solid rgba(232,189,79,.34);border-radius:7px;background:#07131f;box-shadow:inset 0 0 12px rgba(0,0,0,.36)}
 #hosting .hosting-current-package small{color:#748ca4;font-size:7px;letter-spacing:.16em}
 #hosting .hosting-current-package b{color:#f1c85f;font-size:11px;margin-top:2px}
-#hosting .hosting-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,360px);gap:11px;align-items:start}
-#hosting aside.hosting-side{position:static;top:auto;height:auto;padding:0;background:transparent;border:0;box-shadow:none;backdrop-filter:none;z-index:auto;display:grid;flex-direction:initial;gap:10px;min-width:0}
+#hosting .hosting-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,360px);gap:11px;align-items:start;min-width:0}
+#hosting aside.hosting-side{position:static;top:auto;right:auto;bottom:auto;left:auto;height:auto;width:auto;padding:0;margin:0;background:transparent;border:0;box-shadow:none;backdrop-filter:none;z-index:auto;display:grid;flex-direction:initial;gap:10px;min-width:0;transform:none}
 #hosting .hosting-catalog-panel{min-width:0}
 #hosting .hosting-live-pill,#hosting .step-badge{display:inline-flex;align-items:center;min-height:24px;padding:3px 8px;border-radius:999px;border:1px solid rgba(55,255,154,.34);background:rgba(55,255,154,.06);color:#62ffb4;font-size:7px;letter-spacing:.12em;white-space:nowrap}
 #hosting .step-badge.warning{border-color:rgba(255,198,91,.38);background:rgba(255,198,91,.07);color:#ffd06e}
@@ -58,8 +58,20 @@
 #hosting .hosting-switch input:checked+span:before{left:18px;background:#37ff9a;box-shadow:0 0 7px rgba(55,255,154,.48)}
 #hosting .hosting-switch input:disabled+span{opacity:.42;cursor:not-allowed}
 #hosting .empty-state{color:#6f879e;font-size:8px;padding:14px;border:1px dashed rgba(110,144,177,.22);border-radius:8px;text-align:center}
-@media(max-width:1120px){#hosting .hosting-layout{grid-template-columns:1fr}#hosting aside.hosting-side{grid-template-columns:repeat(2,minmax(0,1fr))}#hosting .hosting-admin-panel{grid-column:1/-1}}
-@media(max-width:780px){#hosting .hosting-toolbar{grid-template-columns:1fr 1fr}#hosting .hosting-search-wrap,#hosting .hosting-current-package{grid-column:1/-1}#hosting .hosting-feature-grid{grid-template-columns:1fr}#hosting aside.hosting-side{grid-template-columns:1fr}#hosting .hosting-admin-panel{grid-column:auto}#hosting .hosting-limit-pairs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:1120px){
+  #hosting .hosting-layout{grid-template-columns:minmax(0,1fr)!important;grid-auto-columns:minmax(0,1fr)!important}
+  #hosting .hosting-catalog-panel,#hosting aside.hosting-side{grid-column:1/-1!important;grid-row:auto!important;width:100%!important;max-width:100%!important;justify-self:stretch!important;transform:none!important;margin:0!important;inset:auto!important}
+  #hosting aside.hosting-side{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #hosting .hosting-admin-panel{grid-column:1/-1}
+}
+@media(max-width:780px){
+  #hosting .hosting-toolbar{grid-template-columns:1fr 1fr}
+  #hosting .hosting-search-wrap,#hosting .hosting-current-package{grid-column:1/-1}
+  #hosting .hosting-feature-grid{grid-template-columns:1fr}
+  #hosting aside.hosting-side{grid-template-columns:minmax(0,1fr)!important}
+  #hosting .hosting-admin-panel{grid-column:auto}
+  #hosting .hosting-limit-pairs{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 @media(max-width:460px){
   #hosting .hosting-toolbar{grid-template-columns:1fr}
   #hosting .hosting-search-wrap,#hosting .hosting-current-package{grid-column:auto}
