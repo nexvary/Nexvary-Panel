@@ -6,14 +6,14 @@ from .db_layer import db
 from .hosting_features import FEATURES
 
 DEFAULT_ACCOUNT_FEATURES = {
-    "files.file_manager", "files.disk_usage", "files.ftp_accounts", "files.backups", "files.backup_wizard", "files.git",
+    "files.file_manager", "files.directory_privacy", "files.disk_usage", "files.ftp_accounts", "files.backups", "files.backup_wizard", "files.git",
     "domains.domains", "domains.redirects", "domains.zone_editor",
     "email.accounts", "email.forwarders", "email.deliverability", "email.delivery_trace",
     "databases.mariadb", "databases.wizard",
-    "metrics.visitors", "metrics.errors", "metrics.bandwidth", "metrics.resource_usage",
-    "security.ssl_tls", "security.two_factor", "security.ssl_status",
+    "metrics.visitors", "metrics.errors", "metrics.bandwidth", "metrics.raw_access", "metrics.resource_usage",
+    "security.hotlink", "security.ssl_tls", "security.two_factor", "security.ssl_status",
     "software.wordpress", "software.php_manager", "software.php_ini", "software.node", "software.python", "software.optimize",
-    "advanced.cron", "advanced.dns_trace", "advanced.error_pages",
+    "advanced.cron", "advanced.dns_trace", "advanced.indexes", "advanced.error_pages", "advanced.mime_types",
     "preferences.password", "preferences.language", "preferences.users",
 }
 
