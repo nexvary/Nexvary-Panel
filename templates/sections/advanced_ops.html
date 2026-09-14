@@ -5,7 +5,7 @@
     <div class="hero-copy">
       <span class="kicker">NEXVARY ADVANCED HOSTING OPS</span>
       <h2>عمليات الاستضافة المتقدمة</h2>
-      <p>DNS Writes وAutoSSL وMail Deliverability وPHP وPostgreSQL وMigration وService Control وFleet ضمن Agents محدودة الأوامر، Step-Up وAudit، مع Domain Guardian وChange Safety لقياس الثقة وقابلية الرجوع.</p>
+      <p>DNS Writes وAutoSSL وMail Deliverability وPHP وPostgreSQL وMigration وServer Lifecycle وService Control وFleet ضمن Agents محدودة الأوامر، Step-Up وAudit، مع Domain Guardian وChange Safety لقياس الثقة وقابلية الرجوع.</p>
     </div>
     <div class="hero-stats">
       <div><small>OPS AGENT</small><strong id="advProviderState">CHECKING</strong><span>allowlisted socket</span></div>
@@ -105,6 +105,8 @@
     </article>
 
     {% if role == 'admin' %}
+    {% include "sections/server_lifecycle_card.html" %}
+
     <article class="panel royal-frame frame-silver adv-card" id="advServicesCard">
       <div class="panel-head"><div><span class="kicker">WHM CONTROLS</span><h3>Service Control</h3></div><span class="adv-chip">ALLOWLIST ONLY</span></div>
       <div id="serviceList" class="adv-list"><div class="empty-state">جاري تحميل الخدمات…</div></div>
@@ -125,6 +127,7 @@
   <script src="/static/domain-readiness.js"></script>
   <script src="/static/change-safety.js"></script>
   <script src="/static/domain-guardian.js"></script>
+  {% if role == 'admin' %}<script src="/static/server-lifecycle.js"></script>{% endif %}
   {% if role == 'admin' %}<script src="/static/fleet-orchestration.js"></script>{% endif %}
   <script src="/static/advanced-ops-tabs.js"></script>
 </section>
