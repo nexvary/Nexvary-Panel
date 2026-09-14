@@ -17,6 +17,7 @@ run_ui_gate() {
 }
 
 for test_file in \
+  tests/final_design_review_ui_gate.mjs \
   tests/ui_gate.mjs \
   tests/backups_ui_gate.mjs \
   tests/vault_ui_gate.mjs \
@@ -40,8 +41,7 @@ for test_file in \
   tests/wordpress_lifecycle_ui_gate.mjs \
   tests/wordpress_selective_ui_gate.mjs \
   tests/wordpress_smart_guard_ui_gate.mjs \
-  tests/extension_hub_ui_gate.mjs \
-  tests/final_design_review_ui_gate.mjs
+  tests/extension_hub_ui_gate.mjs
 do
   run_ui_gate "$test_file"
 done
