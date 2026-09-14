@@ -47,6 +47,7 @@ install -m 0750 -o root -g root agent/provider_agent.py /opt/nexvary-panel-agent
 install -m 0750 -o root -g root agent/database_agent.py /opt/nexvary-panel-agent/database_agent.py
 install -m 0640 -o root -g root agent/webtools.py /opt/nexvary-panel-agent/webtools.py
 install -m 0640 -o root -g root agent/resource_usage.py /opt/nexvary-panel-agent/resource_usage.py
+install -m 0640 -o root -g root agent/site_controls.py /opt/nexvary-panel-agent/site_controls.py
 install -m 0750 -o root -g root agent/bandwidth_accounting.py /opt/nexvary-panel-agent/bandwidth_accounting.py
 install -m 0640 -o root -g root agent/domain_ops.py /opt/nexvary-panel-agent/domain_ops.py
 install -m 0750 -o root -g root agent/webtools_agent.py /opt/nexvary-panel-agent/webtools_agent.py
@@ -96,7 +97,7 @@ if (( WITH_MAIL )); then systemctl restart nexvary-panel-mail; fi
 if (( WITH_SFTP )); then systemctl restart nexvary-panel-transfer; fi
 if (( WITH_POSTGRES )); then systemctl restart nexvary-panel-postgres; fi
 nginx -t
-printf '\nNexvary Panel %s upgrade complete. Existing admin credentials, Secret Vault, Integration Targets, AutoSSL policies, bandwidth accounting state, database grants metadata, maintenance previews and SQLite data were preserved.\n' "$PANEL_VERSION"
+printf '\nNexvary Panel %s upgrade complete. Existing admin credentials, Secret Vault, Integration Targets, AutoSSL policies, bandwidth accounting state, database grants metadata, maintenance previews, Site Control settings and SQLite data were preserved.\n' "$PANEL_VERSION"
 if (( ! WITH_BACKUP_PROVIDERS )); then printf 'restic/rclone package state was preserved. Use --with-backup-providers to install/enable the curated backup engines.\n'; fi
 if (( ! WITH_MAIL )); then printf 'Existing mail package state was preserved. Use --with-mail to install/configure the Nexvary Email Stack.\n'; fi
 if (( ! WITH_SFTP )); then printf 'Existing SFTP provider state was preserved. Use --with-sftp to install/configure the key-only Transfer Center.\n'; fi
