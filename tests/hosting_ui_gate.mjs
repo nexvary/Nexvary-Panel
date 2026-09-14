@@ -55,8 +55,11 @@ for(const sel of ['#hostingAssignUsername','#hostingAssignPackage','#hostingImpa
 for(const sel of ['#hostingUsageDisk','#hostingUsageDiskState','#hostingUsageBandwidth','#hostingUsageCounts','#hostingUsageStatus','#hostingRefreshUsage']){
   if(await page.locator(sel).count()!==1) throw new Error(`Resource Usage control missing: ${sel}`);
 }
-const usageText=(await page.locator('.hosting-usage-panel').innerText()).toLowerCase();
-if(!usageText.includes('trustworthy accounting')||!usageText.includes('telemetry')) throw new Error('Resource Usage trust boundary is not visible in Hosting Suite');
+const accountingKicker=((await page.locator('.hosting-usage-panel .panel-head .kicker').textContent())||'').trim();
+if(accountingKicker!=='TRUSTWORTHY ACCOUNTING') throw new Error(`Resource Usage trust label missing: ${accountingKicker}`);
+const bandwidthCard=page.locator('#hostingUsageBandwidth').locator('xpath=..');
+const bandwidthBoundary=((await bandwidthCard.textContent())||'').toLowerCase();
+if(!bandwidthBoundary.includes('telemetry')&&!bandwidthBoundary.includes('continuous ledger')) throw new Error('Bandwidth trust boundary is not explicit');
 const assignmentText=await page.locator('.hosting-assignment-panel').innerText();
 if(!assignmentText.includes('IMPACT FIRST')||!assignmentText.includes('معاينة التأثير')) throw new Error('Package Impact workflow is not visible before assignment');
 
