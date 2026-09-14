@@ -21,7 +21,7 @@ done
 PANEL_VERSION="$(tr -d '[:space:]' < VERSION 2>/dev/null || printf 'unknown')"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y nginx python3 python3-venv python3-pip openssl certbot python3-certbot-nginx fail2ban ufw php-fpm mariadb-server nodejs ca-certificates curl rsync git
+apt-get install -y nginx python3 python3-venv python3-pip openssl certbot python3-certbot-nginx fail2ban ufw php-fpm mariadb-server nodejs ca-certificates curl rsync git iproute2 procps
 if (( WITH_DOCKER )); then apt-get install -y docker.io; fi
 if (( WITH_BACKUP_PROVIDERS )); then apt-get install -y restic rclone; fi
 if (( WITH_MAIL )); then
@@ -65,6 +65,7 @@ install -m 0750 -o root -g root agent/mail_agent.py /opt/nexvary-panel-agent/mai
 install -m 0750 -o root -g root agent/transfer_agent.py /opt/nexvary-panel-agent/transfer_agent.py
 install -m 0750 -o root -g root agent/hosting_ops_agent.py /opt/nexvary-panel-agent/hosting_ops_agent.py
 install -m 0750 -o root -g root agent/hosting_ops_entry.py /opt/nexvary-panel-agent/hosting_ops_entry.py
+install -m 0750 -o root -g root agent/server_agent.py /opt/nexvary-panel-agent/server_agent.py
 install -m 0750 -o root -g nexvary-panel agent/postgres_agent.py /opt/nexvary-panel-agent/postgres_agent.py
 install -m 0750 -o root -g root agent/wordpress_agent.py /opt/nexvary-panel-agent/wordpress_agent.py
 install -m 0640 -o root -g root agent/wordpress_components.py /opt/nexvary-panel-agent/wordpress_components.py
@@ -106,6 +107,7 @@ install -m 0644 systemd/nexvary-panel-bandwidth.timer /etc/systemd/system/nexvar
 install -m 0644 systemd/nexvary-panel-mail.service /etc/systemd/system/nexvary-panel-mail.service
 install -m 0644 systemd/nexvary-panel-transfer.service /etc/systemd/system/nexvary-panel-transfer.service
 install -m 0644 systemd/nexvary-panel-ops.service /etc/systemd/system/nexvary-panel-ops.service
+install -m 0644 systemd/nexvary-panel-server.service /etc/systemd/system/nexvary-panel-server.service
 install -m 0644 systemd/nexvary-panel-postgres.service /etc/systemd/system/nexvary-panel-postgres.service
 install -m 0644 systemd/nexvary-panel-wordpress.service /etc/systemd/system/nexvary-panel-wordpress.service
 CERT_DIR=/etc/nexvary-panel/tls
@@ -145,7 +147,7 @@ ln -sfn /etc/nginx/sites-available/nexvary-panel.conf /etc/nginx/sites-enabled/n
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl daemon-reload
-systemctl enable --now nginx mariadb fail2ban nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-database nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel-ops nexvary-panel-wordpress nexvary-panel
+systemctl enable --now nginx mariadb fail2ban nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-database nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel-ops nexvary-panel-server nexvary-panel-wordpress nexvary-panel
 systemctl enable --now nexvary-panel-autossl.timer nexvary-panel-bandwidth.timer
 systemctl start nexvary-panel-bandwidth.service
 if (( WITH_DOCKER )); then systemctl enable --now docker; fi
