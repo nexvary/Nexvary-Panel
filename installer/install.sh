@@ -45,6 +45,7 @@ python3 -m venv /opt/nexvary-panel/venv
 /opt/nexvary-panel/venv/bin/pip install --upgrade pip
 /opt/nexvary-panel/venv/bin/pip install -r /opt/nexvary-panel/requirements.txt
 chown -R nexvary-panel:nexvary-panel /opt/nexvary-panel /var/lib/nexvary-panel
+install -d -m 0700 -o root -g root /var/lib/nexvary-panel/usage
 install -m 0755 agent/nvpctl /usr/local/sbin/nvpctl
 install -m 0750 -o root -g root agent/root_agent.py /opt/nexvary-panel-agent/root_agent.py
 install -m 0640 -o root -g root agent/secret_vault.py /opt/nexvary-panel-agent/secret_vault.py
@@ -53,6 +54,7 @@ install -m 0750 -o root -g root agent/provider_agent.py /opt/nexvary-panel-agent
 install -m 0750 -o root -g root agent/database_agent.py /opt/nexvary-panel-agent/database_agent.py
 install -m 0640 -o root -g root agent/webtools.py /opt/nexvary-panel-agent/webtools.py
 install -m 0640 -o root -g root agent/resource_usage.py /opt/nexvary-panel-agent/resource_usage.py
+install -m 0750 -o root -g root agent/bandwidth_accounting.py /opt/nexvary-panel-agent/bandwidth_accounting.py
 install -m 0640 -o root -g root agent/domain_ops.py /opt/nexvary-panel-agent/domain_ops.py
 install -m 0750 -o root -g root agent/webtools_agent.py /opt/nexvary-panel-agent/webtools_agent.py
 install -m 0750 -o root -g nexvary-panel agent/scheduler_agent.py /opt/nexvary-panel-agent/scheduler_agent.py
@@ -99,6 +101,8 @@ install -m 0644 systemd/nexvary-panel-webtools.service /etc/systemd/system/nexva
 install -m 0644 systemd/nexvary-panel-scheduler.service /etc/systemd/system/nexvary-panel-scheduler.service
 install -m 0644 systemd/nexvary-panel-autossl.service /etc/systemd/system/nexvary-panel-autossl.service
 install -m 0644 systemd/nexvary-panel-autossl.timer /etc/systemd/system/nexvary-panel-autossl.timer
+install -m 0644 systemd/nexvary-panel-bandwidth.service /etc/systemd/system/nexvary-panel-bandwidth.service
+install -m 0644 systemd/nexvary-panel-bandwidth.timer /etc/systemd/system/nexvary-panel-bandwidth.timer
 install -m 0644 systemd/nexvary-panel-mail.service /etc/systemd/system/nexvary-panel-mail.service
 install -m 0644 systemd/nexvary-panel-transfer.service /etc/systemd/system/nexvary-panel-transfer.service
 install -m 0644 systemd/nexvary-panel-ops.service /etc/systemd/system/nexvary-panel-ops.service
@@ -142,7 +146,8 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl daemon-reload
 systemctl enable --now nginx mariadb fail2ban nexvary-panel-agent nexvary-panel-vault nexvary-panel-provider nexvary-panel-database nexvary-panel-webtools nexvary-panel-scheduler nexvary-panel-ops nexvary-panel-wordpress nexvary-panel
-systemctl enable --now nexvary-panel-autossl.timer
+systemctl enable --now nexvary-panel-autossl.timer nexvary-panel-bandwidth.timer
+systemctl start nexvary-panel-bandwidth.service
 if (( WITH_DOCKER )); then systemctl enable --now docker; fi
 if (( WITH_MAIL )); then systemctl enable --now nexvary-panel-mail; fi
 if (( WITH_SFTP )); then systemctl enable --now nexvary-panel-transfer; fi
