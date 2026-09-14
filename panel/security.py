@@ -136,6 +136,11 @@ def csrf_token() -> str:
 
 def csrf_guard():
     if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        # Dynamic DNS clients authenticate with a high-entropy, record-scoped Bearer token and
+        # intentionally have no browser session/CSRF cookie. Only this exact machine endpoint is exempt.
+        auth = str(request.headers.get("Authorization", ""))
+        if request.path.startswith("/api/dynamic-dns/update/") and auth.startswith("Bearer nvp_ddns_"):
+            return None
         token = request.headers.get("X-CSRF-Token") or request.form.get("csrf_token")
         if not token or not hmac.compare_digest(token, session.get("csrf", "")):
             return ("CSRF validation failed", 403)
