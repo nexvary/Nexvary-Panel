@@ -34,6 +34,16 @@
     </div>
 
     <aside class="hosting-side">
+      <div class="panel hosting-usage-panel">
+        <div class="panel-head"><div><span class="kicker">TRUSTWORTHY ACCOUNTING</span><h3>الاستخدام الفعلي</h3></div><button id="hostingRefreshUsage" type="button" class="ghost compact-action">تحديث</button></div>
+        <div class="hosting-quota-grid">
+          <div class="hosting-quota"><small>DISK</small><b id="hostingUsageDisk">—</b><span id="hostingUsageDiskState">جارٍ القياس…</span></div>
+          <div class="hosting-quota"><small>BANDWIDTH SAMPLE</small><b id="hostingUsageBandwidth">—</b><span>Telemetry فقط حتى تكتمل المحاسبة الشهرية.</span></div>
+        </div>
+        <div id="hostingUsageCounts" class="hosting-quota-grid"><div class="empty-state">جارٍ تحميل عدادات الباقة…</div></div>
+        <div id="hostingUsageStatus" class="hosting-status" aria-live="polite"></div>
+      </div>
+
       <div class="panel hosting-quota-panel">
         <div class="panel-head"><div><span class="kicker">CURRENT LIMITS</span><h3>حدود الحساب</h3></div></div>
         <div id="hostingQuotaGrid" class="hosting-quota-grid"><div class="empty-state">جارٍ التحميل…</div></div>
