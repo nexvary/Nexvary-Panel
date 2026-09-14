@@ -47,9 +47,11 @@ for(const profile of ['readonly','readwrite','developer']) if(!profiles.has(prof
 for(const forbidden of ['superuser','createdb','createrole','bypassrls']) if(profiles.has(forbidden)) throw new Error(`Unsafe PostgreSQL profile exposed: ${forbidden}`);
 if(!postgres.body.provider||postgres.body.provider.engine!=='postgresql') throw new Error('PostgreSQL provider posture missing');
 
-await page.waitForTimeout(150);
 await noOverflow(page,'database access desktop');
 await page.screenshot({path:`${out}/nexvary-panel-0.7-database-access-desktop.png`,fullPage:false});
+await page.locator('#postgresAccessManager').scrollIntoViewIfNeeded();
+await page.waitForTimeout(120);
+await page.screenshot({path:`${out}/nexvary-panel-0.7-postgresql-access-desktop.png`,fullPage:false});
 
 const mobile=await browser.newPage({viewport:{width:390,height:844}});
 await login(mobile);
@@ -58,7 +60,10 @@ await mobile.locator('#databases.active-view').waitFor({state:'visible'});
 await noOverflow(mobile,'database access mobile');
 if(!(await mobile.locator('#databaseAccessManager').isVisible())) throw new Error('Database Access Manager hidden on mobile');
 if(!(await mobile.locator('#postgresAccessManager').isVisible())) throw new Error('PostgreSQL Access Manager hidden on mobile');
-await mobile.screenshot({path:`${out}/nexvary-panel-0.7-database-access-mobile.png`,fullPage:false});
+await mobile.locator('#postgresAccessManager').scrollIntoViewIfNeeded();
+await mobile.waitForTimeout(120);
+await noOverflow(mobile,'PostgreSQL access mobile');
+await mobile.screenshot({path:`${out}/nexvary-panel-0.7-postgresql-access-mobile.png`,fullPage:false});
 
 await browser.close();
 console.log('Nexvary Panel MariaDB + PostgreSQL Access Manager Chromium gate: PASS');
