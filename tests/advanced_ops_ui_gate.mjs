@@ -22,10 +22,11 @@ await page.locator('#advancedops.active-view').waitFor({state:'visible'});
 if(await page.locator('link[href="/static/advanced-ops.css"]').count()!==1)throw new Error('Advanced Ops stylesheet missing');
 if(await page.locator('script[src="/static/advanced-ops.js"]').count()!==1)throw new Error('Advanced Ops script missing');
 if(await page.locator('script[src="/static/advanced-ops-tabs.js"]').count()!==1)throw new Error('Advanced Ops tab controller missing');
+if(await page.locator('script[src="/static/server-lifecycle.js"]').count()!==1)throw new Error('Server Lifecycle controller missing');
 
-const required=['#advDnsCard','#advSslCard','#advMailOpsCard','#advPhpCard','#advPostgresCard','#advMigrationCard','#advServicesCard','#advFleetCard'];
+const required=['#advDnsCard','#advSslCard','#advMailOpsCard','#advPhpCard','#advPostgresCard','#advMigrationCard','#advServerLifecycleCard','#advServicesCard','#advFleetCard'];
 for(const sel of required)if(await page.locator(sel).count()!==1)throw new Error(`Advanced Ops card missing: ${sel}`);
-for(const sel of ['#autoSslEnabled','#autoSslDays','#autoSslSaveBtn','#autoSslPolicyState','#autoSslPreflightBtn','#autoSslPreflightState','#deliverSelector','#deliverMailHost','#deliverMailIpv4','#deliverPrepareBtn','#deliverPreviewList']){
+for(const sel of ['#autoSslEnabled','#autoSslDays','#autoSslSaveBtn','#autoSslPolicyState','#autoSslPreflightBtn','#autoSslPreflightState','#deliverSelector','#deliverMailHost','#deliverMailIpv4','#deliverPrepareBtn','#deliverPreviewList','#serverLifecycleHost','#serverLifecycleOs','#serverLifecycleUpdates','#serverLifecycleReboot','#serverLifecycleRefresh','#serverLifecycleNtp','#serverLifecycleUpdatePreview','#serverLifecycleRebootPreview','#serverLifecycleMaintenance']){
   if(await page.locator(sel).count()!==1)throw new Error(`Advanced Ops lifecycle control missing: ${sel}`);
 }
 
@@ -43,6 +44,7 @@ await assertVisible('#advDomainReadinessCard',true,'trust default');
 await assertVisible('#advChangeSafetyCard',true,'trust default');
 await assertVisible('#domainGuardianCard',true,'trust default');
 await assertVisible('#advDnsCard',false,'trust default');
+await assertVisible('#advServerLifecycleCard',false,'trust default');
 
 await page.locator('[data-adv-tab="edge"]').click();
 await assertVisible('#advDnsCard',true,'edge tab');
@@ -71,14 +73,18 @@ await assertVisible('#advMigrationCard',true,'runtime tab');
 await assertVisible('#advDnsCard',false,'runtime tab');
 
 await page.locator('[data-adv-tab="server"]').click();
+await assertVisible('#advServerLifecycleCard',true,'server tab');
 await assertVisible('#advServicesCard',true,'server tab');
 await assertVisible('#advFleetCard',true,'server tab');
 await assertVisible('#advPhpCard',false,'server tab');
+const serverMeta=(await page.locator('#serverLifecycleMeta').innerText()).trim();
+if(!serverMeta.includes('SERVER PROVIDER OFFLINE'))throw new Error(`CI without Server Lifecycle Agent must truthfully show offline posture, got: ${serverMeta}`);
 
 const text=await page.locator('#advancedops').textContent();
-for(const marker of ['DNS Apply / Rollback','AutoSSL / Renew','Queue & Deliverability Repair','PHP Version Manager','PostgreSQL Resources','Migration Bundles','Service Control','Fleet / Cluster Foundation','PREVIEW FIRST','DIAGNOSE → PREVIEW']){
+for(const marker of ['DNS Apply / Rollback','AutoSSL / Renew','Queue & Deliverability Repair','PHP Version Manager','PostgreSQL Resources','Migration Bundles','Server Maintenance Center','Service Control','Fleet / Cluster Foundation','PREVIEW FIRST','PREVIEW-FIRST','DIAGNOSE → PREVIEW']){
   if(!text.includes(marker))throw new Error(`Advanced Ops capability label missing: ${marker}`);
 }
+if(text.includes('Apply System Updates')||text.includes('Reboot Now'))throw new Error('Server Lifecycle must not expose direct update/reboot Apply in Platform 0.7');
 
 await page.locator('[data-adv-tab="trust"]').click();
 await assertVisible('#advDomainReadinessCard',true,'trust return');
@@ -87,9 +93,9 @@ await page.screenshot({path:`${out}/nexvary-panel-0.7-advanced-hosting-ops-deskt
 
 await page.setViewportSize({width:390,height:844});
 await page.waitForTimeout(300);
-await page.locator('[data-adv-tab="edge"]').click();
-await assertVisible('#advDnsCard',true,'mobile edge tab');
+await page.locator('[data-adv-tab="server"]').click();
+await assertVisible('#advServerLifecycleCard',true,'mobile server tab');
 if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error('Advanced Ops mobile horizontal overflow');
 await page.screenshot({path:`${out}/nexvary-panel-0.7-advanced-hosting-ops-mobile.png`,fullPage:true});
 await browser.close();
-console.log('Nexvary Panel Advanced Hosting Ops tabbed Chromium Gate: PASS');
+console.log('Nexvary Panel Advanced Hosting Ops + Server Lifecycle Chromium Gate: PASS');
