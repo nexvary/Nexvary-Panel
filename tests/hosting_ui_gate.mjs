@@ -52,6 +52,11 @@ if(await page.locator('#hosting [data-open-view="security"]').count()<1) throw n
 for(const sel of ['#hostingAssignUsername','#hostingAssignPackage','#hostingImpactBtn','#hostingImpactResult']){
   if(await page.locator(sel).count()!==1) throw new Error(`Package Impact control missing: ${sel}`);
 }
+for(const sel of ['#hostingUsageDisk','#hostingUsageDiskState','#hostingUsageBandwidth','#hostingUsageCounts','#hostingUsageStatus','#hostingRefreshUsage']){
+  if(await page.locator(sel).count()!==1) throw new Error(`Resource Usage control missing: ${sel}`);
+}
+const usageText=(await page.locator('.hosting-usage-panel').innerText()).toLowerCase();
+if(!usageText.includes('trustworthy accounting')||!usageText.includes('telemetry')) throw new Error('Resource Usage trust boundary is not visible in Hosting Suite');
 const assignmentText=await page.locator('.hosting-assignment-panel').innerText();
 if(!assignmentText.includes('IMPACT FIRST')||!assignmentText.includes('معاينة التأثير')) throw new Error('Package Impact workflow is not visible before assignment');
 
@@ -66,6 +71,7 @@ await openHosting(mobile);
 await mobile.waitForFunction(()=>Number(document.querySelector('#hostingFeatureCount')?.textContent||0)>=90,{timeout:15000});
 if(await mobile.locator('#hosting .hosting-feature-card').count()<90) throw new Error('Mobile Hosting Suite feature matrix incomplete');
 if(await mobile.locator('#hostingImpactBtn').count()!==1) throw new Error('Mobile Package Impact control missing');
+if(await mobile.locator('#hostingUsageDisk').count()!==1) throw new Error('Mobile Resource Usage controls missing');
 await noOverflow(mobile,'hosting mobile');
 await mobile.screenshot({path:`${out}/nexvary-panel-0.7-hosting-suite-mobile.png`,fullPage:false});
 
