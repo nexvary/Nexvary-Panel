@@ -27,7 +27,7 @@ LockPersonality=true
 RestrictRealtime=true
 SystemCallArchitectures=native
 RestrictAddressFamilies=AF_UNIX
-ReadWritePaths=/run/nexvary-panel
+ReadWritePaths=/run/nexvary-panel /var/backups/nexvary-panel/database-snapshots/mariadb
 
 [Install]
 WantedBy=multi-user.target
