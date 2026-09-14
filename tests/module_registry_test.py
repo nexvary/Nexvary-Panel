@@ -19,11 +19,11 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     from panel.module_registry import MODULES, module_catalog, validate_modules
 
     modules = validate_modules()
-    assert len(modules) >= 30
+    assert len(modules) >= 31
     assert tuple(modules) == MODULES
     ids = [m.id for m in modules]
     assert len(ids) == len(set(ids))
-    assert {"extensions", "hosting", "domains", "dnssec", "accounts", "mail", "mail_automation", "mail_queue", "transfers", "advanced_ops", "fleet", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_staging", "wordpress_updates", "security", "vault"}.issubset(ids)
+    assert {"extensions", "hosting", "resource_usage", "domains", "dnssec", "accounts", "mail", "mail_automation", "mail_queue", "transfers", "advanced_ops", "fleet", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_staging", "wordpress_updates", "security", "vault"}.issubset(ids)
 
     catalog = module_catalog()
     assert len(catalog) == len(modules)
@@ -34,6 +34,10 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     assert "nexvary-panel-transfer" in by_id["transfers"]["provider_services"]
     assert "nexvary-panel-postgres" in by_id["advanced_ops"]["provider_services"]
     assert "nexvary-panel-webtools" in by_id["domains"]["provider_services"]
+    assert "nexvary-panel-webtools" in by_id["resource_usage"]["provider_services"]
+    assert by_id["resource_usage"]["depends_on"] == ["hosting", "sites"]
+    assert by_id["resource_usage"]["endpoint_namespace"] == "resource_usage"
+    assert "metrics.resource_usage" in by_id["resource_usage"]["feature_prefixes"]
     assert "nexvary-panel-wordpress" in by_id["wordpress_updates"]["provider_services"]
     assert "nexvary-panel-wordpress" in by_id["wordpress_staging"]["provider_services"]
     assert by_id["extensions"]["has_schema"] is True
@@ -64,6 +68,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         "/login",
         "/api/extensions",
         "/api/hosting/catalog",
+        "/api/hosting/resource-usage",
         "/api/domains/aliases",
         "/api/domain-health",
         "/api/accounts",
