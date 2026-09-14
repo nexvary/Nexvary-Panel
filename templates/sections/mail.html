@@ -5,7 +5,7 @@
     <div class="hero-copy">
       <span class="kicker">NEXVARY EMAIL CENTER</span>
       <h2>البريد الإلكتروني</h2>
-      <p>Mailboxes وForwarders وPassword Rotation وAutoresponders وFilters عبر Postfix/Dovecot + LMTP/Sieve مع Quota وStep-Up وAudit. كلمات المرور لا تُحفظ داخل قاعدة بيانات اللوحة.</p>
+      <p>Mailboxes وForwarders وPassword Rotation وAutoresponders وFilters وTrack Delivery عبر Postfix/Dovecot + LMTP/Sieve مع Quota وStep-Up وAudit. كلمات المرور لا تُحفظ داخل قاعدة بيانات اللوحة.</p>
     </div>
     <div class="hero-stats">
       <div><small>PROVIDER</small><strong id="mailProviderState">CHECKING</strong><span id="mailProviderEngine">Postfix / Dovecot</span></div>
@@ -98,6 +98,20 @@
     <div id="mailAutomationStatus" class="mail-status" role="status"></div>
   </div>
 
+  <article class="panel royal-frame frame-silver mail-trace-shell">
+    <div class="panel-head mail-trace-head">
+      <div><span class="kicker">TRACK DELIVERY · POSTFIX</span><h3>تتبّع تسليم البريد</h3></div>
+      <span class="mail-chip">TENANT SCOPED</span>
+    </div>
+    <div class="mail-policy-note">يعرض أحدث أحداث Postfix المرتبطة بالنطاق المحدد فقط. لا تُعرض سجلات Raw ولا Queue IDs لنطاقات أخرى، والقراءة محدودة الحجم والعدد للحفاظ على أداء الخادم.</div>
+    <div class="mail-trace-toolbar">
+      <label>النطاق<select id="mailTraceDomain"><option value="">جاري تحميل النطاقات…</option></select></label>
+      <button id="mailTraceRefresh" type="button" class="primary royal-action" disabled>قراءة أحدث الأحداث</button>
+    </div>
+    <div id="mailTraceStatus" class="mail-status" role="status"></div>
+    <div id="mailTraceList" class="mail-list mail-trace-list"><div class="empty-state">اختر نطاقًا لعرض أحدث أحداث التسليم.</div></div>
+  </article>
+
   <div class="mail-inventory-grid">
     <article class="panel royal-frame frame-electric-black">
       <div class="panel-head"><div><span class="kicker">MAILBOX INVENTORY</span><h3>صناديق البريد</h3></div><button type="button" id="mailRefresh" class="tiny ghost">تحديث</button></div>
@@ -110,4 +124,5 @@
   </div>
   <div id="mailStatus" class="mail-status" role="status"></div>
   <script src="/static/mail-automation.js"></script>
+  <script src="/static/mail-trace.js"></script>
 </section>
