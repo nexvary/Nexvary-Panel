@@ -106,7 +106,7 @@ _FEATURES: tuple[HostingFeature, ...] = (
     HostingFeature("whm.system_cron", "server", "System Scheduled Tasks", "server", "planned", risk="privileged"),
     HostingFeature("whm.updates", "server", "System Updates", "server", "foundation", risk="privileged"),
     HostingFeature("whm.networking", "server", "Networking Setup", "server", "foundation", risk="privileged"),
-    HostingFeature("whm.hostname", "server", "Hostname & Resolvers", "server", "planned", risk="privileged"),
+    HostingFeature("whm.hostname", "server", "Hostname & Resolvers", "server", "foundation", risk="privileged", provider="server", description="Preview-first FQDN hostname lifecycle with resolver inventory; resolver writes remain intentionally disabled"),
     HostingFeature("whm.security_advisor", "server", "Security Advisor", "server", "native", risk="privileged"),
     HostingFeature("whm.firewall", "server", "Firewall Management", "server", "foundation", risk="privileged", provider="firewall"),
     HostingFeature("whm.host_access", "server", "Host Access Control", "server", "planned", risk="privileged"),
