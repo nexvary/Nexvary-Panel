@@ -12,6 +12,9 @@ SupplementaryGroups=postgres
 WorkingDirectory=/opt/nexvary-panel-agent
 RuntimeDirectory=nexvary-panel-postgres
 RuntimeDirectoryMode=0750
+StateDirectory=nexvary-panel-postgres
+StateDirectoryMode=0700
+Environment=NVP_POSTGRES_SNAPSHOT_DIR=/var/lib/nexvary-panel-postgres/snapshots
 ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/postgres_agent.py
 Restart=on-failure
 RestartSec=3
@@ -30,7 +33,7 @@ LockPersonality=true
 RestrictRealtime=true
 SystemCallArchitectures=native
 RestrictAddressFamilies=AF_UNIX
-ReadWritePaths=/run/nexvary-panel-postgres /var/backups/nexvary-panel/database-snapshots/postgresql
+ReadWritePaths=/run/nexvary-panel-postgres /var/lib/nexvary-panel-postgres
 
 [Install]
 WantedBy=multi-user.target
