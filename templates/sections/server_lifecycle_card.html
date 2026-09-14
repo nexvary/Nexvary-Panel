@@ -1,0 +1,32 @@
+<article class="panel royal-frame frame-electric-black adv-card" id="advServerLifecycleCard">
+  <div class="panel-head">
+    <div><span class="kicker">SERVER LIFECYCLE</span><h3>Server Maintenance Center</h3></div>
+    <span class="adv-chip">PREVIEW-FIRST</span>
+  </div>
+  <div class="metrics-summary server-lifecycle-summary">
+    <div><small>HOST</small><b id="serverLifecycleHost">—</b></div>
+    <div><small>OS</small><b id="serverLifecycleOs">—</b></div>
+    <div><small>UPDATES</small><b id="serverLifecycleUpdates">—</b></div>
+    <div><small>REBOOT</small><b id="serverLifecycleReboot">—</b></div>
+  </div>
+  <div class="adv-inline server-lifecycle-actions">
+    <button id="serverLifecycleRefresh" type="button" class="tiny ghost">تحديث الحالة</button>
+    <button id="serverLifecycleNtp" type="button" class="tiny ghost">تفعيل NTP</button>
+    <button id="serverLifecycleUpdatePreview" type="button" class="primary royal-action">معاينة Updates</button>
+    <button id="serverLifecycleRebootPreview" type="button" class="tiny danger">معاينة Reboot</button>
+  </div>
+  <div id="serverLifecycleMeta" class="adv-result">جاري فحص Server Lifecycle Provider…</div>
+  <div class="adv-runtime-columns">
+    <div>
+      <span class="kicker">NETWORK &amp; RESOLVERS</span>
+      <div id="serverLifecycleNetwork" class="adv-list"><div class="empty-state">لم تُحمّل الشبكة بعد.</div></div>
+    </div>
+    <div>
+      <span class="kicker">TOP PROCESSES</span>
+      <div id="serverLifecycleProcesses" class="adv-list"><div class="empty-state">لم تُحمّل العمليات بعد.</div></div>
+    </div>
+  </div>
+  <div class="panel-head server-maintenance-history-head"><div><span class="kicker">MAINTENANCE PREVIEWS</span><h3>Review Queue</h3></div><span class="adv-chip">15 MIN TTL</span></div>
+  <div id="serverLifecycleMaintenance" class="adv-list"><div class="empty-state">لا توجد Maintenance Previews.</div></div>
+  <div class="account-policy-note">System Updates وReboot هما <strong>Preview فقط</strong> في Platform 0.7. لا يوجد Apply مباشر من الواجهة؛ الهدف مراجعة التأثير أولًا والحفاظ على حدود الأمان.</div>
+</article>
