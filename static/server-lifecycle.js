@@ -35,6 +35,8 @@
     text('#serverLifecycleHost',data.hostname||'—');
     text('#serverLifecycleOs',data.os||'—');
     text('#serverLifecycleReboot',data.reboot_required?'REQUIRED':'CLEAR');
+    const input=$('#serverLifecycleHostnameInput');
+    if(input&&!input.value)input.value=data.hostname||'';
     const t=data.time||{};
     status(`SERVER ONLINE · kernel ${safe(data.kernel)||'—'} · uptime ${formatDuration(data.uptime_seconds)} · timezone ${safe(t.timezone)||'—'} · NTP ${t.ntp?'ON':'OFF'} · synced ${t.synchronized?'YES':'NO'}`,'ok');
   }
@@ -67,11 +69,18 @@
       const row=document.createElement('div');row.className='adv-row server-maintenance-row';
       const copy=document.createElement('span');
       const snapshot=item.snapshot&&typeof item.snapshot==='object'?item.snapshot:{};
-      const extra=item.kind==='system-updates'?`${Number(snapshot.count||0)} updates`:`reboot_required=${snapshot.reboot_required?'yes':'no'}`;
-      copy.textContent=`#${Number(item.id)} · ${safe(item.kind)} · ${safe(item.status)} · ${extra} · expires ${stamp(item.expires_at)}`;
+      let extra='';
+      if(item.kind==='system-updates')extra=`${Number(snapshot.count||0)} updates`;
+      else if(item.kind==='hostname')extra=`${safe(snapshot.current_hostname)} → ${safe(snapshot.desired_hostname)}`;
+      else extra=`reboot_required=${snapshot.reboot_required?'yes':'no'}`;
+      const when=item.status==='applied'?`applied ${stamp(item.applied_at)}`:`expires ${stamp(item.expires_at)}`;
+      copy.textContent=`#${Number(item.id)} · ${safe(item.kind)} · ${safe(item.status)} · ${extra} · ${when}`;
       row.append(copy);
+      if(item.status==='preview'&&item.kind==='hostname'){
+        const apply=document.createElement('button');apply.type='button';apply.className='tiny danger';apply.textContent='Apply Hostname';apply.dataset.applyMaintenance=String(item.id);row.append(apply);
+      }
       if(item.status==='preview'){
-        const btn=document.createElement('button');btn.type='button';btn.className='tiny ghost';btn.textContent='إلغاء Preview';btn.dataset.cancelMaintenance=String(item.id);row.append(btn);
+        const cancel=document.createElement('button');cancel.type='button';cancel.className='tiny ghost';cancel.textContent='إلغاء Preview';cancel.dataset.cancelMaintenance=String(item.id);row.append(cancel);
       }
       target.append(row);
     }
@@ -106,6 +115,15 @@
   $('#serverLifecycleNtp')?.addEventListener('click',async()=>{
     try{const data=await mutation('/api/server-lifecycle/time/enable-ntp',{});status(`NTP enabled · synchronized ${data.time?.synchronized?'YES':'PENDING'}`,'ok');await loadAll();}catch{}
   });
+  $('#serverLifecycleHostnamePreview')?.addEventListener('click',async()=>{
+    try{
+      const hostname=($('#serverLifecycleHostnameInput')?.value||'').trim().toLowerCase().replace(/\.$/,'');
+      if(!hostname)throw new Error('أدخل Server FQDN أولًا.');
+      const data=await mutation('/api/server-lifecycle/hostname/preview',{hostname});
+      status(`Hostname preview #${data.preview.id}: ${safe(data.preview.snapshot?.current_hostname)} → ${safe(data.preview.snapshot?.desired_hostname)}. راجع ثم Apply.`,'warning');
+      await loadAll();
+    }catch{}
+  });
   $('#serverLifecycleUpdatePreview')?.addEventListener('click',async()=>{
     try{const data=await mutation('/api/server-lifecycle/maintenance/preview',{kind:'system-updates'});status(`Update preview #${data.preview.id} created · fingerprint ${safe(data.preview.fingerprint).slice(0,16)}…`,'ok');await loadAll();}catch{}
   });
@@ -113,8 +131,13 @@
     try{const data=await mutation('/api/server-lifecycle/maintenance/preview',{kind:'reboot'});status(`Reboot impact preview #${data.preview.id} created. No reboot executed.`,'warning');await loadAll();}catch{}
   });
   $('#serverLifecycleMaintenance')?.addEventListener('click',async event=>{
-    const button=event.target.closest('[data-cancel-maintenance]');if(!button)return;
-    try{await mutation(`/api/server-lifecycle/maintenance/${encodeURIComponent(button.dataset.cancelMaintenance)}/cancel`,{});status('Maintenance preview cancelled.','ok');await loadAll();}catch{}
+    const apply=event.target.closest('[data-apply-maintenance]');
+    if(apply){
+      try{const data=await mutation(`/api/server-lifecycle/maintenance/${encodeURIComponent(apply.dataset.applyMaintenance)}/apply`,{});status(`Hostname applied: ${safe(data.previous_hostname)} → ${safe(data.hostname)}`,'ok');const input=$('#serverLifecycleHostnameInput');if(input)input.value=data.hostname||'';await loadAll();}catch{}
+      return;
+    }
+    const cancel=event.target.closest('[data-cancel-maintenance]');if(!cancel)return;
+    try{await mutation(`/api/server-lifecycle/maintenance/${encodeURIComponent(cancel.dataset.cancelMaintenance)}/cancel`,{});status('Maintenance preview cancelled.','ok');await loadAll();}catch{}
   });
   root.querySelector('[data-adv-tab="server"]')?.addEventListener('click',()=>loadAll());
   loadAll();
