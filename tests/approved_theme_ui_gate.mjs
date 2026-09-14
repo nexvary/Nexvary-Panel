@@ -46,7 +46,7 @@ if(!navStyle.family.includes('Noto Kufi Arabic'))throw new Error(`Kufi font stac
 if(navStyle.color!=='rgb(55, 255, 154)')throw new Error(`Sidebar text is not electric green: ${navStyle.color}`);
 if(!navStyle.shadow||navStyle.shadow==='none')throw new Error('Sidebar electric glow missing');
 
-const expectedOrder=['dashboard','hosting','accounts','mail','transfers','advancedops','sites','webtools','schedules','databases','files','security','backups'];
+const expectedOrder=['dashboard','hosting','accounts','mail','transfers','advancedops','sites','webtools','sitecontrols','schedules','databases','files','security','backups'];
 const firstLinks=await page.locator('#nav a').evaluateAll((nodes,count)=>nodes.slice(0,count).map(n=>n.getAttribute('href')?.replace('#','')),expectedOrder.length);
 if(JSON.stringify(firstLinks)!==JSON.stringify(expectedOrder))throw new Error(`Sidebar primary order mismatch: ${firstLinks.join(',')}`);
 const iconColors=await page.evaluate(()=>Array.from(document.querySelectorAll('#nav a .ui-icon')).map(el=>getComputedStyle(el).color));
