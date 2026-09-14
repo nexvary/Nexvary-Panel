@@ -19,11 +19,11 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     from panel.module_registry import MODULES, module_catalog, validate_modules
 
     modules = validate_modules()
-    assert len(modules) >= 31
+    assert len(modules) >= 32
     assert tuple(modules) == MODULES
     ids = [m.id for m in modules]
     assert len(ids) == len(set(ids))
-    assert {"extensions", "hosting", "resource_usage", "domains", "dnssec", "accounts", "mail", "mail_automation", "mail_queue", "transfers", "advanced_ops", "fleet", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_staging", "wordpress_updates", "security", "vault"}.issubset(ids)
+    assert {"extensions", "hosting", "resource_usage", "domains", "dnssec", "accounts", "mail", "mail_automation", "mail_queue", "transfers", "advanced_ops", "server_lifecycle", "fleet", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_staging", "wordpress_updates", "security", "vault"}.issubset(ids)
 
     catalog = module_catalog()
     assert len(catalog) == len(modules)
@@ -33,6 +33,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     assert "nexvary-panel-mail" in by_id["mail_queue"]["provider_services"]
     assert "nexvary-panel-transfer" in by_id["transfers"]["provider_services"]
     assert "nexvary-panel-postgres" in by_id["advanced_ops"]["provider_services"]
+    assert "nexvary-panel-server" in by_id["server_lifecycle"]["provider_services"]
     assert "nexvary-panel-webtools" in by_id["domains"]["provider_services"]
     assert "nexvary-panel-webtools" in by_id["resource_usage"]["provider_services"]
     assert by_id["resource_usage"]["depends_on"] == ["hosting", "sites"]
@@ -44,6 +45,11 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     assert by_id["domains"]["has_schema"] is True
     assert by_id["mail_automation"]["has_schema"] is True
     assert by_id["wordpress_staging"]["has_schema"] is True
+    assert by_id["server_lifecycle"]["has_schema"] is True
+    assert by_id["server_lifecycle"]["maturity"] == "foundation"
+    assert by_id["server_lifecycle"]["depends_on"] == ["advanced_ops"]
+    assert by_id["server_lifecycle"]["endpoint_namespace"] == "server_lifecycle"
+    assert {"whm.server_time", "whm.updates", "whm.networking", "whm.ip_functions", "whm.processes"}.issubset(set(by_id["server_lifecycle"]["feature_prefixes"]))
     assert by_id["fleet"]["maturity"] == "foundation"
     assert by_id["fleet"]["depends_on"] == ["advanced_ops"]
     assert by_id["mail_automation"]["depends_on"] == ["mail", "mail_security"]
@@ -80,6 +86,11 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         "/api/advanced/mail/queue/<queue_id>",
         "/api/transfers",
         "/api/advanced/status",
+        "/api/server-lifecycle/overview",
+        "/api/server-lifecycle/network",
+        "/api/server-lifecycle/processes",
+        "/api/server-lifecycle/updates",
+        "/api/server-lifecycle/maintenance/preview",
         "/api/fleet",
         "/api/fleet/probe-all",
         "/api/fleet/plan",
@@ -102,6 +113,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         assert "mail_filters" in tables
         assert "mail_spam_policies" in tables
         assert "wordpress_staging" in tables
+        assert "server_maintenance_previews" in tables
         assert "fleet_nodes" in tables
         assert "fleet_probes" in tables
 
