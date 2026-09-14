@@ -54,6 +54,7 @@ install -m 0750 -o root -g root agent/webtools_agent.py /opt/nexvary-panel-agent
 install -m 0750 -o root -g nexvary-panel agent/scheduler_agent.py /opt/nexvary-panel-agent/scheduler_agent.py
 install -m 0750 -o root -g nexvary-panel agent/autossl_scheduler.py /opt/nexvary-panel-agent/autossl_scheduler.py
 install -m 0640 -o root -g root agent/mail_backend.py /opt/nexvary-panel-agent/mail_backend.py
+install -m 0640 -o root -g root agent/mail_default.py /opt/nexvary-panel-agent/mail_default.py
 install -m 0640 -o root -g root agent/mail_sieve.py /opt/nexvary-panel-agent/mail_sieve.py
 install -m 0750 -o root -g root agent/mail_agent.py /opt/nexvary-panel-agent/mail_agent.py
 install -m 0750 -o root -g root agent/transfer_agent.py /opt/nexvary-panel-agent/transfer_agent.py
