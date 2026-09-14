@@ -12,7 +12,7 @@ DEFAULT_ACCOUNT_FEATURES = {
     "databases.mariadb", "databases.wizard",
     "metrics.visitors", "metrics.errors", "metrics.bandwidth", "metrics.resource_usage",
     "security.ssl_tls", "security.two_factor", "security.ssl_status",
-    "software.wordpress", "software.php_manager", "software.node", "software.python", "software.optimize",
+    "software.wordpress", "software.php_manager", "software.php_ini", "software.node", "software.python", "software.optimize",
     "advanced.cron", "advanced.dns_trace", "advanced.error_pages",
     "preferences.password", "preferences.language", "preferences.users",
 }
