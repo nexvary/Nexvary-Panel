@@ -29,6 +29,7 @@
   <link rel="stylesheet" href="/static/transfers.css">
   <link rel="stylesheet" href="/static/advanced-ops.css">
   <link rel="stylesheet" href="/static/webtools.css">
+  <link rel="stylesheet" href="/static/site-controls.css">
   <link rel="stylesheet" href="/static/scheduled-tasks.css">
   <link rel="stylesheet" href="/static/database-access.css">
   <link rel="stylesheet" href="/static/workspace-visibility.css">
@@ -59,6 +60,7 @@
       <a href="#advancedops" data-title="Advanced Hosting Ops" data-subtitle="DNS Writes وSSL وMail Queue وPHP وPostgreSQL وMigration وWHM وFleet">{{icon('layers')}}<span>Advanced Hosting Ops</span><em></em></a>
       <a href="#sites" data-title="المواقع الإلكترونية" data-subtitle="إدارة المواقع والتطبيقات والـRuntime وNGINX">{{icon('globe')}}<span>المواقع الإلكترونية</span><em></em></a>
       <a href="#webtools" data-title="أدوات الويب" data-subtitle="Redirects وصفحات الأخطاء وإحصاءات الزوار والباندويدث">{{icon('activity')}}<span>أدوات الويب</span><em></em></a>
+      <a href="#sitecontrols" data-title="Site Control Center" data-subtitle="Directory Privacy وHotlink وIndexing وMIME وRaw Access ضمن NGINX آمن">{{icon('shield')}}<span>Site Control Center</span><em></em></a>
       <a href="#schedules" data-title="المهام المجدولة" data-subtitle="Scheduled Tasks آمنة للنسخ والنشر بدون Shell خام">{{icon('activity')}}<span>المهام المجدولة</span><em></em></a>
       <a href="#databases" data-title="قواعد البيانات" data-subtitle="MariaDB والمستخدمون والربط الآمن بالتطبيقات">{{icon('database')}}<span>قواعد البيانات</span><em></em></a>
       <a href="#files" data-title="الملفات وإدارة المحتوى" data-subtitle="إدارة ملفات المواقع داخل نطاق آمن ومحصور">{{icon('file')}}<span>الملفات وإدارة المحتوى</span><em></em></a>
@@ -111,6 +113,7 @@
       {% include "sections/advanced_ops.html" %}
       {% include "sections/sites.html" %}
       {% include "sections/webtools.html" %}
+      {% include "sections/site_controls.html" %}
       {% include "sections/schedules.html" %}
       {% include "sections/databases.html" %}
       {% include "sections/backups.html" %}
@@ -147,6 +150,7 @@
 <script src="/static/transfers.js"></script>
 <script src="/static/advanced-ops.js"></script>
 <script src="/static/webtools.js"></script>
+<script src="/static/site-controls.js"></script>
 <script src="/static/scheduled-tasks.js"></script>
 <script src="/static/database-access.js"></script>
 </body>
