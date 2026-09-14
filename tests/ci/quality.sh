@@ -12,6 +12,8 @@ python tests/package_impact_test.py
 python tests/resource_usage_agent_test.py
 python tests/resource_usage_test.py
 python tests/bandwidth_accounting_test.py
+python tests/site_controls_agent_test.py
+python tests/site_controls_test.py
 python tests/whm_bulk_package_test.py
 python tests/whm_bulk_status_test.py
 python tests/schedules_test.py
