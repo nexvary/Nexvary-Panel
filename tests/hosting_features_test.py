@@ -35,6 +35,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-hosting-") as tmp:
     # never regress to a Roadmap-only label in Feature Manager.
     operational_foundations = {
         "files.directory_privacy",
+        "domains.dynamic_dns",
         "metrics.raw_access",
         "security.api_tokens",
         "security.hotlink",
