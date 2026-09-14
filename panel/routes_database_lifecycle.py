@@ -27,10 +27,11 @@ def _can_manage(owner: str) -> bool:
     return role == "admin" or actor == owner
 
 
-def _feature(engine: str, owner: str) -> bool:
+def _feature(engine: str, owner: str, *, connection=None) -> bool:
     feature_id = "databases.mariadb" if engine == "mariadb" else "databases.postgresql"
-    return feature_allowed(feature_id, username=owner, role=_target_role(owner)) and feature_allowed(
-        "files.backups", username=owner, role=_target_role(owner)
+    role = _target_role(owner)
+    return feature_allowed(feature_id, username=owner, role=role, connection=connection) and feature_allowed(
+        "files.backups", username=owner, role=role, connection=connection
     )
 
 
@@ -93,7 +94,7 @@ def register_database_lifecycle_routes(app):
                     (actor,),
                 ).fetchall()
             used = int(conn.execute("SELECT COUNT(*) FROM database_snapshots WHERE owner=?", (actor,)).fetchone()[0])
-        limit = package_limit("max_backups", username=actor, role=role)
+            limit = package_limit("max_backups", username=actor, role=role, connection=conn)
         return jsonify(
             ok=True,
             databases=databases,
@@ -120,7 +121,7 @@ def register_database_lifecycle_routes(app):
             owner = str(row["owner"])
             if not _can_manage(owner):
                 return jsonify(ok=False, error="database outside your scope"), 403
-            if not _feature(engine, owner):
+            if not _feature(engine, owner, connection=conn):
                 return jsonify(ok=False, error="database snapshot disabled by hosting policy"), 403
             used = int(conn.execute("SELECT COUNT(*) FROM database_snapshots WHERE owner=?", (owner,)).fetchone()[0])
             limit = package_limit("max_backups", username=owner, role=_target_role(owner), connection=conn)
@@ -163,11 +164,12 @@ def register_database_lifecycle_routes(app):
             current = _database_row(conn, engine, db_name)
             if not current or str(current["owner"]) != owner:
                 return jsonify(ok=False, error="managed database ownership changed; restore blocked"), 409
-            if not _feature(engine, owner):
+            if not _feature(engine, owner, connection=conn):
                 return jsonify(ok=False, error="database restore disabled by hosting policy"), 403
+            archive = str(snap["archive"])
         result = _provider_call(
             engine,
-            {"action": "snapshot-restore", "db_name": db_name, "archive": str(snap["archive"])},
+            {"action": "snapshot-restore", "db_name": db_name, "archive": archive},
             timeout=360,
         )
         if not result.get("ok"):
