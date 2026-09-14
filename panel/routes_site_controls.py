@@ -16,6 +16,11 @@ SAFE_PATH_RE = re.compile(r"^/(?:[A-Za-z0-9._~-]+/)*[A-Za-z0-9._~-]*$")
 SAFE_USER_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 SAFE_EXT_RE = re.compile(r"^[a-z0-9]{1,12}$")
 SAFE_MIME_RE = re.compile(r"^[a-z0-9][a-z0-9.+-]{0,63}/[a-z0-9][a-z0-9.+-]{0,95}$")
+BLOCKED_MIME_EXTENSIONS = frozenset({
+    "php", "phtml", "phar", "cgi", "pl", "py", "sh", "bash", "zsh", "fish",
+    "env", "ini", "conf", "config", "key", "pem", "crt", "csr", "htaccess", "htpasswd",
+    "sql", "sqlite", "db", "bak", "backup", "log", "old", "swp",
+})
 DEFAULT_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "svg"]
 
 
@@ -229,8 +234,8 @@ def register_site_control_routes(app):
         for extension, mime in mappings.items():
             ext = str(extension).strip().lower().lstrip(".")
             mtype = str(mime).strip().lower()
-            if not SAFE_EXT_RE.fullmatch(ext) or not SAFE_MIME_RE.fullmatch(mtype) or ext in {"php", "phtml", "phar", "cgi", "pl", "py", "sh"}:
-                return jsonify(ok=False, error="invalid or executable MIME override"), 400
+            if not SAFE_EXT_RE.fullmatch(ext) or not SAFE_MIME_RE.fullmatch(mtype) or ext in BLOCKED_MIME_EXTENSIONS:
+                return jsonify(ok=False, error="invalid, sensitive or executable MIME override"), 400
             normalized[ext] = mtype
         with db() as conn:
             owner = _site_owner(conn, domain)
