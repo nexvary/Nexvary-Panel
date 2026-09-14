@@ -123,3 +123,72 @@
 
   load();
 })();
+
+(()=>{
+  const root=document.getElementById('databaseLifecycleManager');
+  if(!root)return;
+  const csrf=document.querySelector('meta[name="csrf-token"]')?.content||'';
+  const stepUp=root.dataset.stepUp==='1';
+  const role=root.dataset.role||'viewer';
+  const $=s=>root.querySelector(s);
+  const esc=v=>String(v??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+  const state={databases:[],snapshots:[]};
+  const bytes=n=>{let v=Number(n||0);for(const u of ['B','KB','MB','GB','TB']){if(v<1024||u==='TB')return`${v.toFixed(v>=10||u==='B'?0:1)} ${u}`;v/=1024;}return'0 B';};
+  const when=ts=>ts?new Date(Number(ts)*1000).toLocaleString():'—';
+  function status(message,type=''){
+    const node=$('#databaseLifecycleStatus');if(!node)return;
+    node.textContent=message;node.className=`database-access-status ${type}`.trim();
+  }
+  async function api(url,options={}){
+    const opts={credentials:'same-origin',...options,headers:{Accept:'application/json',...(options.headers||{})}};
+    if(opts.method&&opts.method!=='GET')opts.headers['X-CSRF-Token']=csrf;
+    const res=await fetch(url,opts);let data={};
+    try{data=await res.json();}catch{data={ok:false,error:`HTTP ${res.status}`};}
+    if(!res.ok||data.ok===false){const err=new Error(data.error||`HTTP ${res.status}`);err.status=res.status;throw err;}
+    return data;
+  }
+  function renderDatabaseOptions(){
+    const engine=$('#databaseSnapshotEngine')?.value||'mariadb';const select=$('#databaseSnapshotDb');if(!select)return;
+    const rows=state.databases.filter(x=>x.engine===engine);
+    select.innerHTML='<option value="">اختر قاعدة…</option>'+rows.map(x=>`<option value="${esc(x.db_name)}">${esc(x.db_name)} · ${esc(x.owner)}</option>`).join('');
+  }
+  function renderSnapshots(){
+    const target=$('#databaseSnapshotList');if(!target)return;
+    $('#databaseSnapshotCount').textContent=String(state.snapshots.length);
+    if(!state.snapshots.length){target.innerHTML='<div class="empty-state">لا توجد Managed Snapshots بعد.</div>';return;}
+    target.innerHTML=state.snapshots.map(row=>{
+      const hash=String(row.sha256||'');const actions=role==='viewer'?'':`<div class="database-snapshot-actions"><button type="button" class="ghost" data-db-snapshot-restore="${row.id}" ${stepUp?'':'disabled'}>Restore</button><button type="button" class="ghost danger-soft" data-db-snapshot-delete="${row.id}" ${stepUp?'':'disabled'}>حذف</button></div>`;
+      return `<article class="database-snapshot-row"><div class="snapshot-engine">${esc(row.engine)}</div><div class="snapshot-copy"><b>${esc(row.db_name)}</b><small>${esc(row.kind)} · ${bytes(row.size_bytes)} · ${when(row.created_at)}</small><code title="${esc(hash)}">SHA-256 ${esc(hash.slice(0,16))}${hash.length>16?'…':''}</code>${row.restored_at?`<small class="restored-mark">آخر Restore: ${when(row.restored_at)}</small>`:''}</div>${actions}</article>`;
+    }).join('');
+  }
+  function render(data){
+    state.databases=data.databases||[];state.snapshots=data.snapshots||[];
+    const q=data.quota||{};$('#databaseSnapshotQuota').textContent=`${Number(q.used||0)}/${Number(q.limit||0)}`;
+    renderDatabaseOptions();renderSnapshots();
+  }
+  async function load(){try{render(await api('/api/database-lifecycle'));}catch(err){status(`تعذر تحميل Database Lifecycle: ${err.message}`,'error');}}
+  $('#databaseSnapshotEngine')?.addEventListener('change',renderDatabaseOptions);
+  $('#databaseSnapshotForm')?.addEventListener('submit',async event=>{
+    event.preventDefault();if(!stepUp){status('Step-Up مطلوب لإنشاء Snapshot.','error');return;}
+    const engine=$('#databaseSnapshotEngine')?.value||'';const db_name=$('#databaseSnapshotDb')?.value||'';if(!db_name)return;
+    status('جارٍ إنشاء Snapshot داخل الـAgent…');
+    try{await api('/api/database-lifecycle/snapshots',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({engine,db_name})});status('تم إنشاء Managed Snapshot والتحقق من SHA-256.','ok');await load();}
+    catch(err){status(err.status===428?'انتهت نافذة Step-Up؛ أعد التحقق.':err.message,'error');}
+  });
+  $('#databaseSnapshotList')?.addEventListener('click',async event=>{
+    const restore=event.target.closest('[data-db-snapshot-restore]');const remove=event.target.closest('[data-db-snapshot-delete]');
+    if(!restore&&!remove)return;if(!stepUp){status('Step-Up مطلوب لهذه العملية.','error');return;}
+    const id=restore?.dataset.dbSnapshotRestore||remove?.dataset.dbSnapshotDelete;if(!id)return;
+    if(restore){
+      if(!window.confirm('سيتم أخذ Safety Snapshot أولًا ثم استعادة هذه النسخة. هل تريد المتابعة؟'))return;
+      status('جارٍ إنشاء Safety Snapshot وتنفيذ Restore…');
+      try{await api(`/api/database-lifecycle/snapshots/${id}/restore`,{method:'POST'});status('اكتملت الاستعادة وتم تسجيل Safety Snapshot للرجوع.','ok');await load();}
+      catch(err){status(err.status===428?'انتهت نافذة Step-Up.':err.message,'error');}
+    }else{
+      if(!window.confirm('حذف ملف Snapshot المُدار؟'))return;
+      try{await api(`/api/database-lifecycle/snapshots/${id}`,{method:'DELETE'});status('تم حذف Snapshot من الـStateDirectory والـmetadata.','ok');await load();}
+      catch(err){status(err.message,'error');}
+    }
+  });
+  load();
+})();
