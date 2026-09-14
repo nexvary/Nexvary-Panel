@@ -38,6 +38,10 @@ with tempfile.TemporaryDirectory(prefix="nvp-resource-usage-") as tmp:
         "filesystem_entries": 12,
         "bandwidth_bytes": 10 * 1024,
         "bandwidth_scope": "latest-log-window",
+        "monthly_bandwidth_bytes": 5 * 1024 * 1024,
+        "monthly_bandwidth_period": "2026-09",
+        "monthly_bandwidth_complete": True,
+        "monthly_bandwidth_reason": "continuous",
     }
 
     with client.session_transaction() as session:
@@ -51,8 +55,10 @@ with tempfile.TemporaryDirectory(prefix="nvp-resource-usage-") as tmp:
     assert body["telemetry"]["disk"]["used"] == 4
     assert body["telemetry"]["disk"]["hard_quota_safe"] is True
     assert body["telemetry"]["bandwidth"]["sample_bytes"] == 10 * 1024
-    assert body["telemetry"]["bandwidth"]["hard_quota_safe"] is False
-    assert body["enforcement"] == {"disk": "eligible-when-complete", "bandwidth": "telemetry-only"}
+    assert body["telemetry"]["bandwidth"]["monthly_bytes"] == 5 * 1024 * 1024
+    assert body["telemetry"]["bandwidth"]["used"] == 5
+    assert body["telemetry"]["bandwidth"]["hard_quota_safe"] is True
+    assert body["enforcement"] == {"disk": "eligible-when-complete", "bandwidth": "eligible-when-month-complete"}
     assert body["quota"]["max_sites"]["used"] == 1
 
     denied = client.get("/api/hosting/resource-usage?username=client2")
@@ -70,6 +76,10 @@ with tempfile.TemporaryDirectory(prefix="nvp-resource-usage-") as tmp:
             "filesystem_entries": 3,
             "bandwidth_bytes": 100,
             "bandwidth_scope": "latest-log-window",
+            "monthly_bandwidth_bytes": 1000,
+            "monthly_bandwidth_period": "2026-09",
+            "monthly_bandwidth_complete": True,
+            "monthly_bandwidth_reason": "continuous",
         }
 
     resource_routes.webtools_call = partial
@@ -79,6 +89,8 @@ with tempfile.TemporaryDirectory(prefix="nvp-resource-usage-") as tmp:
     assert partial_body["measurement_complete"] is False
     assert partial_body["telemetry"]["disk"]["measured"] is False
     assert partial_body["telemetry"]["disk"]["hard_quota_safe"] is False
+    assert partial_body["telemetry"]["bandwidth"]["hard_quota_safe"] is False
+    assert partial_body["enforcement"]["bandwidth"] == "telemetry-only"
     assert partial_body["failures"] == ["two.example.test"]
 
 print("NEXVARY package-aware Resource Usage API gate: PASS")
