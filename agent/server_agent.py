@@ -20,12 +20,17 @@ BASE_ENV = {
     "LANG": "C.UTF-8",
     "DEBIAN_FRONTEND": "noninteractive",
 }
+HOSTNAME_RE = re.compile(
+    r"^(?=.{1,253}$)(?=.+\..+)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+"
+    r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$"
+)
 ACTIONS = {
     "server-overview",
     "server-network",
     "server-processes",
     "server-updates-preview",
     "server-time-enable-ntp",
+    "server-hostname-set",
 }
 
 
@@ -181,6 +186,24 @@ def _enable_ntp() -> dict:
     return {"ok": True, "time": _time_state()}
 
 
+def _set_hostname(value: object) -> dict:
+    hostname = str(value or "").strip().lower().rstrip(".")
+    if not HOSTNAME_RE.fullmatch(hostname):
+        return {"ok": False, "error": "invalid-server-hostname"}
+    previous = socket.gethostname()[:253]
+    if previous.lower().rstrip(".") == hostname:
+        state = _overview()
+        state.update(changed=False, previous_hostname=previous)
+        return state
+    try:
+        _run(["hostnamectl", "set-hostname", hostname], 30)
+    except Exception:
+        return {"ok": False, "error": "server-hostname-change-failed"}
+    state = _overview()
+    state.update(changed=True, previous_hostname=previous)
+    return state
+
+
 def dispatch(req: dict) -> dict:
     action = str(req.get("action", ""))
     if action not in ACTIONS:
@@ -193,6 +216,8 @@ def dispatch(req: dict) -> dict:
         return _processes()
     if action == "server-updates-preview":
         return _updates_preview()
+    if action == "server-hostname-set":
+        return _set_hostname(req.get("hostname", ""))
     return _enable_ntp()
 
 
