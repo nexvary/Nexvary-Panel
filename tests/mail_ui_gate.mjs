@@ -22,12 +22,18 @@ await page.locator('#mail.active-view').waitFor({state:'visible'});
 if(await page.locator('link[href="/static/mail.css"]').count()!==1)throw new Error('Email Center stylesheet missing');
 if(await page.locator('script[src="/static/mail.js"]').count()!==1)throw new Error('Email Center script missing');
 if(await page.locator('script[src="/static/mail-automation.js"]').count()!==1)throw new Error('Mail Automation script missing');
+if(await page.locator('script[src="/static/mail-trace.js"]').count()!==1)throw new Error('Track Delivery script missing');
 if(await page.locator('#mailboxForm').count()!==1||await page.locator('#forwarderForm').count()!==1||await page.locator('#mailPasswordForm').count()!==1)throw new Error('Email Center create/security forms missing');
 if(await page.locator('#mailPasswordMailbox').count()!==1||await page.locator('#mailPasswordNew').count()!==1||await page.locator('#mailPasswordConfirm').count()!==1)throw new Error('Mailbox password rotation controls missing');
 if(await page.locator('#mailboxList').count()!==1||await page.locator('#forwarderList').count()!==1)throw new Error('Email Center inventory panels missing');
 for(const selector of ['#mailAutomationMailbox','#mailAutoresponderForm','#mailFilterForm','#mailSpamForm','#mailFilterList','#mailAutomationStatus']){
   if(await page.locator(selector).count()!==1)throw new Error(`Mail Automation control missing: ${selector}`);
 }
+for(const selector of ['#mailTraceDomain','#mailTraceRefresh','#mailTraceStatus','#mailTraceList']){
+  if(await page.locator(selector).count()!==1)throw new Error(`Track Delivery control missing: ${selector}`);
+}
+const traceDisclosure=(await page.locator('.mail-trace-shell .mail-policy-note').innerText()).trim();
+if(!traceDisclosure.includes('Raw')||!traceDisclosure.includes('Queue IDs'))throw new Error('Track Delivery tenant-scope/raw-log disclosure missing');
 const safetyNote=(await page.locator('.mail-automation-note').innerText()).trim();
 if(!safetyNote.includes('X-Spam-Flag')||!safetyNote.includes('Scanner'))throw new Error('Mail spam policy must truthfully disclose upstream scanner dependency');
 await page.waitForFunction(()=>['ONLINE','OFFLINE'].includes(document.querySelector('#mailProviderState')?.textContent?.trim()),null,{timeout:10000});
@@ -46,6 +52,8 @@ await page.waitForTimeout(250);
 if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error('Email Center mobile horizontal overflow');
 const autoWidth=await page.locator('.mail-automation-shell').evaluate(el=>el.getBoundingClientRect().width);
 if(autoWidth>392)throw new Error(`Mail Automation mobile panel overflows: ${autoWidth}`);
+const traceWidth=await page.locator('.mail-trace-shell').evaluate(el=>el.getBoundingClientRect().width);
+if(traceWidth>392)throw new Error(`Track Delivery mobile panel overflows: ${traceWidth}`);
 await page.screenshot({path:`${out}/nexvary-panel-0.7-email-center-mobile.png`,fullPage:true});
 await browser.close();
 console.log('Nexvary Panel Email Center Chromium Gate: PASS');
