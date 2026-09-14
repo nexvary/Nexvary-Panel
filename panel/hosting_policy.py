@@ -7,7 +7,7 @@ from .hosting_features import FEATURES
 
 DEFAULT_ACCOUNT_FEATURES = {
     "files.file_manager", "files.directory_privacy", "files.disk_usage", "files.ftp_accounts", "files.backups", "files.backup_wizard", "files.git",
-    "domains.domains", "domains.redirects", "domains.zone_editor",
+    "domains.domains", "domains.redirects", "domains.zone_editor", "domains.dynamic_dns",
     "email.accounts", "email.forwarders", "email.deliverability", "email.delivery_trace",
     "databases.mariadb", "databases.wizard",
     "metrics.visitors", "metrics.errors", "metrics.bandwidth", "metrics.raw_access", "metrics.resource_usage",
