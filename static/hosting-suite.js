@@ -20,7 +20,8 @@
     return data;
   };
   const status=(node,message,type='')=>{if(!node)return;node.textContent=message;node.className=`hosting-status ${type}`.trim();};
-  const quotaLabels={disk_mb:'Disk',bandwidth_mb:'Bandwidth',max_sites:'Sites',max_databases:'Databases',max_mailboxes:'Mailboxes',max_ftp_accounts:'FTP',max_cron_jobs:'Cron',max_subdomains:'Subdomains',max_backups:'Backups'};
+  const quotaLabels={disk_mb:'Disk',bandwidth_mb:'Bandwidth',max_sites:'Sites',max_databases:'Databases',max_mailboxes:'Mailboxes',max_ftp_accounts:'SFTP/FTP',max_cron_jobs:'Cron',max_subdomains:'Subdomains',max_backups:'Backups'};
+  const bytes=n=>{let v=Number(n||0);for(const unit of ['B','KB','MB','GB','TB']){if(v<1024||unit==='TB')return `${v.toFixed(v>=10||unit==='B'?0:1)} ${unit}`;v/=1024;}return '0 B';};
 
   function renderCatalog(){
     const q=($('#hostingSearch')?.value||'').trim().toLowerCase();
@@ -53,6 +54,46 @@
       const shown=(key==='disk_mb'||key==='bandwidth_mb')?`${value.toLocaleString()} MB`:value.toLocaleString();
       return `<div class="hosting-quota"><small>${esc(label)}</small><b>${esc(shown)}</b></div>`;
     }).join('');
+  }
+
+  function renderResourceUsage(data){
+    const disk=data.telemetry?.disk||{};
+    const bandwidth=data.telemetry?.bandwidth||{};
+    const diskNode=$('#hostingUsageDisk');
+    const diskState=$('#hostingUsageDiskState');
+    if(disk.measured){
+      diskNode.textContent=`${bytes(disk.bytes)} / ${Number(disk.limit||0).toLocaleString()} MB`;
+      diskState.textContent=`${Number(disk.percent||0).toFixed(1)}% · ${disk.over?'OVER LIMIT':'COMPLETE MEASUREMENT'}`;
+    }else{
+      diskNode.textContent='غير مكتمل';
+      diskState.textContent=`تم قياس ${Number(data.sites_measured||0)} من ${Number(data.sites_total||0)} موقع؛ لا يتم تطبيق Hard Quota على قياس ناقص.`;
+    }
+    $('#hostingUsageBandwidth').textContent=`${bytes(bandwidth.sample_bytes||0)} / ${Number(bandwidth.limit_mb||0).toLocaleString()} MB`;
+    const target=$('#hostingUsageCounts');
+    const quota=data.quota||{};
+    const countKeys=['max_sites','max_databases','max_mailboxes','max_ftp_accounts','max_cron_jobs','max_subdomains','max_backups'];
+    target.innerHTML=countKeys.map(key=>{
+      const row=quota[key]||{};
+      const state=row.over?'OVER':'OK';
+      return `<div class="hosting-quota"><small>${esc(quotaLabels[key]||key)}</small><b>${Number(row.used||0).toLocaleString()} / ${Number(row.limit||0).toLocaleString()}</b><span>${esc(state)}</span></div>`;
+    }).join('');
+    const warnings=[];
+    if(!data.measurement_complete)warnings.push('Disk measurement incomplete');
+    if(data.failures?.length)warnings.push(`${data.failures.length} site measurement failure(s)`);
+    warnings.push('Bandwidth is telemetry-only, not a hard quota');
+    status($('#hostingUsageStatus'),`${data.package||'Package'} · ${warnings.join(' · ')}`,data.measurement_complete?'ok':'');
+  }
+
+  async function loadResourceUsage(){
+    status($('#hostingUsageStatus'),'جارٍ قياس موارد الحساب…','');
+    try{
+      const data=await api('/api/hosting/resource-usage');
+      renderResourceUsage(data);
+    }catch(err){
+      $('#hostingUsageDisk').textContent='—';
+      $('#hostingUsageBandwidth').textContent='—';
+      status($('#hostingUsageStatus'),`تعذر قياس الاستخدام: ${err.message}`,'error');
+    }
   }
 
   async function loadCatalog(){
@@ -121,7 +162,7 @@
       ? violations.map(v=>`${quotaLabels[v.limit]||v.limit}: ${v.used}/${v.target} (+${v.excess})`).join(' · ')
       : 'لا توجد تجاوزات في الحدود القابلة للقياس.';
     const featureText=removed.length?`سيتم تعطيل ${removed.length} ميزة: ${removed.slice(0,5).join(', ')}${removed.length>5?'…':''}`:'لا توجد ميزات ستُسحب.';
-    const measurement=unmeasured.length?`Disk/Bandwidth غير مقاسين لحظيًا ولن يُدّعى أنهما متوافقان.`:'';
+    const measurement=unmeasured.length?`هناك حدود غير مقاسة ولن يُدّعى أنها متوافقة.`:'';
     out.innerHTML=`<b>${impact.safe_to_assign?'SAFE TO ASSIGN':'ASSIGNMENT BLOCKED'}</b><br><small>${esc(current)} → ${esc(target)}</small><br><span>${esc(quotaText)}</span><br><span>${esc(featureText)}</span>${measurement?`<br><span>${esc(measurement)}</span>`:''}`;
     out.className=`hosting-status ${impact.safe_to_assign?'ok':'error'}`;
   }
@@ -141,6 +182,7 @@
   $('#hostingMaturity')?.addEventListener('change',renderCatalog);
   $('#hostingPolicyPackage')?.addEventListener('change',renderPolicy);
   $('#hostingImpactBtn')?.addEventListener('click',simulateImpact);
+  $('#hostingRefreshUsage')?.addEventListener('click',loadResourceUsage);
   $('#hostingAssignPackage')?.addEventListener('change',()=>{status($('#hostingImpactResult'),'تغيرت الحزمة؛ أعد محاكاة التأثير قبل التعيين.','');});
   $('#hostingAssignUsername')?.addEventListener('input',()=>{status($('#hostingImpactResult'),'تغير المستخدم؛ أعد محاكاة التأثير قبل التعيين.','');});
 
@@ -193,7 +235,7 @@
     }
   });
 
-  Promise.all([loadCatalog(),loadPackages()]).catch(err=>{
+  Promise.all([loadCatalog(),loadPackages(),loadResourceUsage()]).catch(err=>{
     const grid=$('#hostingFeatureGrid');
     if(grid)grid.innerHTML=`<div class="empty-state">تعذر تحميل Hosting Suite: ${esc(err.message)}</div>`;
   });
