@@ -30,6 +30,7 @@ from .routes_database_access import register_database_access_routes
 from .routes_database_lifecycle import register_database_lifecycle_routes
 from .routes_deliverability import register_deliverability_routes
 from .routes_dns import register_dns_routes
+from .routes_domain_guardian import register_domain_guardian_routes
 from .routes_domain_health import register_domain_health_routes
 from .routes_domains import register_domain_routes
 from .routes_dnssec import register_dnssec_routes
@@ -115,6 +116,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("deliverability", "Mail Deliverability", "hosting", register_deliverability_routes, depends_on=("mail", "advanced_ops"), feature_prefixes=("email.deliverability", "domains.zone_editor"), provider_services=("nexvary-panel-ops",), ui_view="advancedops", maturity="provider"),
     PanelModule("domain_health", "Domain Readiness", "observability", register_domain_health_routes, depends_on=("domains", "advanced_ops", "autossl", "deliverability"), feature_prefixes=("domains.", "security.ssl", "email.deliverability"), ui_view="advancedops"),
     PanelModule("change_safety", "Change Safety", "observability", register_change_safety_routes, depends_on=("health", "advanced_ops", "domain_health"), ui_view="advancedops"),
+    PanelModule("domain_guardian", "NEXVARY Domain Guardian", "automation", register_domain_guardian_routes, depends_on=("domain_health", "change_safety", "autossl", "deliverability"), feature_prefixes=("domains.", "security.ssl", "email.deliverability"), ui_view="advancedops", maturity="native", endpoint_namespace="domain_guardian"),
     PanelModule("wordpress_lifecycle", "WordPress Lifecycle", "hosting", register_wordpress_lifecycle_routes, depends_on=("platform", "hosting"), feature_prefixes=("software.wordpress",), provider_services=("nexvary-panel-wordpress",), ui_view="wordpress", maturity="provider"),
     PanelModule("wordpress_staging", "WordPress Staging", "hosting", register_wordpress_staging_routes, schema_hook=ensure_wordpress_staging_schema, depends_on=("wordpress_lifecycle", "sites"), feature_prefixes=("software.wordpress",), provider_services=("nexvary-panel-wordpress",), ui_view="wordpress", maturity="provider"),
     PanelModule("wordpress_publish", "WordPress Selective Publish", "hosting", register_wordpress_publish_routes, schema_hook=ensure_wordpress_publish_schema, depends_on=("wordpress_staging",), feature_prefixes=("software.wordpress",), provider_services=("nexvary-panel-wordpress",), ui_view="wordpress", maturity="provider"),
