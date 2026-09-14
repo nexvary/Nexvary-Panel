@@ -37,8 +37,10 @@ with tempfile.TemporaryDirectory(prefix="nvp-hosting-") as tmp:
         "email.autoresponders",
         "email.filters",
         "email.spam_filters",
+        "email.delivery_trace",
         "databases.postgresql",
         "whm.multi_account",
+        "whm.transfers",
         "whm.mail_queue",
         "whm.api_tokens",
     }
