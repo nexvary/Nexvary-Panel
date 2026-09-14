@@ -68,7 +68,19 @@
       diskNode.textContent='غير مكتمل';
       diskState.textContent=`تم قياس ${Number(data.sites_measured||0)} من ${Number(data.sites_total||0)} موقع؛ لا يتم تطبيق Hard Quota على قياس ناقص.`;
     }
-    $('#hostingUsageBandwidth').textContent=`${bytes(bandwidth.sample_bytes||0)} / ${Number(bandwidth.limit_mb||0).toLocaleString()} MB`;
+    const bandwidthNode=$('#hostingUsageBandwidth');
+    const bandwidthCard=bandwidthNode?.closest('.hosting-quota');
+    const bandwidthLabel=bandwidthCard?.querySelector('small');
+    const bandwidthState=bandwidthCard?.querySelector('span');
+    if(bandwidth.hard_quota_safe){
+      if(bandwidthLabel)bandwidthLabel.textContent='MONTHLY BANDWIDTH';
+      bandwidthNode.textContent=`${bytes(bandwidth.monthly_bytes||0)} / ${Number(bandwidth.limit||0).toLocaleString()} MB`;
+      if(bandwidthState)bandwidthState.textContent=`${esc(bandwidth.monthly_period||'CURRENT MONTH')} · ${Number(bandwidth.percent||0).toFixed(1)}% · ${bandwidth.over?'OVER LIMIT':'CONTINUOUS LEDGER'}`;
+    }else{
+      if(bandwidthLabel)bandwidthLabel.textContent='BANDWIDTH SAMPLE';
+      bandwidthNode.textContent=`${bytes(bandwidth.sample_bytes||0)} / ${Number(bandwidth.limit||0).toLocaleString()} MB`;
+      if(bandwidthState)bandwidthState.textContent='Telemetry فقط؛ Hard Quota مؤجلة حتى تكتمل ledger الشهرية لكل المواقع.';
+    }
     const target=$('#hostingUsageCounts');
     const quota=data.quota||{};
     const countKeys=['max_sites','max_databases','max_mailboxes','max_ftp_accounts','max_cron_jobs','max_subdomains','max_backups'];
@@ -80,8 +92,9 @@
     const warnings=[];
     if(!data.measurement_complete)warnings.push('Disk measurement incomplete');
     if(data.failures?.length)warnings.push(`${data.failures.length} site measurement failure(s)`);
-    warnings.push('Bandwidth is telemetry-only, not a hard quota');
-    status($('#hostingUsageStatus'),`${data.package||'Package'} · ${warnings.join(' · ')}`,data.measurement_complete?'ok':'');
+    if(!bandwidth.hard_quota_safe)warnings.push('Bandwidth ledger incomplete');
+    else warnings.push('Bandwidth monthly ledger complete');
+    status($('#hostingUsageStatus'),`${data.package||'Package'} · ${warnings.join(' · ')}`,data.measurement_complete&&bandwidth.hard_quota_safe?'ok':'');
   }
 
   async function loadResourceUsage(){
