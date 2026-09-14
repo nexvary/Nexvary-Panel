@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import grp
-import json
 import os
 import re
 import stat
@@ -10,8 +9,6 @@ from pathlib import Path
 
 from webtools import (
     LOG_BASE,
-    MAX_SITE_CONF,
-    NGINX_BASE,
     _atomic_write,
     _ensure_managed_include,
     _managed_dir,
@@ -25,6 +22,11 @@ SAFE_PATH_RE = re.compile(r"^/(?:[A-Za-z0-9._~-]+/)*[A-Za-z0-9._~-]*$")
 SAFE_USER_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 SAFE_EXT_RE = re.compile(r"^[a-z0-9]{1,12}$")
 SAFE_MIME_RE = re.compile(r"^[a-z0-9][a-z0-9.+-]{0,63}/[a-z0-9][a-z0-9.+-]{0,95}$")
+BLOCKED_MIME_EXTENSIONS = frozenset({
+    "php", "phtml", "phar", "cgi", "pl", "py", "sh", "bash", "zsh", "fish",
+    "env", "ini", "conf", "config", "key", "pem", "crt", "csr", "htaccess", "htpasswd",
+    "sql", "sqlite", "db", "bak", "backup", "log", "old", "swp",
+})
 AUTH_BASE = Path("/etc/nginx/nexvary-auth")
 MAX_RAW_BYTES = 512 * 1024
 MAX_RAW_LINES = 500
@@ -188,8 +190,8 @@ def sync_mime_overrides(domain: str, *, mappings: object) -> dict:
         mtype = str(mime).strip().lower()
         if not SAFE_EXT_RE.fullmatch(ext) or not SAFE_MIME_RE.fullmatch(mtype):
             return {"ok": False, "error": "invalid MIME mapping"}
-        if ext in {"php", "phtml", "phar", "cgi", "pl", "py", "sh"}:
-            return {"ok": False, "error": "executable extensions cannot be remapped"}
+        if ext in BLOCKED_MIME_EXTENSIONS:
+            return {"ok": False, "error": "sensitive or executable extensions cannot be remapped"}
         normalized.append((ext, mtype))
     if not normalized:
         return _apply_include(domain, "mime-overrides", None)
