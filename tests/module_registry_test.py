@@ -19,11 +19,11 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     from panel.module_registry import MODULES, module_catalog, validate_modules
 
     modules = validate_modules()
-    assert len(modules) >= 32
+    assert len(modules) >= 33
     assert tuple(modules) == MODULES
     ids = [m.id for m in modules]
     assert len(ids) == len(set(ids))
-    assert {"extensions", "hosting", "resource_usage", "domains", "dnssec", "accounts", "mail", "mail_automation", "mail_queue", "transfers", "advanced_ops", "server_lifecycle", "fleet", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_staging", "wordpress_updates", "security", "vault"}.issubset(ids)
+    assert {"extensions", "hosting", "resource_usage", "domains", "dnssec", "site_controls", "accounts", "mail", "mail_automation", "mail_queue", "transfers", "advanced_ops", "server_lifecycle", "fleet", "autossl", "deliverability", "domain_health", "wordpress_lifecycle", "wordpress_staging", "wordpress_updates", "security", "vault"}.issubset(ids)
 
     catalog = module_catalog()
     assert len(catalog) == len(modules)
@@ -36,9 +36,16 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     assert "nexvary-panel-server" in by_id["server_lifecycle"]["provider_services"]
     assert "nexvary-panel-webtools" in by_id["domains"]["provider_services"]
     assert "nexvary-panel-webtools" in by_id["resource_usage"]["provider_services"]
+    assert "nexvary-panel-webtools" in by_id["site_controls"]["provider_services"]
     assert by_id["resource_usage"]["depends_on"] == ["hosting", "sites"]
     assert by_id["resource_usage"]["endpoint_namespace"] == "resource_usage"
     assert "metrics.resource_usage" in by_id["resource_usage"]["feature_prefixes"]
+    assert by_id["site_controls"]["depends_on"] == ["hosting", "sites", "webtools"]
+    assert by_id["site_controls"]["endpoint_namespace"] == "site_controls"
+    assert by_id["site_controls"]["has_schema"] is True
+    assert set(by_id["site_controls"]["feature_prefixes"]) == {
+        "files.directory_privacy", "security.hotlink", "advanced.indexes", "advanced.mime_types", "metrics.raw_access"
+    }
     assert "nexvary-panel-wordpress" in by_id["wordpress_updates"]["provider_services"]
     assert "nexvary-panel-wordpress" in by_id["wordpress_staging"]["provider_services"]
     assert by_id["extensions"]["has_schema"] is True
@@ -76,6 +83,12 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         "/api/hosting/catalog",
         "/api/hosting/resource-usage",
         "/api/domains/aliases",
+        "/api/site-controls",
+        "/api/site-controls/privacy",
+        "/api/site-controls/hotlink",
+        "/api/site-controls/indexing",
+        "/api/site-controls/mime",
+        "/api/site-controls/raw-access",
         "/api/domain-health",
         "/api/accounts",
         "/api/mail",
@@ -109,6 +122,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
         assert "extension_states" in tables
         assert "domain_aliases" in tables
+        assert "site_web_controls" in tables
         assert "mail_autoresponders" in tables
         assert "mail_filters" in tables
         assert "mail_spam_policies" in tables
