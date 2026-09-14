@@ -1,0 +1,31 @@
+[Unit]
+Description=Nexvary Panel Server Lifecycle Agent
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/nexvary-panel-agent
+ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/server_agent.py
+Restart=on-failure
+RestartSec=2
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+ReadWritePaths=/run/nexvary-panel
+
+[Install]
+WantedBy=multi-user.target
