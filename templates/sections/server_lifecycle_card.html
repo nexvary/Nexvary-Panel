@@ -15,6 +15,10 @@
     <button id="serverLifecycleUpdatePreview" type="button" class="primary royal-action">معاينة Updates</button>
     <button id="serverLifecycleRebootPreview" type="button" class="tiny danger">معاينة Reboot</button>
   </div>
+  <div class="adv-inline server-identity-actions">
+    <label class="adv-field"><span>Server FQDN</span><input id="serverLifecycleHostnameInput" type="text" maxlength="253" placeholder="host.example.com" autocomplete="off" spellcheck="false"></label>
+    <button id="serverLifecycleHostnamePreview" type="button" class="tiny ghost">معاينة تغيير Hostname</button>
+  </div>
   <div id="serverLifecycleMeta" class="adv-result">جاري فحص Server Lifecycle Provider…</div>
   <div class="adv-runtime-columns">
     <div>
@@ -28,5 +32,5 @@
   </div>
   <div class="panel-head server-maintenance-history-head"><div><span class="kicker">MAINTENANCE PREVIEWS</span><h3>Review Queue</h3></div><span class="adv-chip">15 MIN TTL</span></div>
   <div id="serverLifecycleMaintenance" class="adv-list"><div class="empty-state">لا توجد Maintenance Previews.</div></div>
-  <div class="account-policy-note">System Updates وReboot هما <strong>Preview فقط</strong> في Platform 0.7. لا يوجد Apply مباشر من الواجهة؛ الهدف مراجعة التأثير أولًا والحفاظ على حدود الأمان.</div>
+  <div class="account-policy-note">تغيير Hostname يعمل بنمط <strong>Preview → Step-Up → Apply</strong> مع فحص أن Hostname لم يتغير بين المرحلتين. System Updates وReboot يظلان Preview فقط في Platform 0.7 ولا يتم تنفيذهما مباشرة من الواجهة.</div>
 </article>
