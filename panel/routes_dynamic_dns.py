@@ -18,6 +18,7 @@ from .security import role_required, step_up_required
 
 DDNS_TOKEN_RE = re.compile(r"^nvp_ddns_[A-Za-z0-9_-]{32,96}$")
 DDNS_UPDATE_MIN_SECONDS = 10
+MAX_DDNS_RECORDS_PER_OWNER = 20
 
 
 def _owner_role(conn, owner: str) -> str:
@@ -129,12 +130,14 @@ def _token_from_request() -> str:
     return token if DDNS_TOKEN_RE.fullmatch(token) else ""
 
 
-def _token_audit(owner: str, record_id: int, hostname: str) -> None:
+def _token_audit(owner: str, record_id: int, hostname: str, *, connection=None) -> None:
+    sql = "INSERT INTO audit(ts,actor,action,detail,ip) VALUES(?,?,?,?,?)"
+    args = (int(time.time()), owner[:64], "dynamic-dns-update", f"record_id={record_id} hostname={hostname}"[:700], "")
+    if connection is not None:
+        connection.execute(sql, args)
+        return
     with db() as conn:
-        conn.execute(
-            "INSERT INTO audit(ts,actor,action,detail,ip) VALUES(?,?,?,?,?)",
-            (int(time.time()), owner[:64], "dynamic-dns-update", f"record_id={record_id} hostname={hostname}"[:700], ""),
-        )
+        conn.execute(sql, args)
 
 
 def register_dynamic_dns_routes(app):
@@ -157,7 +160,14 @@ def register_dynamic_dns_routes(app):
                    FROM dynamic_dns_records WHERE domain=? ORDER BY hostname,record_type""",
                 (domain,),
             ).fetchall()
-        return jsonify(ok=True, domain=domain, records=[dict(row) for row in rows], update_path="/api/dynamic-dns/update/{record_id}")
+            used = int(conn.execute("SELECT COUNT(*) FROM dynamic_dns_records WHERE owner=?", (owner,)).fetchone()[0])
+        return jsonify(
+            ok=True,
+            domain=domain,
+            records=[dict(row) for row in rows],
+            update_path="/api/dynamic-dns/update/{record_id}",
+            quota={"used": used, "limit": MAX_DDNS_RECORDS_PER_OWNER, "remaining": max(0, MAX_DDNS_RECORDS_PER_OWNER - used)},
+        )
 
     @app.post("/api/dynamic-dns/records")
     @role_required("admin", "operator")
@@ -184,6 +194,9 @@ def register_dynamic_dns_routes(app):
             role = _owner_role(conn, owner)
             if not feature_allowed("domains.dynamic_dns", username=owner, role=role, connection=conn):
                 return jsonify(ok=False, error="domains.dynamic_dns disabled by hosting policy"), 403
+            used = int(conn.execute("SELECT COUNT(*) FROM dynamic_dns_records WHERE owner=?", (owner,)).fetchone()[0])
+            if used >= MAX_DDNS_RECORDS_PER_OWNER:
+                return jsonify(ok=False, error="dynamic DNS record limit reached", quota={"used": used, "limit": MAX_DDNS_RECORDS_PER_OWNER}), 409
             target = _target(conn, domain)
             if not target or not target["enabled"]:
                 return jsonify(ok=False, error="DNS zone has no active Cloudflare/PowerDNS binding"), 409
@@ -283,7 +296,7 @@ def register_dynamic_dns_routes(app):
                 return jsonify(ok=False, error=str(exc)), 400
             if hmac.compare_digest(address, str(row["last_address"])):
                 conn.execute("UPDATE dynamic_dns_records SET last_update=?,updated_at=? WHERE id=?", (now, now, record_id))
-                _token_audit(owner, record_id, str(row["hostname"]))
+                _token_audit(owner, record_id, str(row["hostname"]), connection=conn)
                 return jsonify(ok=True, id=record_id, hostname=row["hostname"], address=address, changed=False)
         result = ops_call(_provider_payload(row, target, "update", address), timeout=35)
         if not result.get("ok"):
