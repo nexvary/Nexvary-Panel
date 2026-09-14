@@ -8,6 +8,8 @@ from flask import jsonify, request
 
 from .config import DOMAIN_RE
 from .core import can_manage_domain, db, role_required
+from .dynamic_dns_schema import ensure_dynamic_dns_schema
+from .routes_dynamic_dns import register_dynamic_dns_routes
 
 RECORD_TYPES = ("A", "AAAA", "NS", "MX", "TXT", "CAA")
 MAX_RECORDS_PER_TYPE = 20
@@ -67,6 +69,10 @@ def dns_inventory(domain: str) -> dict:
 
 
 def register_dns_routes(app):
+    # Dynamic DNS is an operational extension of the DNS module and deliberately reuses the
+    # existing Cloudflare/PowerDNS provider boundary instead of introducing another privileged agent.
+    ensure_dynamic_dns_schema()
+
     @app.get("/api/dns/inventory")
     @role_required("admin", "operator", "viewer")
     def api_dns_inventory():
@@ -74,3 +80,5 @@ def register_dns_routes(app):
         if not DOMAIN_RE.match(domain) or not _registered_site(domain) or not can_manage_domain(domain):
             return jsonify(ok=False, error="site not allowed"), 403
         return jsonify(ok=True, **dns_inventory(domain))
+
+    register_dynamic_dns_routes(app)
