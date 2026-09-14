@@ -26,7 +26,7 @@ if(await page.locator('script[src="/static/server-lifecycle.js"]').count()!==1)t
 
 const required=['#advDnsCard','#advSslCard','#advMailOpsCard','#advPhpCard','#advPostgresCard','#advMigrationCard','#advServerLifecycleCard','#advServicesCard','#advFleetCard'];
 for(const sel of required)if(await page.locator(sel).count()!==1)throw new Error(`Advanced Ops card missing: ${sel}`);
-for(const sel of ['#autoSslEnabled','#autoSslDays','#autoSslSaveBtn','#autoSslPolicyState','#autoSslPreflightBtn','#autoSslPreflightState','#deliverSelector','#deliverMailHost','#deliverMailIpv4','#deliverPrepareBtn','#deliverPreviewList','#serverLifecycleHost','#serverLifecycleOs','#serverLifecycleUpdates','#serverLifecycleReboot','#serverLifecycleRefresh','#serverLifecycleNtp','#serverLifecycleUpdatePreview','#serverLifecycleRebootPreview','#serverLifecycleMaintenance']){
+for(const sel of ['#autoSslEnabled','#autoSslDays','#autoSslSaveBtn','#autoSslPolicyState','#autoSslPreflightBtn','#autoSslPreflightState','#deliverSelector','#deliverMailHost','#deliverMailIpv4','#deliverPrepareBtn','#deliverPreviewList','#serverLifecycleHost','#serverLifecycleOs','#serverLifecycleUpdates','#serverLifecycleReboot','#serverLifecycleRefresh','#serverLifecycleNtp','#serverLifecycleHostnameInput','#serverLifecycleHostnamePreview','#serverLifecycleUpdatePreview','#serverLifecycleRebootPreview','#serverLifecycleMaintenance']){
   if(await page.locator(sel).count()!==1)throw new Error(`Advanced Ops lifecycle control missing: ${sel}`);
 }
 
@@ -79,9 +79,10 @@ await assertVisible('#advFleetCard',true,'server tab');
 await assertVisible('#advPhpCard',false,'server tab');
 const serverMeta=(await page.locator('#serverLifecycleMeta').innerText()).trim();
 if(!serverMeta.includes('SERVER PROVIDER OFFLINE'))throw new Error(`CI without Server Lifecycle Agent must truthfully show offline posture, got: ${serverMeta}`);
+if((await page.locator('#serverLifecycleHostnamePreview').innerText()).trim()!=='معاينة تغيير Hostname')throw new Error('Preview-first hostname action label missing');
 
 const text=await page.locator('#advancedops').textContent();
-for(const marker of ['DNS Apply / Rollback','AutoSSL / Renew','Queue & Deliverability Repair','PHP Version Manager','PostgreSQL Resources','Migration Bundles','Server Maintenance Center','Service Control','Fleet / Cluster Foundation','PREVIEW FIRST','PREVIEW-FIRST','DIAGNOSE → PREVIEW']){
+for(const marker of ['DNS Apply / Rollback','AutoSSL / Renew','Queue & Deliverability Repair','PHP Version Manager','PostgreSQL Resources','Migration Bundles','Server Maintenance Center','Service Control','Fleet / Cluster Foundation','PREVIEW FIRST','PREVIEW-FIRST','DIAGNOSE → PREVIEW','Preview → Step-Up → Apply']){
   if(!text.includes(marker))throw new Error(`Advanced Ops capability label missing: ${marker}`);
 }
 if(text.includes('Apply System Updates')||text.includes('Reboot Now'))throw new Error('Server Lifecycle must not expose direct update/reboot Apply in Platform 0.7');
