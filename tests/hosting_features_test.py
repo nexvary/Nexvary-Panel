@@ -27,13 +27,20 @@ with tempfile.TemporaryDirectory(prefix="nvp-hosting-") as tmp:
     assert sum(summary.values()) == len(FEATURES)
     assert summary["native"] > 10
     assert summary["foundation"] > 20
-    assert summary["planned"] > 20
+    assert summary["planned"] > 15
     assert len(feature_catalog("account")) > 50
     assert len(feature_catalog("server")) > 25
 
     # These capabilities have concrete routes/providers/tests in Platform 0.7 and must
     # never regress to a Roadmap-only label in Feature Manager.
     operational_foundations = {
+        "files.directory_privacy",
+        "metrics.raw_access",
+        "security.api_tokens",
+        "security.hotlink",
+        "software.php_ini",
+        "advanced.indexes",
+        "advanced.mime_types",
         "email.autoresponders",
         "email.filters",
         "email.spam_filters",
