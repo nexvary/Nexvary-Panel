@@ -21,12 +21,36 @@ await nav.click();
 await page.locator('#advancedops.active-view').waitFor({state:'visible'});
 if(await page.locator('link[href="/static/advanced-ops.css"]').count()!==1)throw new Error('Advanced Ops stylesheet missing');
 if(await page.locator('script[src="/static/advanced-ops.js"]').count()!==1)throw new Error('Advanced Ops script missing');
+if(await page.locator('script[src="/static/advanced-ops-tabs.js"]').count()!==1)throw new Error('Advanced Ops tab controller missing');
 
 const required=['#advDnsCard','#advSslCard','#advMailOpsCard','#advPhpCard','#advPostgresCard','#advMigrationCard','#advServicesCard','#advFleetCard'];
 for(const sel of required)if(await page.locator(sel).count()!==1)throw new Error(`Advanced Ops card missing: ${sel}`);
 for(const sel of ['#autoSslEnabled','#autoSslDays','#autoSslSaveBtn','#autoSslPolicyState','#autoSslPreflightBtn','#autoSslPreflightState','#deliverSelector','#deliverMailHost','#deliverMailIpv4','#deliverPrepareBtn','#deliverPreviewList']){
   if(await page.locator(sel).count()!==1)throw new Error(`Advanced Ops lifecycle control missing: ${sel}`);
 }
+
+const tabs=page.locator('#advancedops [data-adv-tab]');
+if(await tabs.count()!==4)throw new Error('Admin Advanced Ops must expose four capability tabs');
+const expectedTabs=['Trust & Safety','DNS & TLS','Runtime & Data','Server & Fleet'];
+for(let i=0;i<expectedTabs.length;i++){
+  if((await tabs.nth(i).innerText()).trim()!==expectedTabs[i])throw new Error(`Advanced Ops tab label mismatch at ${i}`);
+}
+const assertVisible=async(sel,expected,label)=>{
+  const visible=await page.locator(sel).isVisible();
+  if(visible!==expected)throw new Error(`${label}: ${sel} visibility=${visible}, expected=${expected}`);
+};
+await assertVisible('#advDomainReadinessCard',true,'trust default');
+await assertVisible('#advChangeSafetyCard',true,'trust default');
+await assertVisible('#domainGuardianCard',true,'trust default');
+await assertVisible('#advDnsCard',false,'trust default');
+
+await page.locator('[data-adv-tab="edge"]').click();
+await assertVisible('#advDnsCard',true,'edge tab');
+await assertVisible('#advSslCard',true,'edge tab');
+await assertVisible('#advMailOpsCard',true,'edge tab');
+await assertVisible('#advDomainReadinessCard',false,'edge tab');
+if(await page.locator('[data-adv-tab="edge"]').getAttribute('aria-selected')!=='true')throw new Error('Edge tab aria-selected state missing');
+
 const readiness=(await page.locator('#autoSslPreflightState').innerText()).trim();
 if(!readiness.includes('AutoSSL readiness'))throw new Error('AutoSSL readiness posture is not explicit');
 if(await page.locator('#autoSslPreflightBtn').innerText()!=='فحص الجاهزية')throw new Error('AutoSSL preflight action label missing');
@@ -40,16 +64,32 @@ if(provider!=='OFFLINE')throw new Error(`CI without Advanced Ops Agent must trut
 const notice=(await page.locator('#advNotice').innerText()).trim();
 if(!notice.includes('غير متصل'))throw new Error('Advanced Ops offline posture is not explicit');
 
-const text=await page.locator('#advancedops').innerText();
+await page.locator('[data-adv-tab="runtime"]').click();
+await assertVisible('#advPhpCard',true,'runtime tab');
+await assertVisible('#advPostgresCard',true,'runtime tab');
+await assertVisible('#advMigrationCard',true,'runtime tab');
+await assertVisible('#advDnsCard',false,'runtime tab');
+
+await page.locator('[data-adv-tab="server"]').click();
+await assertVisible('#advServicesCard',true,'server tab');
+await assertVisible('#advFleetCard',true,'server tab');
+await assertVisible('#advPhpCard',false,'server tab');
+
+const text=await page.locator('#advancedops').textContent();
 for(const marker of ['DNS Apply / Rollback','AutoSSL / Renew','Queue & Deliverability Repair','PHP Version Manager','PostgreSQL Resources','Migration Bundles','Service Control','Fleet / Cluster Foundation','PREVIEW FIRST','DIAGNOSE → PREVIEW']){
   if(!text.includes(marker))throw new Error(`Advanced Ops capability label missing: ${marker}`);
 }
+
+await page.locator('[data-adv-tab="trust"]').click();
+await assertVisible('#advDomainReadinessCard',true,'trust return');
 if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error('Advanced Ops desktop horizontal overflow');
 await page.screenshot({path:`${out}/nexvary-panel-0.7-advanced-hosting-ops-desktop.png`,fullPage:true});
 
 await page.setViewportSize({width:390,height:844});
 await page.waitForTimeout(300);
+await page.locator('[data-adv-tab="edge"]').click();
+await assertVisible('#advDnsCard',true,'mobile edge tab');
 if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error('Advanced Ops mobile horizontal overflow');
 await page.screenshot({path:`${out}/nexvary-panel-0.7-advanced-hosting-ops-mobile.png`,fullPage:true});
 await browser.close();
-console.log('Nexvary Panel Advanced Hosting Ops Chromium Gate: PASS');
+console.log('Nexvary Panel Advanced Hosting Ops tabbed Chromium Gate: PASS');
