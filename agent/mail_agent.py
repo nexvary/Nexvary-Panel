@@ -41,6 +41,7 @@ def _validated_mail_reload() -> None:
 _backend._reload = _validated_mail_reload
 
 from mail_backend import forwarder_delete, forwarder_upsert, mailbox_delete, mailbox_upsert, provider_status, queue_delete
+from mail_default import default_address_sync
 from mail_sieve import sieve_sync
 
 SOCKET_PATH = Path(os.environ.get("NVP_MAIL_SOCK", "/run/nexvary-panel/mail.sock"))
@@ -51,7 +52,7 @@ MAX_TRACE_EVENTS = 200
 MAIL_LOG = Path(os.environ.get("NVP_MAIL_LOG", "/var/log/mail.log"))
 ACTIONS = {
     "status", "mailbox-upsert", "mailbox-delete", "forwarder-upsert", "forwarder-delete",
-    "queue-delete", "sieve-sync", "delivery-trace",
+    "default-address-sync", "queue-delete", "sieve-sync", "delivery-trace",
 }
 SAFE_ERROR_RE = re.compile(r"^[a-z0-9][a-z0-9-]{2,79}$")
 DOMAIN_RE = re.compile(r"^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$")
@@ -179,6 +180,8 @@ def _dispatch(data: dict) -> dict:
         return forwarder_upsert(str(data.get("source", "")), str(data.get("destination", "")))
     if action == "forwarder-delete":
         return forwarder_delete(str(data.get("source", "")))
+    if action == "default-address-sync":
+        return default_address_sync(data.get("domain", ""), data.get("mode", "reject"), data.get("destination", ""))
     if action == "queue-delete":
         return queue_delete(str(data.get("queue_id", "")))
     if action == "delivery-trace":
