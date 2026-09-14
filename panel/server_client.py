@@ -23,8 +23,8 @@ def server_call(payload: dict, timeout: int = 30) -> dict:
                 if not chunk:
                     break
                 data += chunk
-    except (OSError, TimeoutError) as exc:
-        return {"ok": False, "error": f"server lifecycle provider unavailable: {exc}"}
+    except (OSError, TimeoutError):
+        return {"ok": False, "error": "server lifecycle provider unavailable"}
     if not data or len(data) > MAX_RESPONSE:
         return {"ok": False, "error": "invalid server lifecycle response"}
     try:
