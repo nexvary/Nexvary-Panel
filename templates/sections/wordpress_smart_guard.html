@@ -1,0 +1,27 @@
+<div class="panel royal-frame wordpress-lifecycle-panel" id="wpSmartGuardPanel">
+  <div class="content-toolbar">
+    <div><span class="toolbar-dot"></span><div><b>NEXVARY Smart Update Guard</b><small>Preview → Staging Update → Integrity Verify → Guarded Publish → Production Post-check</small></div></div>
+    <span class="pill">AUTO ROLLBACK</span>
+  </div>
+  <div class="adv-form">
+    <div class="adv-grid-2">
+      <label>Live WordPress<select id="wpGuardDomain"><option value="">اختر موقعًا…</option>{% for w in wordpress_instances %}{% if w.status != 'staging' %}<option value="{{w.domain}}">{{w.domain}}</option>{% endif %}{% endfor %}</select></label>
+      <label>Component Type<select id="wpGuardKind"><option value="plugin">Plugin</option><option value="theme">Theme</option></select></label>
+      <label>Component Slug<input id="wpGuardSlug" maxlength="100" pattern="[a-z0-9][a-z0-9._-]{0,99}" placeholder="example-plugin"></label>
+      <label>Staging Target<input id="wpGuardStage" readonly value="—"></label>
+    </div>
+    <div class="adv-inline">
+      <button id="wpGuardPreviewBtn" type="button" class="tiny ghost">1 · Preview Update</button>
+      {% if role != 'viewer' %}<button id="wpGuardVerifyBtn" type="button" class="primary royal-action" disabled {{'' if step_up_active else 'title="Step-Up required"'}}>2 · Update + Verify Staging</button><button id="wpGuardPublishBtn" type="button" class="tiny danger" disabled {{'' if step_up_active else 'title="Step-Up required"'}}>3 · Guarded Publish</button>{% endif %}
+    </div>
+  </div>
+  <div class="metrics-summary">
+    <div><small>CANDIDATE</small><b id="wpGuardCandidate">—</b></div>
+    <div><small>STAGING</small><b id="wpGuardStatus">—</b></div>
+    <div><small>ROLLBACK</small><b id="wpGuardRollback">READY</b></div>
+    <div><small>PRODUCTION CHECK</small><b id="wpGuardPostcheck">REQUIRED</b></div>
+  </div>
+  <pre id="wpGuardResult" class="adv-result">Smart Update Guard لا يحدث Production مباشرة. يجب وجود Staging mapping. التحديث يطبّق أولًا على Staging مع Snapshot، ثم Core Integrity + component verification. Guarded Publish ينشئ Production Snapshot ويعيد الفحص بعد النشر؛ الفشل يؤدي إلى Rollback تلقائي.</pre>
+  <div id="wpGuardHistory" class="adv-list"><div class="empty-state">اختر موقعًا لعرض سجل Smart Update Guard.</div></div>
+  {% if role != 'viewer' and not step_up_active %}<div class="creation-note">عمليتا Verify وGuarded Publish تحتاجان Step-Up من Security.</div>{% endif %}
+</div>
