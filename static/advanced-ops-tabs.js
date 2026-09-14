@@ -6,7 +6,7 @@
     trust:['#advDomainReadinessCard','#advChangeSafetyCard','#domainGuardianCard'],
     edge:['#advDnsCard','#advSslCard','#advMailOpsCard'],
     runtime:['#advPhpCard','#advPostgresCard','#advMigrationCard'],
-    server:['#advServicesCard','#advFleetCard'],
+    server:['#advServerLifecycleCard','#advServicesCard','#advFleetCard'],
   };
   const tabs=[...root.querySelectorAll('[data-adv-tab]')];
   const selectors=Object.values(groups).flat();
