@@ -8,6 +8,7 @@ import socket
 from pathlib import Path
 
 from domain_ops import sync_domain_aliases
+from resource_usage import site_resource_usage
 from webtools import site_metrics, sync_error_pages, sync_redirects
 
 SOCK = Path(os.environ.get("NVP_WEBTOOLS_SOCK", "/run/nexvary-panel/webtools.sock"))
@@ -31,6 +32,11 @@ def handle(req: dict) -> dict:
             return site_metrics(req.get("domain", ""))
         except (ValueError, OSError):
             return {"ok": False, "error": "metrics request failed"}
+    if action == "site-resource-usage":
+        try:
+            return site_resource_usage(req.get("domain", ""))
+        except (ValueError, OSError):
+            return {"ok": False, "error": "resource usage request failed"}
     return {"ok": False, "error": "action not allowed"}
 
 
