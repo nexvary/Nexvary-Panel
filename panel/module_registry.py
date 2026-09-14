@@ -20,6 +20,7 @@ from .ops_schema import ensure_ops_schema
 from .transfer_schema import ensure_transfer_schema
 from .wordpress_publish_schema import ensure_wordpress_publish_schema
 from .wordpress_staging_schema import ensure_wordpress_staging_schema
+from .wordpress_update_guard_schema import ensure_wordpress_update_guard_schema
 from .routes_accounts import register_account_routes
 from .routes_advanced_ops import register_advanced_ops_routes
 from .routes_api_tokens import register_api_token_routes
@@ -57,6 +58,7 @@ from .routes_webtools import register_webtools_routes
 from .routes_whm_bulk import register_whm_bulk_routes
 from .routes_wordpress_lifecycle import register_wordpress_lifecycle_routes
 from .routes_wordpress_publish import register_wordpress_publish_routes
+from .routes_wordpress_smart_guard import register_wordpress_smart_guard_routes
 from .routes_wordpress_staging import register_wordpress_staging_routes
 from .routes_wordpress_updates import register_wordpress_update_routes
 
@@ -121,6 +123,7 @@ MODULES: tuple[PanelModule, ...] = (
     PanelModule("wordpress_staging", "WordPress Staging", "hosting", register_wordpress_staging_routes, schema_hook=ensure_wordpress_staging_schema, depends_on=("wordpress_lifecycle", "sites"), feature_prefixes=("software.wordpress",), provider_services=("nexvary-panel-wordpress",), ui_view="wordpress", maturity="provider"),
     PanelModule("wordpress_publish", "WordPress Selective Publish", "hosting", register_wordpress_publish_routes, schema_hook=ensure_wordpress_publish_schema, depends_on=("wordpress_staging",), feature_prefixes=("software.wordpress",), provider_services=("nexvary-panel-wordpress",), ui_view="wordpress", maturity="provider"),
     PanelModule("wordpress_updates", "WordPress Components", "hosting", register_wordpress_update_routes, depends_on=("wordpress_lifecycle",), feature_prefixes=("software.wordpress",), provider_services=("nexvary-panel-wordpress",), ui_view="wordpress", maturity="provider"),
+    PanelModule("wordpress_smart_guard", "NEXVARY Smart Update Guard", "automation", register_wordpress_smart_guard_routes, schema_hook=ensure_wordpress_update_guard_schema, depends_on=("wordpress_staging", "wordpress_publish", "wordpress_updates"), feature_prefixes=("software.wordpress",), provider_services=("nexvary-panel-wordpress",), ui_view="wordpress", maturity="native", endpoint_namespace="wordpress_smart_guard"),
 )
 
 
