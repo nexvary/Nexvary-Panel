@@ -25,7 +25,7 @@ LockPersonality=true
 RestrictNamespaces=true
 RestrictRealtime=true
 RestrictAddressFamilies=AF_UNIX
-ReadWritePaths=-/etc/nginx/nexvary /etc/nginx/sites-available /var/www /run/nexvary-panel
+ReadWritePaths=-/etc/nginx/nexvary -/etc/nginx/nexvary-auth /etc/nginx/sites-available /var/www /run/nexvary-panel
 ReadOnlyPaths=/var/log/nginx
 UMask=0077
 
