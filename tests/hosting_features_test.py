@@ -50,6 +50,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-hosting-") as tmp:
         "whm.transfers",
         "whm.mail_queue",
         "whm.api_tokens",
+        "whm.hostname",
     }
     for feature_id in operational_foundations:
         assert FEATURES[feature_id].maturity in {"native", "foundation"}, (feature_id, FEATURES[feature_id].maturity)
