@@ -2,19 +2,28 @@
 from __future__ import annotations
 
 import grp
+import hashlib
 import json
 import os
 import re
+import secrets
 import shutil
 import socket
 import subprocess
+import tempfile
+import time
 from pathlib import Path
 
 SOCK = Path(os.environ.get("NVP_POSTGRES_SOCK", "/run/nexvary-panel-postgres/postgres.sock"))
+SNAPSHOT_BASE = Path(os.environ.get("NVP_POSTGRES_SNAPSHOT_DIR", "/var/backups/nexvary-panel/database-snapshots/postgresql"))
 MAX_REQUEST = 16 * 1024
 DB_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,31}$")
 PASSWORD_RE = re.compile(r"^[A-Za-z0-9_@%+=:.,!$#?-]{14,128}$")
-ACTIONS = {"status", "create", "delete", "role-create", "role-rotate", "role-drop", "grant-profile"}
+SNAPSHOT_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,31}-\d{8}T\d{6}Z-[a-f0-9]{8}\.dump$")
+ACTIONS = {
+    "status", "create", "delete", "role-create", "role-rotate", "role-drop", "grant-profile",
+    "snapshot-create", "snapshot-restore", "snapshot-delete",
+}
 GRANT_PROFILES = {"none", "readonly", "readwrite", "developer"}
 ENV = {
     "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
@@ -51,7 +60,7 @@ def _qi(value: str) -> str: return '"' + _name(value) + '"'
 
 
 def _available() -> bool:
-    return all(shutil.which(x) for x in ("psql", "createuser", "createdb", "dropuser", "dropdb"))
+    return all(shutil.which(x) for x in ("psql", "createuser", "createdb", "dropuser", "dropdb", "pg_dump", "pg_restore"))
 
 
 def _exists(kind: str, value: str) -> bool:
@@ -68,6 +77,118 @@ def _database_owner(name: str) -> str:
     owner = _run(["psql", "-X", "-tAc", query, "-d", "postgres"], 15).stdout.strip()
     if not owner or not DB_RE.fullmatch(owner): raise RuntimeError("postgres-database-owner-unavailable")
     return owner
+
+
+def _snapshot_path(value: object, *, required: bool = True) -> Path:
+    archive = str(value or "").strip()
+    if not SNAPSHOT_RE.fullmatch(archive) or Path(archive).name != archive:
+        raise ValueError("invalid-postgres-snapshot")
+    SNAPSHOT_BASE.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(SNAPSHOT_BASE, 0o700)
+    path = SNAPSHOT_BASE / archive
+    if path.parent.resolve() != SNAPSHOT_BASE.resolve():
+        raise ValueError("invalid-postgres-snapshot")
+    if required:
+        try:
+            st = os.lstat(path)
+        except FileNotFoundError as exc:
+            raise ValueError("postgres-snapshot-not-found") from exc
+        if not path.is_file() or path.is_symlink() or st.st_nlink != 1:
+            raise ValueError("unsafe-postgres-snapshot")
+    return path
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _snapshot_create(data: dict) -> dict:
+    name = _name(data.get("db_name"))
+    if not _available(): return {"ok": False, "error": "postgresql-not-installed"}
+    if not _exists("database", name): return {"ok": False, "error": "postgres-database-not-found"}
+    SNAPSHOT_BASE.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(SNAPSHOT_BASE, 0o700)
+    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+    archive = f"{name}-{stamp}-{secrets.token_hex(4)}.dump"
+    target = _snapshot_path(archive, required=False)
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{name}.", suffix=".tmp", dir=str(SNAPSHOT_BASE))
+    os.close(fd)
+    tmp = Path(tmp_name)
+    try:
+        os.chmod(tmp, 0o600)
+        proc = subprocess.run(
+            ["pg_dump", "--format=custom", "--no-acl", "--file", str(tmp), name],
+            capture_output=True,
+            text=True,
+            timeout=360,
+            env=ENV,
+            check=False,
+        )
+        if proc.returncode:
+            return {"ok": False, "error": "postgres-snapshot-create-failed"}
+        os.replace(tmp, target)
+        os.chmod(target, 0o600)
+        return {"ok": True, "archive": archive, "size_bytes": target.stat().st_size, "sha256": _sha256(target)}
+    except (OSError, subprocess.SubprocessError):
+        return {"ok": False, "error": "postgres-snapshot-create-failed"}
+    finally:
+        try: tmp.unlink(missing_ok=True)
+        except OSError: pass
+
+
+def _restore_archive(db_name: str, source: Path) -> bool:
+    owner = _database_owner(db_name)
+    try:
+        proc = subprocess.run(
+            [
+                "pg_restore", "--clean", "--if-exists", "--single-transaction", "--no-owner", "--no-acl",
+                "--role", owner, "--dbname", db_name, str(source),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=420,
+            env=ENV,
+            check=False,
+        )
+        return proc.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def _snapshot_restore(data: dict) -> dict:
+    db_name = _name(data.get("db_name"))
+    if not _exists("database", db_name): return {"ok": False, "error": "postgres-database-not-found"}
+    source = _snapshot_path(data.get("archive"))
+    if not source.name.startswith(db_name + "-"):
+        return {"ok": False, "error": "postgres-snapshot-database-mismatch"}
+    rollback = _snapshot_create({"db_name": db_name})
+    if not rollback.get("ok"):
+        return {"ok": False, "error": "postgres-pre-restore-snapshot-failed"}
+    if not _restore_archive(db_name, source):
+        rollback_path = _snapshot_path(rollback.get("archive"))
+        restored = _restore_archive(db_name, rollback_path)
+        return {
+            "ok": False,
+            "error": "postgres-restore-failed-previous-state-restored" if restored else "postgres-restore-failed-rollback-failed",
+        }
+    return {
+        "ok": True,
+        "restored": True,
+        "rollback_archive": rollback.get("archive", ""),
+        "rollback_size_bytes": rollback.get("size_bytes", 0),
+        "rollback_sha256": rollback.get("sha256", ""),
+    }
+
+
+def _snapshot_delete(data: dict) -> dict:
+    path = _snapshot_path(data.get("archive"))
+    try: path.unlink()
+    except OSError: return {"ok": False, "error": "postgres-snapshot-delete-failed"}
+    return {"ok": True, "deleted": True}
 
 
 def _lock_down_database(name: str) -> None:
@@ -202,6 +323,9 @@ def _dispatch(data: dict) -> dict:
     if action == "role-create": return _role_create(data)
     if action == "role-rotate": return _role_rotate(data)
     if action == "grant-profile": return _grant_profile(data)
+    if action == "snapshot-create": return _snapshot_create(data)
+    if action == "snapshot-restore": return _snapshot_restore(data)
+    if action == "snapshot-delete": return _snapshot_delete(data)
     return _role_drop(data)
 
 
@@ -225,13 +349,13 @@ def _serve(conn: socket.socket) -> None:
 def main() -> None:
     SOCK.parent.mkdir(parents=True, exist_ok=True)
     if SOCK.exists() or SOCK.is_symlink(): SOCK.unlink()
-    old_umask = os.umask(0o117); server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    old_umask = os.umask(0o117); server = socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
     try: server.bind(str(SOCK))
     finally: os.umask(old_umask)
-    os.chown(SOCK, os.getuid(), grp.getgrnam("nexvary-panel").gr_gid); os.chmod(SOCK, 0o660); server.listen(16)
+    os.chown(SOCK, os.getuid(), grp.getgrnam("nexvary-panel").gr_gid); os.chmod(SOCK,0o660); server.listen(16)
     try:
         while True:
-            conn, _ = server.accept()
+            conn,_=server.accept()
             with conn:
                 conn.settimeout(45); _serve(conn)
     finally:
