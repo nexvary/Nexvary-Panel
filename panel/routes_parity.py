@@ -5,7 +5,6 @@ from collections import defaultdict
 from flask import jsonify
 
 from .hosting_features import CATEGORY_LABELS, FEATURES
-from .module_registry import module_catalog
 from .security import role_required
 
 MATURITY_WEIGHT = {"native": 1.0, "foundation": 0.65, "planned": 0.0}
@@ -44,6 +43,10 @@ def _coverage(rows: list) -> dict:
 
 
 def build_parity_report() -> dict:
+    # Local import avoids a module-registry import cycle while keeping this report
+    # generated from the live registry instead of a duplicated module list.
+    from .module_registry import module_catalog
+
     features = list(FEATURES.values())
     by_category: dict[str, list] = defaultdict(list)
     for item in features:
