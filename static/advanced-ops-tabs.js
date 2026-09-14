@@ -25,7 +25,7 @@
       tab.tabIndex=active?0:-1;
       if(active&&focus)tab.focus({preventScroll:true});
     }
-    root.dataset.advTab=name;
+    root.dataset.advActiveTab=name;
     try{sessionStorage.setItem('nvp-advancedops-tab',name);}catch{}
   }
 
