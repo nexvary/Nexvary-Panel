@@ -14,6 +14,17 @@ import server_agent  # noqa: E402
 assert server_agent.dispatch({"action": "anything"}) == {"ok": False, "error": "server-action-not-allowed"}
 assert "server-updates-preview" in server_agent.ACTIONS
 assert "server-time-enable-ntp" in server_agent.ACTIONS
+assert "server-hostname-set" in server_agent.ACTIONS
+assert server_agent._set_hostname("not a hostname")["error"] == "invalid-server-hostname"
+assert server_agent._set_hostname("singlelabel")["error"] == "invalid-server-hostname"
+
+with patch.object(server_agent.socket, "gethostname", return_value="old.example.com"), patch.object(
+    server_agent, "_run", return_value=subprocess.CompletedProcess(["hostnamectl"], 0, "", "")
+) as run_mock, patch.object(server_agent, "_overview", return_value={"ok": True, "hostname": "new.example.com"}):
+    changed = server_agent._set_hostname("new.example.com")
+assert changed["ok"] is True and changed["changed"] is True
+assert changed["previous_hostname"] == "old.example.com"
+run_mock.assert_called_once_with(["hostnamectl", "set-hostname", "new.example.com"], 30)
 
 update_output = """Reading package lists... Done
 Inst nginx [1.0] (1.1 Ubuntu:stable [amd64])
