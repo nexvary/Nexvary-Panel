@@ -96,6 +96,7 @@ def ensure_ops_schema() -> None:
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
           endpoint TEXT NOT NULL,
+          credential_ref TEXT NOT NULL DEFAULT '',
           enabled INTEGER NOT NULL DEFAULT 1,
           owner TEXT NOT NULL,
           status TEXT NOT NULL DEFAULT 'unknown',
@@ -117,7 +118,38 @@ def ensure_ops_schema() -> None:
           FOREIGN KEY(node_id) REFERENCES fleet_nodes(id) ON DELETE CASCADE
         );
         CREATE INDEX IF NOT EXISTS idx_fleet_probes_node ON fleet_probes(node_id,id DESC);
+
+        CREATE TABLE IF NOT EXISTS fleet_inbound_tokens (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          label TEXT NOT NULL,
+          token_hash TEXT NOT NULL UNIQUE,
+          enabled INTEGER NOT NULL DEFAULT 1,
+          owner TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          last_used INTEGER NOT NULL DEFAULT 0,
+          UNIQUE(owner,label)
+        );
+        CREATE INDEX IF NOT EXISTS idx_fleet_inbound_tokens_enabled ON fleet_inbound_tokens(enabled,owner);
+
+        CREATE TABLE IF NOT EXISTS fleet_jobs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          request_id TEXT NOT NULL UNIQUE,
+          node_id INTEGER,
+          direction TEXT NOT NULL,
+          operation TEXT NOT NULL,
+          status TEXT NOT NULL,
+          detail_json TEXT NOT NULL DEFAULT '{}',
+          owner TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY(node_id) REFERENCES fleet_nodes(id) ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_fleet_jobs_owner_created ON fleet_jobs(owner,created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_fleet_jobs_direction_status ON fleet_jobs(direction,status,updated_at);
         """)
+        cols = {str(row[1]) for row in conn.execute("PRAGMA table_info(fleet_nodes)").fetchall()}
+        if "credential_ref" not in cols:
+            conn.execute("ALTER TABLE fleet_nodes ADD COLUMN credential_ref TEXT NOT NULL DEFAULT ''")
         # database_access is initialized before advanced_ops in the module registry.
         # Once postgres_resources exists, complete the cross-module adoption bridge.
         from .database_access_schema import ensure_postgres_access_bridge
