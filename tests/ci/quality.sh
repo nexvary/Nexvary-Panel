@@ -38,6 +38,7 @@ python tests/server_lifecycle_test.py
 python tests/fleet_orchestration_test.py
 python tests/module_registry_test.py
 python tests/extension_hub_test.py
+python tests/platform_08_parity_test.py
 python tests/entitlements_test.py
 python tests/session_revocation_test.py
 python tests/domain_agent_test.py
