@@ -41,7 +41,7 @@ _FEATURES: tuple[HostingFeature, ...] = (
     HostingFeature("email.forwarders", "email", "Forwarders", "account", "foundation", provider="mail"),
     HostingFeature("email.routing", "email", "Email Routing", "account", "planned", provider="mail"),
     HostingFeature("email.autoresponders", "email", "Autoresponders", "account", "foundation", provider="mail"),
-    HostingFeature("email.default_address", "email", "Default Address", "account", "planned", provider="mail"),
+    HostingFeature("email.default_address", "email", "Default Address", "account", "foundation", provider="mail", description="Reject-or-forward catch-all policy with provider rollback, scope checks and loop prevention"),
     HostingFeature("email.mailing_lists", "email", "Mailing Lists", "account", "planned", provider="mail"),
     HostingFeature("email.delivery_trace", "email", "Track Delivery", "account", "foundation", provider="mail"),
     HostingFeature("email.global_filters", "email", "Global Email Filters", "account", "planned", provider="mail"),
