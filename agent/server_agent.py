@@ -24,11 +24,13 @@ HOSTNAME_RE = re.compile(
     r"^(?=.{1,253}$)(?=.+\..+)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+"
     r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$"
 )
+FINGERPRINT_RE = re.compile(r"^[a-f0-9]{64}$")
 ACTIONS = {
     "server-overview",
     "server-network",
     "server-processes",
     "server-updates-preview",
+    "server-updates-apply",
     "server-time-enable-ntp",
     "server-hostname-set",
 }
@@ -177,7 +179,51 @@ def _updates_preview() -> dict:
         "fingerprint": fingerprint,
         "reboot_required": Path("/var/run/reboot-required").exists(),
         "generated_at": int(time.time()),
-        "apply_supported": False,
+        "apply_supported": True,
+    }
+
+
+def _updates_apply(expected_fingerprint: object) -> dict:
+    expected = str(expected_fingerprint or "").strip().lower()
+    if not FINGERPRINT_RE.fullmatch(expected):
+        return {"ok": False, "error": "invalid-system-update-fingerprint"}
+    before = _updates_preview()
+    if not before.get("ok"):
+        return before
+    actual = str(before.get("fingerprint", ""))
+    if actual != expected:
+        return {
+            "ok": False,
+            "error": "system-update-preview-stale",
+            "expected_fingerprint": expected,
+            "actual_fingerprint": actual,
+        }
+    planned = int(before.get("count", 0) or 0)
+    if planned == 0:
+        return {
+            "ok": True,
+            "changed": False,
+            "applied_count": 0,
+            "fingerprint": actual,
+            "reboot_required": Path("/var/run/reboot-required").exists(),
+        }
+    try:
+        _run([
+            "apt-get", "-y", "-o", "Dpkg::Options::=--force-confold", "--with-new-pkgs", "upgrade"
+        ], 1800)
+    except Exception:
+        return {"ok": False, "error": "system-update-apply-failed"}
+    after = _updates_preview()
+    if not after.get("ok"):
+        after = {"count": 0, "fingerprint": "", "reboot_required": Path("/var/run/reboot-required").exists()}
+    return {
+        "ok": True,
+        "changed": True,
+        "applied_count": planned,
+        "remaining_count": int(after.get("count", 0) or 0),
+        "previous_fingerprint": actual,
+        "fingerprint": str(after.get("fingerprint", "")),
+        "reboot_required": bool(after.get("reboot_required")),
     }
 
 
@@ -216,6 +262,8 @@ def dispatch(req: dict) -> dict:
         return _processes()
     if action == "server-updates-preview":
         return _updates_preview()
+    if action == "server-updates-apply":
+        return _updates_apply(req.get("fingerprint", ""))
     if action == "server-hostname-set":
         return _set_hostname(req.get("hostname", ""))
     return _enable_ntp()
