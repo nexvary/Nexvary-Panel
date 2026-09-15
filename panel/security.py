@@ -136,10 +136,12 @@ def csrf_token() -> str:
 
 def csrf_guard():
     if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
-        # Dynamic DNS clients authenticate with a high-entropy, record-scoped Bearer token and
-        # intentionally have no browser session/CSRF cookie. Only this exact machine endpoint is exempt.
+        # Machine endpoints authenticate without a browser session. Keep exemptions exact and
+        # prefix-bound so ordinary panel APIs always retain CSRF enforcement.
         auth = str(request.headers.get("Authorization", ""))
         if request.path.startswith("/api/dynamic-dns/update/") and auth.startswith("Bearer nvp_ddns_"):
+            return None
+        if request.path == "/api/fleet/v1/apply" and auth.startswith("Bearer nvp_fleet_"):
             return None
         token = request.headers.get("X-CSRF-Token") or request.form.get("csrf_token")
         if not token or not hmac.compare_digest(token, session.get("csrf", "")):
