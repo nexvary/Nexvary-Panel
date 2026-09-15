@@ -14,6 +14,7 @@ import subprocess
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from fleet_transport import send_apply
 from secret_vault import SecretVault
 
 SOCK = Path(os.environ.get("NVP_PROVIDER_SOCK", "/run/nexvary-panel/provider.sock"))
@@ -228,6 +229,20 @@ def handle(req: dict) -> dict:
         return rclone_upload(
             str(req.get("domain", "")), str(req.get("archive", "")),
             str(req.get("secret_id", "")), str(req.get("endpoint", "")),
+        )
+    if action == "fleet-apply":
+        try:
+            issued_at = int(req.get("issued_at", 0) or 0)
+        except (TypeError, ValueError):
+            issued_at = 0
+        return send_apply(
+            VAULT,
+            endpoint=str(req.get("endpoint", "")),
+            secret_id=str(req.get("secret_id", "")),
+            operation=str(req.get("operation", "")),
+            request_id=str(req.get("request_id", "")),
+            issued_at=issued_at,
+            payload=req.get("payload") if isinstance(req.get("payload"), dict) else {},
         )
     return {"ok": False, "error": "action not allowed"}
 
