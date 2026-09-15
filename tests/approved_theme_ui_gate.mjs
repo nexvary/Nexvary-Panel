@@ -41,11 +41,12 @@ for(const target of await trustFixes.evaluateAll(nodes=>nodes.map(n=>n.getAttrib
 }
 
 const nav=page.locator('#nav a[href="#sites"]');
-const navStyle=await nav.evaluate(el=>{const s=getComputedStyle(el);return{color:s.color,family:s.fontFamily,shadow:s.textShadow,border:s.borderColor,background:s.backgroundImage};});
+const navStyle=await nav.evaluate(el=>{const s=getComputedStyle(el);return{color:s.color,family:s.fontFamily,shadow:s.textShadow,border:s.borderColor,bgImage:s.backgroundImage,bgColor:s.backgroundColor};});
 if(!navStyle.family.includes('Noto Kufi Arabic'))throw new Error(`Kufi font stack missing: ${navStyle.family}`);
 if(navStyle.color!=='rgb(203, 211, 221)')throw new Error(`Sidebar text is not the approved platinum tone: ${navStyle.color}`);
 if(navStyle.shadow!=='none')throw new Error(`Sidebar typography should be restrained, not neon-glowing: ${navStyle.shadow}`);
-if(!navStyle.background||navStyle.background==='none')throw new Error('Sidebar enterprise surface missing');
+const surfaceMissing=(navStyle.bgImage==='none')&&(navStyle.bgColor==='rgba(0, 0, 0, 0)'||navStyle.bgColor==='transparent');
+if(surfaceMissing)throw new Error(`Sidebar enterprise surface missing: image=${navStyle.bgImage}, color=${navStyle.bgColor}`);
 
 const activeNav=page.locator('#nav a.active');
 const activeStyle=await activeNav.evaluate(el=>{const s=getComputedStyle(el);return{color:s.color,border:s.borderColor,shadow:s.boxShadow};});
