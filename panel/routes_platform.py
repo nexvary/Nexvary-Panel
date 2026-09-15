@@ -8,9 +8,19 @@ from flask import flash, jsonify, redirect, request, session, url_for
 
 from .config import DB_RE, DOMAIN_RE, PASSWORD_RE
 from .core import agent_call, audit, can_manage_domain, db, notify, role_required
+from .hosting_policy import feature_allowed, package_limit
 
 GIT_URL_RE = re.compile(r"^https://(?:github\.com|gitlab\.com|bitbucket\.org)/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?$")
 BRANCH_RE = re.compile(r"^[A-Za-z0-9._/-]{1,120}$")
+
+
+def _actor() -> tuple[str, str]:
+    return str(session.get("user", ""))[:64], str(session.get("role", "viewer"))
+
+
+def _feature(feature_id: str) -> bool:
+    username, role = _actor()
+    return feature_allowed(feature_id, username=username, role=role)
 
 
 def _domain_allowed(domain: str) -> bool:
@@ -31,10 +41,20 @@ def _safe_rel_request(value: str, *, allow_root: bool = False) -> bool:
     return True
 
 
+def _database_quota_available() -> tuple[bool, int, int]:
+    username, role = _actor()
+    with db() as conn:
+        used = int(conn.execute("SELECT COUNT(*) FROM databases WHERE owner=?", (username,)).fetchone()[0])
+    limit = package_limit("max_databases", username=username, role=role)
+    return limit > 0 and used < limit, used, limit
+
+
 def register_platform_routes(app):
     @app.get("/api/files")
     @role_required("admin", "operator")
     def files_list():
+        if not _feature("files.file_manager"):
+            return jsonify(ok=False, error="files.file_manager disabled by hosting policy"), 403
         domain = request.args.get("domain", "").lower().strip()
         rel = request.args.get("path", "").strip()
         if not _domain_allowed(domain) or not _safe_rel_request(rel, allow_root=True):
@@ -46,6 +66,8 @@ def register_platform_routes(app):
     @app.get("/api/file")
     @role_required("admin", "operator")
     def file_read():
+        if not _feature("files.file_manager"):
+            return jsonify(ok=False, error="files.file_manager disabled by hosting policy"), 403
         domain = request.args.get("domain", "").lower().strip()
         rel = request.args.get("path", "").strip()
         if not _domain_allowed(domain) or not _safe_rel_request(rel):
@@ -57,6 +79,8 @@ def register_platform_routes(app):
     @app.post("/api/file/save")
     @role_required("admin", "operator")
     def file_save():
+        if not _feature("files.file_manager"):
+            return jsonify(ok=False, error="files.file_manager disabled by hosting policy"), 403
         data = request.get_json(silent=True) or {}
         domain = str(data.get("domain", "")).lower().strip()
         rel = str(data.get("path", "")).strip()
@@ -70,6 +94,8 @@ def register_platform_routes(app):
     @app.post("/api/file/mkdir")
     @role_required("admin", "operator")
     def file_mkdir():
+        if not _feature("files.file_manager"):
+            return jsonify(ok=False, error="files.file_manager disabled by hosting policy"), 403
         data = request.get_json(silent=True) or {}
         domain = str(data.get("domain", "")).lower().strip()
         rel = str(data.get("path", "")).strip()
@@ -82,6 +108,8 @@ def register_platform_routes(app):
     @app.post("/api/file/delete")
     @role_required("admin", "operator")
     def file_delete():
+        if not _feature("files.file_manager"):
+            return jsonify(ok=False, error="files.file_manager disabled by hosting policy"), 403
         data = request.get_json(silent=True) or {}
         domain = str(data.get("domain", "")).lower().strip()
         rel = str(data.get("path", "")).strip()
@@ -94,6 +122,9 @@ def register_platform_routes(app):
     @app.post("/git/deploy")
     @role_required("admin", "operator")
     def git_deploy():
+        if not _feature("files.git"):
+            flash("Git Deploy معطل في باقة الاستضافة الحالية.", "error")
+            return redirect(url_for("home") + "#deploy")
         domain = request.form.get("domain", "").lower().strip()
         repo_url = request.form.get("repo_url", "").strip()
         branch = request.form.get("branch", "main").strip()
@@ -120,6 +151,9 @@ def register_platform_routes(app):
     @app.post("/backups/restore")
     @role_required("admin", "operator")
     def backup_restore():
+        if not _feature("files.backups"):
+            flash("الاستعادة معطلة في باقة الاستضافة الحالية.", "error")
+            return redirect(url_for("home") + "#backups")
         try:
             backup_id = int(request.form.get("backup_id", "0"))
         except ValueError:
@@ -143,20 +177,31 @@ def register_platform_routes(app):
     @app.post("/wordpress/prepare")
     @role_required("admin", "operator")
     def wordpress_prepare():
+        if not _feature("software.wordpress") or not _feature("databases.mariadb"):
+            flash("WordPress أو MariaDB معطلة في باقة الاستضافة الحالية.", "error")
+            return redirect(url_for("home") + "#wordpress")
         domain = request.form.get("domain", "").lower().strip()
         db_name = request.form.get("db_name", "").strip()
         db_user = request.form.get("db_user", "").strip()
         db_password = request.form.get("db_password", "")
+        actor, role = _actor()
         if not _domain_allowed(domain) or not DB_RE.match(db_name) or not DB_RE.match(db_user) or not PASSWORD_RE.match(db_password):
             flash("بيانات WordPress غير صالحة.", "error")
             return redirect(url_for("home") + "#wordpress")
         with db() as conn:
-            site = conn.execute("SELECT kind FROM sites WHERE domain=?", (domain,)).fetchone()
-            existing = conn.execute("SELECT db_name,db_user FROM databases WHERE db_name=?", (db_name,)).fetchone()
+            site = conn.execute("SELECT kind,owner FROM sites WHERE domain=?", (domain,)).fetchone()
+            existing = conn.execute("SELECT db_name,db_user,owner,site_domain FROM databases WHERE db_name=?", (db_name,)).fetchone()
         if not site or site["kind"] != "php":
             flash("WordPress Manager يتطلب موقع PHP.", "error")
             return redirect(url_for("home") + "#wordpress")
+        if existing and role != "admin" and str(existing["owner"]) != actor:
+            flash("قاعدة البيانات المطلوبة خارج نطاق حسابك.", "error")
+            return redirect(url_for("home") + "#wordpress")
         if not existing:
+            quota_ok, used, limit = _database_quota_available()
+            if not quota_ok:
+                flash(f"تم بلوغ حد قواعد البيانات في الباقة ({used}/{limit}).", "error")
+                return redirect(url_for("home") + "#wordpress")
             db_result = agent_call({"action": "db-create", "db_name": db_name, "db_user": db_user, "password": db_password}, timeout=35)
             if not db_result.get("ok"):
                 flash("تعذر إنشاء قاعدة WordPress: " + str(db_result.get("error", ""))[-160:], "error")
@@ -164,7 +209,7 @@ def register_platform_routes(app):
             try:
                 with db() as conn:
                     conn.execute("INSERT INTO databases(db_name,db_user,engine,site_domain,owner,created_at) VALUES(?,?,?,?,?,?)",
-                                 (db_name, db_user, "mariadb", domain, session.get("user", "admin"), int(time.time())))
+                                 (db_name, db_user, "mariadb", domain, actor or "admin", int(time.time())))
             except sqlite3.IntegrityError:
                 pass
         elif existing["db_user"] != db_user:
@@ -176,7 +221,7 @@ def register_platform_routes(app):
             now = int(time.time())
             with db() as conn:
                 conn.execute("INSERT INTO wordpress_instances(domain,db_name,db_user,status,version,owner,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(domain) DO UPDATE SET db_name=excluded.db_name,db_user=excluded.db_user,status=excluded.status,version=excluded.version,updated_at=excluded.updated_at",
-                             (domain, db_name, db_user, "prepared", str(meta.get("version", ""))[:40], session.get("user", "admin"), now, now))
+                             (domain, db_name, db_user, "prepared", str(meta.get("version", ""))[:40], actor or "admin", now, now))
             audit("wordpress-prepare", domain)
             notify("ok", "WordPress Core prepared", domain, "wordpress")
             flash("تم تجهيز WordPress Core وwp-config.php. أكمل معالج الموقع من المتصفح.", "ok")

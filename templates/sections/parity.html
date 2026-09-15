@@ -1,0 +1,46 @@
+{% from "macros/icons.html" import icon %}
+<section class="workspace-page" id="parity">
+  <div class="workspace-hero parity-hero">
+    <div class="hero-icon">{{icon('layers')}}</div>
+    <div class="hero-copy">
+      <span class="kicker">NEXVARY CAPABILITY COVERAGE · PLATFORM 0.7</span>
+      <h2>Parity Center</h2>
+      <p>قياس داخلي مباشر من Feature Registry يوضح ما أصبح Native أو Foundation وما يزال Roadmap. هذه الصفحة لا تدّعي تكافؤًا مستقلًا مع cPanel أو Plesk أو DirectAdmin؛ هدفها منع المبالغة وتوجيه القفزات التالية إلى الفجوات الحقيقية.</p>
+    </div>
+    <div class="hero-stats">
+      <div><small>CAPABILITIES</small><strong id="parityTotal">—</strong></div>
+      <div><small>OPERATIONAL</small><strong id="parityOperational">—</strong></div>
+      <div><small>COVERAGE</small><strong id="parityCoverage">—</strong></div>
+      <div><small>MATURITY INDEX</small><strong id="parityMaturity">—</strong></div>
+    </div>
+  </div>
+
+  <div class="parity-scope-grid">
+    <section class="panel parity-scope"><span class="kicker">ACCOUNT PLANE</span><h3>Hosting / Customer</h3><strong id="parityAccountCoverage">—</strong><small id="parityAccountDetail">—</small></section>
+    <section class="panel parity-scope"><span class="kicker">SERVER PLANE</span><h3>WHM / Server</h3><strong id="parityServerCoverage">—</strong><small id="parityServerDetail">—</small></section>
+    <section class="panel parity-scope"><span class="kicker">VERIFIED STATE</span><h3>Native / Foundation</h3><strong id="parityVerified">—</strong><small id="parityVerifiedDetail">—</small></section>
+  </div>
+
+  <div class="parity-layout">
+    <section class="panel parity-categories-panel">
+      <div class="panel-head"><div><span class="kicker">CAPABILITY FAMILIES</span><h3>التغطية حسب المجال</h3></div><span class="parity-badge">LIVE REGISTRY</span></div>
+      <div id="parityCategories" class="parity-categories"><div class="empty-state">يتم حساب التغطية…</div></div>
+    </section>
+
+    <section class="panel parity-gaps-panel">
+      <div class="panel-head"><div><span class="kicker">ROADMAP GAPS</span><h3>الفجوات المتبقية</h3></div><span id="parityGapCount" class="parity-badge warning">—</span></div>
+      <div class="parity-filter-row">
+        <select id="parityGapScope"><option value="all">كل النطاقات</option><option value="account">Account</option><option value="server">Server / WHM</option></select>
+        <select id="parityGapCategory"><option value="all">كل المجالات</option></select>
+      </div>
+      <div id="parityGaps" class="parity-gaps"><div class="empty-state">يتم تحميل Roadmap…</div></div>
+    </section>
+  </div>
+
+  <div class="parity-method royal-frame">
+    <b>منهجية القياس</b>
+    <span>Coverage = Native + Foundation ÷ إجمالي القدرات.</span>
+    <span>Maturity Index = Native×1.00 + Foundation×0.65 + Planned×0.00.</span>
+    <span>هذا مؤشر داخلي لنضج Nexvary Panel، وليس Benchmark مستقلًا أو ادعاء feature-for-feature مع منتج تجاري آخر.</span>
+  </div>
+</section>

@@ -1,15 +1,26 @@
 {% from "macros/icons.html" import icon %}
 <section id="security" class="workspace-page security-workspace">
-  <div class="workspace-hero security-hero royal-frame"><div class="hero-icon">{{icon('shield')}}</div><div class="hero-copy"><span class="kicker">TRUST CENTER</span><h2>مركز الأمان وSSL</h2><p>رؤية مباشرة لطبقات الحماية، شهادات Let's Encrypt والمصادقة الثنائية.</p></div><div class="hero-stats"><div><small>SESSION</small><strong>SECURE</strong></div><div><small>2FA</small><strong>{{'ON' if totp_enabled else 'READY'}}</strong></div><div><small>ROOT WEB SHELL</small><strong>BLOCKED</strong></div><div><small>AGENT</small><strong>ALLOWLIST</strong></div></div></div>
+  <div class="workspace-hero security-hero royal-frame"><div class="hero-icon">{{icon('shield')}}</div><div class="hero-copy"><span class="kicker">TRUST CENTER</span><h2>مركز الأمان وSSL</h2><p>رؤية مباشرة لطبقات الحماية، شهادات Let's Encrypt والمصادقة الثنائية وStep-Up للعمليات الحساسة.</p></div><div class="hero-stats"><div><small>SESSION</small><strong>SECURE</strong></div><div><small>2FA</small><strong>{{'ON' if totp_enabled else 'READY'}}</strong></div><div><small>STEP-UP</small><strong>{{'ACTIVE' if step_up_active else 'LOCKED'}}</strong></div><div><small>AGENT</small><strong>ALLOWLIST</strong></div></div></div>
   <div class="security-posture-grid">
     <article class="posture-card secure royal-frame"><span>{{icon('shield')}}</span><div><small>REQUEST INTEGRITY</small><b>CSRF Protection</b><em>ON</em></div></article>
     <article class="posture-card secure royal-frame"><span>{{icon('lock')}}</span><div><small>SESSION COOKIES</small><b>Secure + HttpOnly</b><em>ON</em></div></article>
     <article class="posture-card {{'secure' if totp_enabled else 'allow'}} royal-frame"><span>{{icon('key')}}</span><div><small>ACCOUNT SECURITY</small><b>TOTP Two-Factor</b><em>{{'ON' if totp_enabled else 'AVAILABLE'}}</em></div></article>
-    <article class="posture-card blocked royal-frame"><span>{{icon('terminal')}}</span><div><small>PRIVILEGED SHELL</small><b>Root from Web UI</b><em>BLOCKED</em></div></article>
+    <article class="posture-card {{'secure' if step_up_active else 'blocked'}} royal-frame"><span>{{icon('lock')}}</span><div><small>SENSITIVE OPERATIONS</small><b>Step-Up Window</b><em>{{'ACTIVE' if step_up_active else 'LOCKED'}}</em></div></article>
   </div>
   <div class="workspace-grid security-layout">
     <div class="workspace-primary">
       <article class="trust-map panel royal-frame"><div class="panel-head"><div><span class="kicker">SECURITY TOPOLOGY</span><h3>مسار الثقة</h3><p>العمليات الحساسة لا تنفذ مباشرة داخل عملية الويب.</p></div><span class="trust-status"><i></i>ENFORCED</span></div><div class="trust-flow"><div><span>{{icon('globe')}}</span><b>Browser</b><small>HTTPS + CSRF</small></div><i>›</i><div><span>{{icon('shield')}}</span><b>Web Panel</b><small>Unprivileged</small></div><i>›</i><div><span>{{icon('network')}}</span><b>Unix Socket</b><small>Local IPC</small></div><i>›</i><div><span>{{icon('server')}}</span><b>Root Agent</b><small>Strict allowlist</small></div></div></article>
+
+      <article class="panel royal-frame stepup-panel" style="margin-top:16px"><div class="panel-head"><div><span class="kicker">SENSITIVE OPERATION GATE</span><h3>Step-Up Authentication</h3><p>Secret Vault وDNS writes وعمليات التدمير المستقبلية ستحتاج نافذة تحقق إضافية قصيرة.</p></div><span class="tag {{'' if step_up_active else 'off'}}">{{'ACTIVE · 5 MIN WINDOW' if step_up_active else 'LOCKED'}}</span></div>
+        {% if step_up_active %}
+          <div class="security-list"><div><span>الحالة</span><b>Sensitive operations unlocked</b></div><div><span>النطاق</span><b>Current authenticated account only</b></div></div>
+          <form method="post" action="/security/step-up/clear" style="margin-top:10px"><input type="hidden" name="csrf_token" value="{{csrf_token()}}"><button class="ghost">إغلاق نافذة Step-Up الآن</button></form>
+        {% else %}
+          <form method="post" action="/security/step-up" class="inline-form stepup-form"><input type="hidden" name="csrf_token" value="{{csrf_token()}}"><input type="password" name="password" autocomplete="current-password" placeholder="كلمة مرور الحساب" required>{% if totp_enabled %}<input name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="رمز 2FA" required>{% endif %}<button>{{icon('lock')}} تفعيل Step-Up</button></form>
+          <p class="hint">يلزم إعادة إدخال كلمة المرور{% if totp_enabled %} + رمز 2FA صالح{% endif %}. بعد خمس محاولات فاشلة تتوقف المحاولات مؤقتًا لمدة 5 دقائق.</p>
+        {% endif %}
+      </article>
+
       <article class="panel royal-frame" style="margin-top:16px"><div class="panel-head"><div><span class="kicker">ACCOUNT HARDENING</span><h3>المصادقة الثنائية TOTP</h3><p>تعمل مع تطبيقات Authenticator القياسية ولا تعتمد على خدمة خارجية.</p></div><span class="tag {{'' if totp_enabled else 'off'}}">{{'ENABLED' if totp_enabled else 'DISABLED'}}</span></div>
         {% if totp_enabled %}
           <form method="post" action="/2fa/disable" class="inline-form"><input type="hidden" name="csrf_token" value="{{csrf_token()}}"><input name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="رمز 2FA الحالي" required><button class="danger-action">تعطيل 2FA</button></form>

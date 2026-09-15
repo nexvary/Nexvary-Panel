@@ -1,0 +1,71 @@
+{% from "macros/icons.html" import icon %}
+<section class="workspace-page" id="sitecontrols" data-step-up="{{ '1' if step_up_active else '0' }}">
+  <div class="workspace-hero sitecontrols-hero">
+    <div class="hero-icon">{{icon('shield')}}</div>
+    <div class="hero-copy">
+      <span class="kicker">SITE CONTROL CENTER · PLATFORM 0.7</span>
+      <h2>مركز التحكم المتقدم بالموقع</h2>
+      <p>حماية الدلائل، منع Hotlink، التحكم في Directory Indexing وMIME Types وقراءة Raw Access ضمن نطاق الموقع فقط. كل تعديل يمر عبر Webtools Agent مع nginx -t وRollback.</p>
+    </div>
+    <div class="hero-stats">
+      <div><small>PRIVACY</small><strong id="scPrivacyState">—</strong></div>
+      <div><small>HOTLINK</small><strong id="scHotlinkState">—</strong></div>
+      <div><small>INDEXING</small><strong id="scIndexState">—</strong></div>
+      <div><small>MIME</small><strong id="scMimeCount">—</strong></div>
+    </div>
+  </div>
+
+  <div class="content-toolbar sitecontrols-toolbar">
+    <label><span>الموقع</span><select id="siteControlDomain"><option value="">اختر موقعًا…</option></select></label>
+    <span class="sitecontrols-agent-state"><i></i>ISOLATED WEBTOOLS PROVIDER</span>
+    <span class="step-badge {{'ok' if step_up_active else 'warning'}}">{{'STEP-UP ACTIVE' if step_up_active else 'STEP-UP REQUIRED FOR WRITES'}}</span>
+  </div>
+
+  <div id="siteControlNotice" class="sitecontrols-status" aria-live="polite"></div>
+  <div class="sitecontrols-grid">
+    <section class="panel sitecontrols-card">
+      <div class="panel-head"><div><span class="kicker">DIRECTORY PRIVACY</span><h3>حماية الموقع أو مسار محدد</h3></div><span class="sitecontrols-badge">PASSWORD HASH ONLY</span></div>
+      <form id="privacyControlForm" class="sitecontrols-form">
+        <label class="toggle-row"><span>تفعيل الحماية</span><input type="checkbox" name="enabled"></label>
+        <label>المسار<input name="path" value="/" maxlength="180" placeholder="/private/"></label>
+        <label>اسم المستخدم<input name="username" maxlength="64" autocomplete="username" placeholder="secureuser"></label>
+        <label>كلمة مرور جديدة<input name="password" type="password" minlength="12" maxlength="256" autocomplete="new-password" placeholder="12+ characters"></label>
+        <p class="sitecontrols-note">كلمة المرور تُرسل للـAgent عند الحفظ ولا تُخزن في SQLite أو Audit.</p>
+        <button class="primary-create" type="submit" {{'' if step_up_active else 'disabled'}}>حفظ Directory Privacy</button>
+      </form>
+    </section>
+
+    <section class="panel sitecontrols-card">
+      <div class="panel-head"><div><span class="kicker">HOTLINK PROTECTION</span><h3>حماية الملفات الثابتة</h3></div><span class="sitecontrols-badge">NGINX REFERER POLICY</span></div>
+      <form id="hotlinkControlForm" class="sitecontrols-form">
+        <label class="toggle-row"><span>تفعيل Hotlink Protection</span><input type="checkbox" name="enabled"></label>
+        <label>الامتدادات<input name="extensions" value="jpg,jpeg,png,gif,webp,svg" maxlength="180"></label>
+        <p class="sitecontrols-note">يسمح بالطلبات المباشرة وبالموقع نفسه، ويرفض الربط الخارجي للامتدادات المحددة.</p>
+        <button class="primary-create" type="submit" {{'' if step_up_active else 'disabled'}}>تطبيق Hotlink Policy</button>
+      </form>
+    </section>
+
+    <section class="panel sitecontrols-card compact-card">
+      <div class="panel-head"><div><span class="kicker">DIRECTORY INDEXING</span><h3>عرض محتويات المجلدات</h3></div><span class="sitecontrols-badge">DEFAULT OFF</span></div>
+      <form id="indexControlForm" class="sitecontrols-form">
+        <label>الحالة<select name="mode"><option value="off">OFF — أكثر أمانًا</option><option value="on">ON — عرض الفهرس</option></select></label>
+        <button class="primary-create" type="submit" {{'' if step_up_active else 'disabled'}}>حفظ Indexing</button>
+      </form>
+    </section>
+
+    <section class="panel sitecontrols-card">
+      <div class="panel-head"><div><span class="kicker">MIME OVERRIDES</span><h3>أنواع محتوى مخصصة</h3></div><span class="sitecontrols-badge">EXECUTABLES BLOCKED</span></div>
+      <form id="mimeControlForm" class="sitecontrols-form">
+        <label>Mapping — سطر لكل امتداد<textarea name="mappings" rows="7" placeholder="wasm application/wasm&#10;avif image/avif"></textarea></label>
+        <p class="sitecontrols-note">الامتدادات التنفيذية مثل PHP وCGI وShell لا يمكن إعادة تعيينها.</p>
+        <button class="primary-create" type="submit" {{'' if step_up_active else 'disabled'}}>تطبيق MIME Overrides</button>
+      </form>
+    </section>
+
+    <section class="panel sitecontrols-card raw-card">
+      <div class="panel-head"><div><span class="kicker">RAW ACCESS</span><h3>أحدث طلبات NGINX</h3></div><button id="refreshRawAccess" class="ghost compact-action" type="button">تحديث</button></div>
+      <div class="raw-toolbar"><label>عدد السطور<select id="rawAccessLines"><option>100</option><option selected>200</option><option>500</option></select></label><span>يتضمن IP وRequest Path عمدًا لأنه Raw Access.</span></div>
+      <pre id="rawAccessOutput" class="raw-access-output">اختر موقعًا لقراءة السجل.</pre>
+    </section>
+  </div>
+</section>

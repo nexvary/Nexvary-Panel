@@ -1,0 +1,24 @@
+[Unit]
+Description=Nexvary Panel SFTP Transfer Agent
+After=network.target ssh.service
+Requires=ssh.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/transfer_agent.py
+Restart=on-failure
+RestartSec=2
+User=root
+Group=root
+UMask=0077
+NoNewPrivileges=true
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETGID CAP_SETUID CAP_SYS_ADMIN
+AmbientCapabilities=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETGID CAP_SETUID CAP_SYS_ADMIN
+
+[Install]
+WantedBy=multi-user.target

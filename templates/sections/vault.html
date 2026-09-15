@@ -1,0 +1,49 @@
+{% from "macros/icons.html" import icon %}
+<section id="vault" class="workspace-page vault-workspace">
+  <div class="workspace-hero security-hero royal-frame">
+    <div class="hero-icon">{{icon('key')}}</div>
+    <div class="hero-copy"><span class="kicker">ZERO-TRUST CREDENTIAL BOUNDARY</span><h2>Secret Vault</h2><p>مخزن أسرار root-only لمفاتيح DNS والنسخ الاحتياطي والتكاملات. القيم لا تعود إلى المتصفح بعد حفظها.</p></div>
+    <div class="hero-stats"><div><small>STORAGE</small><strong>ROOT 0600</strong></div><div><small>READ API</small><strong>BLOCKED</strong></div><div><small>WRITES</small><strong>STEP-UP</strong></div></div>
+  </div>
+
+  <div class="vault-layout">
+    <div class="vault-primary">
+      <div class="fusion-toolbar royal-frame vault-toolbar">
+        <div><span class="toolbar-dot green"></span><b>Credential Metadata</b><small>يعرض المعرّف والنوع والحجم وآخر تحديث فقط — لا يعرض قيمة السر أو مساره.</small></div>
+        <button id="vaultRefresh" type="button" class="compact-action">{{icon('refresh')}} تحديث</button>
+      </div>
+      <div id="vaultGrid" class="vault-grid"><div class="vault-loading royal-frame">جاري الاتصال بـ Secret Vault…</div></div>
+    </div>
+
+    <div class="creation-panel vault-create royal-frame">
+      <div class="creation-head"><span class="creation-icon green">{{icon('lock')}}</span><div><span class="kicker">STORE / ROTATE</span><h3>حفظ اعتماد جديد</h3></div></div>
+      <form id="vaultPutForm" autocomplete="off">
+        <label for="vaultKind">نوع الاعتماد</label>
+        <select id="vaultKind" required>
+          <option value="cloudflare">Cloudflare API token</option>
+          <option value="powerdns">PowerDNS API key</option>
+          <option value="s3">S3 credentials/config</option>
+          <option value="restic">restic repository password/config</option>
+          <option value="rclone">rclone remote config/secret</option>
+        </select>
+        <label for="vaultId">Secret ID</label>
+        <input id="vaultId" name="secret_id" pattern="[a-z][a-z0-9_-]{2,47}" maxlength="48" placeholder="prod-backup" required autocomplete="off">
+        <label for="vaultValue">Secret value</label>
+        <textarea id="vaultValue" name="secret_value" rows="5" maxlength="16384" placeholder="لن يتم عرض هذه القيمة مرة أخرى" required autocomplete="new-password" spellcheck="false"></textarea>
+        <button class="primary-create green-create" type="submit">{{icon('key')}}<span>حفظ / تدوير الاعتماد</span></button>
+        <div class="creation-note">{{icon('shield')}}<span>يتطلب Step-Up صالحًا لمدة 5 دقائق. لا تُسجل قيمة السر في Audit Log أو SQLite.</span></div>
+      </form>
+      <div id="vaultMessage" class="vault-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <article class="panel royal-frame vault-boundary">
+    <div class="panel-head"><div><span class="kicker">SECRET BOUNDARY</span><h3>قواعد غير قابلة للتجاوز</h3></div><span class="tag">ENFORCED</span></div>
+    <div class="fusion-policy-grid">
+      <div><b>No secret-read endpoint</b><small>بعد التخزين لا تعيد الواجهة قيمة الاعتماد.</small></div>
+      <div><b>Root-owned files</b><small>المجلد 0700 وكل Secret محفوظ بملف 0600.</small></div>
+      <div><b>Step-Up required</b><small>Password + TOTP عند تفعيله قبل الإنشاء أو الحذف.</small></div>
+      <div><b>Provider references</b><small>المزود يستقبل Secret ID بدل نسخ الاعتماد بين الطبقات.</small></div>
+    </div>
+  </article>
+</section>

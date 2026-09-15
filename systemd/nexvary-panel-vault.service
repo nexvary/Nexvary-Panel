@@ -1,0 +1,32 @@
+[Unit]
+Description=Nexvary Panel Secret Vault Agent
+After=local-fs.target
+Before=nexvary-panel.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/vault_agent.py
+Restart=on-failure
+RestartSec=2
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX
+SystemCallArchitectures=native
+ReadWritePaths=/etc/nexvary-panel/credentials /run/nexvary-panel
+
+[Install]
+WantedBy=multi-user.target

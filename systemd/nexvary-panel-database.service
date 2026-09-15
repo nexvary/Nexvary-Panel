@@ -1,0 +1,36 @@
+[Unit]
+Description=Nexvary Panel MariaDB Access Agent
+After=network.target mariadb.service
+Requires=mariadb.service
+ConditionPathExists=/opt/nexvary-panel-agent/database_agent.py
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/nexvary-panel-agent
+StateDirectory=nexvary-panel-database
+StateDirectoryMode=0700
+Environment=NVP_DATABASE_SNAPSHOT_DIR=/var/lib/nexvary-panel-database/snapshots
+ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/database_agent.py
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX
+ReadWritePaths=/run/nexvary-panel /var/lib/nexvary-panel-database
+
+[Install]
+WantedBy=multi-user.target

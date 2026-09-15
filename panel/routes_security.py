@@ -5,7 +5,19 @@ import time
 from flask import flash, redirect, request, session, url_for
 
 from .core import audit, db, notify, role_required
-from .security import new_totp_secret, totp_enabled_for, verify_totp, verify_totp_secret
+from .security import (
+    clear_step_up,
+    grant_step_up,
+    new_totp_secret,
+    step_up_active,
+    totp_enabled_for,
+    verify_step_up_credentials,
+    verify_totp,
+    verify_totp_secret,
+)
+
+
+SELF_ROLES = ("admin", "reseller", "operator", "viewer")
 
 
 def _pending_secret(username: str) -> str:
@@ -15,8 +27,44 @@ def _pending_secret(username: str) -> str:
 
 
 def register_security_routes(app):
+    @app.post("/security/step-up")
+    @role_required(*SELF_ROLES)
+    def security_step_up():
+        now = int(time.time())
+        locked_until = int(session.get("step_up_locked_until", 0) or 0)
+        if locked_until > now:
+            flash("تم تعليق محاولات Step-Up مؤقتًا بعد عدة محاولات فاشلة.", "error")
+            return redirect(url_for("home") + "#security")
+        password = request.form.get("password", "")
+        otp = request.form.get("otp", "").strip()
+        if verify_step_up_credentials(password, otp):
+            session.pop("step_up_failures", None)
+            session.pop("step_up_locked_until", None)
+            grant_step_up()
+            audit("step-up-granted", "5-minute sensitive-operation window")
+            flash("تم تفعيل نافذة العمليات الحساسة لمدة 5 دقائق.", "ok")
+            return redirect(url_for("home") + "#security")
+        failures = int(session.get("step_up_failures", 0) or 0) + 1
+        session["step_up_failures"] = failures
+        if failures >= 5:
+            session["step_up_failures"] = 0
+            session["step_up_locked_until"] = now + 300
+            clear_step_up()
+        audit("step-up-failed", f"attempt={min(failures, 5)}")
+        flash("فشل Step-Up: تحقق من كلمة المرور ورمز 2FA إن كان مفعّلًا.", "error")
+        return redirect(url_for("home") + "#security")
+
+    @app.post("/security/step-up/clear")
+    @role_required(*SELF_ROLES)
+    def security_step_up_clear():
+        if step_up_active():
+            audit("step-up-cleared")
+        clear_step_up()
+        flash("تم إغلاق نافذة العمليات الحساسة.", "ok")
+        return redirect(url_for("home") + "#security")
+
     @app.post("/2fa/start")
-    @role_required("admin", "operator", "viewer")
+    @role_required(*SELF_ROLES)
     def two_factor_start():
         username = session.get("user", "")
         if totp_enabled_for(username):
@@ -34,7 +82,7 @@ def register_security_routes(app):
         return redirect(url_for("home") + "#security")
 
     @app.post("/2fa/enable")
-    @role_required("admin", "operator", "viewer")
+    @role_required(*SELF_ROLES)
     def two_factor_enable():
         username = session.get("user", "")
         secret = _pending_secret(username)
@@ -45,13 +93,14 @@ def register_security_routes(app):
             return redirect(url_for("home") + "#security")
         with db() as conn:
             conn.execute("UPDATE user_security SET totp_enabled=1,updated_at=? WHERE username=?", (int(time.time()), username))
+        clear_step_up()
         audit("2fa-enabled")
         notify("ok", "Two-factor authentication enabled", username, "security", owner=username)
         flash("تم تفعيل المصادقة الثنائية بنجاح.", "ok")
         return redirect(url_for("home") + "#security")
 
     @app.post("/2fa/cancel")
-    @role_required("admin", "operator", "viewer")
+    @role_required(*SELF_ROLES)
     def two_factor_cancel():
         username = session.get("user", "")
         with db() as conn:
@@ -60,7 +109,7 @@ def register_security_routes(app):
         return redirect(url_for("home") + "#security")
 
     @app.post("/2fa/disable")
-    @role_required("admin", "operator", "viewer")
+    @role_required(*SELF_ROLES)
     def two_factor_disable():
         username = session.get("user", "")
         code = request.form.get("otp", "").strip()
@@ -70,6 +119,7 @@ def register_security_routes(app):
             return redirect(url_for("home") + "#security")
         with db() as conn:
             conn.execute("UPDATE user_security SET totp_secret='',totp_enabled=0,updated_at=? WHERE username=?", (int(time.time()), username))
+        clear_step_up()
         audit("2fa-disabled")
         notify("warning", "Two-factor authentication disabled", username, "security", owner=username)
         flash("تم تعطيل المصادقة الثنائية لهذا الحساب.", "ok")

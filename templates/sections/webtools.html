@@ -1,0 +1,101 @@
+{% from "macros/icons.html" import icon %}
+<section class="workspace-page" id="webtools" data-step-up="{{ '1' if step_up_active else '0' }}">
+  <div class="workspace-hero webtools-hero">
+    <div class="hero-icon">{{icon('globe')}}</div>
+    <div class="hero-copy">
+      <span class="kicker">DOMAIN CONTROL CENTER · PLATFORM 0.7</span>
+      <h2>مركز النطاقات والويب</h2>
+      <p>دورة حياة موحدة للنطاق: Aliases والنطاقات الفرعية، DNS posture، SSL وAutoSSL، Redirects، صفحات الأخطاء والإحصاءات. تغييرات NGINX تمر عبر Provider مع Validation وRollback.</p>
+    </div>
+    <div class="hero-stats">
+      <div><small>SITES</small><strong id="webtoolsSiteCount">—</strong></div>
+      <div><small>SSL</small><strong id="domainSslHero">—</strong></div>
+      <div><small>DNS</small><strong id="domainDnsHero">—</strong></div>
+      <div><small>REQUESTS</small><strong id="webtoolsRequestCount">—</strong></div>
+    </div>
+  </div>
+
+  <div class="content-toolbar webtools-toolbar">
+    <label><span>الموقع</span><select id="webtoolsDomain"><option value="">اختر موقعًا…</option></select></label>
+    <span class="webtools-agent-state"><i></i>ISOLATED WEBTOOLS + OPS AGENTS</span>
+    <span class="step-badge {{'ok' if step_up_active else 'warning'}}">{{'STEP-UP ACTIVE' if step_up_active else 'STEP-UP REQUIRED FOR WRITES'}}</span>
+  </div>
+
+  <div class="webtools-grid">
+    <section class="panel webtools-domain-panel">
+      <div class="panel-head"><div><span class="kicker">DOMAIN LIFECYCLE</span><h3>النطاقات وAutoSSL</h3></div><span class="webtools-badge">POLICY + QUOTA ENFORCED</span></div>
+      <div class="domain-posture" id="domainPosture">
+        <div><small>DNS PROVIDER</small><strong id="domainDnsProvider">غير مربوط</strong><span id="domainDnsEndpoint">—</span></div>
+        <div><small>SSL STATUS</small><strong id="domainSslState">—</strong><span id="domainSslDetail">—</span></div>
+        <div><small>AUTOSSL</small><strong id="domainAutoSslState">OFF</strong><span id="domainSslLast">لم يُفحص بعد</span></div>
+      </div>
+      <div class="domain-control-grid">
+        <div>
+          <span class="kicker">ALIASES / SUBDOMAINS</span>
+          <form id="domainAliasForm" class="webtools-form domain-alias-form">
+            <label>Alias / Subdomain<input name="alias" required maxlength="253" placeholder="app.example.com"></label>
+            <button class="primary-create" type="submit" {{'' if step_up_active else 'disabled'}}>إضافة نطاق</button>
+          </form>
+          <div class="webtools-status"><span id="domainAliasQuota">—</span></div>
+          <div id="domainAliasStatus" class="webtools-status" aria-live="polite"></div>
+          <div id="domainAliasList" class="webtools-list"><div class="empty-state">اختر موقعًا لعرض Aliases والنطاقات الفرعية.</div></div>
+        </div>
+        <div>
+          <span class="kicker">SSL POLICY</span>
+          <form id="sslPolicyForm" class="ssl-policy-form">
+            <label>Contact Email<input name="contact_email" type="email" maxlength="254" placeholder="admin@example.com"></label>
+            <label>Renew Before<select name="renew_before_days"><option value="14">14 days</option><option value="21">21 days</option><option value="30" selected>30 days</option><option value="45">45 days</option><option value="60">60 days</option></select></label>
+            <label class="switch-line"><input name="auto_renew" type="checkbox"> <span>AutoSSL كل 6 ساعات</span></label>
+            <button class="primary-create" type="submit" {{'' if step_up_active else 'disabled'}}>حفظ سياسة AutoSSL</button>
+          </form>
+          <div class="ssl-actions">
+            <button id="domainSslIssue" type="button" class="ghost compact-action" {{'' if step_up_active else 'disabled'}}>Issue Certificate</button>
+            <button id="domainSslRenew" type="button" class="ghost compact-action" {{'' if step_up_active else 'disabled'}}>Renew Now</button>
+          </div>
+          <div id="domainSslStatus" class="webtools-status" aria-live="polite"></div>
+          <div class="dns-suggestions-wrap"><span class="kicker">DNS SUGGESTIONS</span><div id="domainDnsSuggestions" class="webtools-list"><div class="empty-state">لا توجد اقتراحات DNS.</div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel webtools-redirect-panel">
+      <div class="panel-head"><div><span class="kicker">REDIRECT MANAGER</span><h3>إعادة التوجيه</h3></div><span class="webtools-badge">NGINX VALIDATED</span></div>
+      <form id="redirectForm" class="webtools-form">
+        <label>Source Path<input name="source_path" required maxlength="201" placeholder="/old-page"></label>
+        <label>Target<input name="target" required maxlength="1200" placeholder="https://example.com/new-page"></label>
+        <label>Status<select name="status_code"><option>301</option><option>302</option><option>307</option><option>308</option></select></label>
+        <button class="primary-create" type="submit" {{'' if step_up_active else 'disabled'}}>إضافة Redirect</button>
+      </form>
+      <div id="redirectStatus" class="webtools-status" aria-live="polite"></div>
+      <div id="redirectList" class="webtools-list"><div class="empty-state">اختر موقعًا لعرض Redirects.</div></div>
+    </section>
+
+    <section class="panel webtools-errors-panel">
+      <div class="panel-head"><div><span class="kicker">CUSTOM ERROR PAGES</span><h3>صفحات الأخطاء</h3></div><span class="webtools-badge">SITE SCOPED</span></div>
+      <form id="errorPageForm" class="webtools-form error-form">
+        <label>HTTP Status<select name="status_code" id="errorStatusCode"><option>404</option><option>403</option><option>401</option><option>400</option><option>408</option><option>410</option><option>429</option><option>500</option><option>502</option><option>503</option><option>504</option></select></label>
+        <label class="webtools-editor">HTML<textarea name="html" id="errorHtml" maxlength="65536" rows="8" placeholder="<!doctype html>..."></textarea></label>
+        <button class="primary-create" type="submit" {{'' if step_up_active else 'disabled'}}>حفظ الصفحة</button>
+      </form>
+      <div id="errorPageStatus" class="webtools-status" aria-live="polite"></div>
+      <div id="errorPageList" class="webtools-code-list"><div class="empty-state">اختر موقعًا لعرض الصفحات.</div></div>
+    </section>
+
+    <section class="panel webtools-metrics-panel">
+      <div class="panel-head"><div><span class="kicker">VISITORS & BANDWIDTH</span><h3>إحصاءات الوصول</h3></div><button id="refreshMetrics" type="button" class="ghost compact-action">تحديث</button></div>
+      <div class="metrics-summary">
+        <div><small>REQUESTS</small><b id="metricRequests">0</b></div>
+        <div><small>VISITORS</small><b id="metricVisitors">0</b></div>
+        <div><small>BANDWIDTH</small><b id="metricBandwidth">0 B</b></div>
+        <div><small>SUCCESS 2xx</small><b id="metricSuccess">0</b></div>
+      </div>
+      <div class="metrics-columns">
+        <div><span class="kicker">TOP PATHS</span><div id="metricPaths" class="metric-list"><div class="empty-state">لا توجد بيانات بعد.</div></div></div>
+        <div><span class="kicker">STATUS CODES</span><div id="metricStatuses" class="metric-list"><div class="empty-state">لا توجد Status Codes بعد.</div></div></div>
+      </div>
+      <p class="metrics-note">الإحصاءات تقرأ أحدث نافذة من NGINX access log. لا تعرض عناوين IP الخام داخل الواجهة.</p>
+    </section>
+  </div>
+
+  {% if not step_up_active %}<button type="button" class="ghost compact-action webtools-step-path" data-open-view="security">فتح Security لتفعيل Step-Up قبل التعديلات</button>{% endif %}
+</section>

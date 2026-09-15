@@ -1,0 +1,128 @@
+{% from "macros/icons.html" import icon %}
+<section id="mail" class="view workspace-page">
+  <div class="workspace-hero mail-hero royal-frame">
+    <div class="hero-icon">{{icon('mail')}}</div>
+    <div class="hero-copy">
+      <span class="kicker">NEXVARY EMAIL CENTER</span>
+      <h2>البريد الإلكتروني</h2>
+      <p>Mailboxes وForwarders وPassword Rotation وAutoresponders وFilters وTrack Delivery عبر Postfix/Dovecot + LMTP/Sieve مع Quota وStep-Up وAudit. كلمات المرور لا تُحفظ داخل قاعدة بيانات اللوحة.</p>
+    </div>
+    <div class="hero-stats">
+      <div><small>PROVIDER</small><strong id="mailProviderState">CHECKING</strong><span id="mailProviderEngine">Postfix / Dovecot</span></div>
+      <div><small>MAILBOXES</small><strong id="mailboxUsage">—</strong><span>package quota</span></div>
+      <div><small>FORWARDERS</small><strong id="forwarderUsage">—</strong><span>bounded quota</span></div>
+    </div>
+  </div>
+
+  <div id="mailNotice" class="mail-notice royal-frame">جاري فحص Mail Provider…</div>
+
+  <div class="mail-create-grid">
+    <article class="panel royal-frame frame-silver">
+      <div class="panel-head"><div><span class="kicker">CREATE MAILBOX</span><h3>صندوق بريد جديد</h3></div><span class="mail-chip">STEP-UP</span></div>
+      <form id="mailboxForm" class="mail-form">
+        <label>النطاق<select id="mailboxDomain" required><option value="">جاري تحميل النطاقات…</option></select></label>
+        <label>اسم البريد<input id="mailboxLocalpart" maxlength="64" required placeholder="info"></label>
+        <label>كلمة المرور<input id="mailboxPassword" type="password" minlength="14" maxlength="128" autocomplete="new-password" required></label>
+        <label>الحصة MB<input id="mailboxQuota" type="number" min="64" max="102400" value="1024" required></label>
+        <div class="mail-policy-note">Password transient: تُرسل عبر Unix socket إلى Mail Agent لإنشاء Hash مخصص لـDovecot ولا تُكتب في SQLite أو Audit.</div>
+        <button class="primary royal-action" type="submit">{{icon('plus')}} إنشاء Mailbox</button>
+      </form>
+    </article>
+
+    <article class="panel royal-frame frame-electric-black">
+      <div class="panel-head"><div><span class="kicker">CREATE FORWARDER</span><h3>تحويل بريد</h3></div><span class="mail-chip">FORWARD ONLY</span></div>
+      <form id="forwarderForm" class="mail-form">
+        <label>النطاق<select id="forwarderDomain" required><option value="">جاري تحميل النطاقات…</option></select></label>
+        <label>العنوان المصدر<input id="forwarderLocalpart" maxlength="64" required placeholder="sales"></label>
+        <label>الوجهة<input id="forwarderDestination" type="email" maxlength="320" required placeholder="destination@example.net"></label>
+        <div class="mail-policy-note">التحويل الحالي Forward-only. إذا كان المصدر Mailbox موجودًا، يرفض Provider التحويل لتجنب فقد النسخة المحلية بشكل غير مقصود.</div>
+        <button class="primary royal-action" type="submit">{{icon('plus')}} إنشاء Forwarder</button>
+      </form>
+    </article>
+
+    <article class="panel royal-frame frame-silver mail-security-panel">
+      <div class="panel-head"><div><span class="kicker">MAILBOX SECURITY</span><h3>تدوير كلمة المرور</h3></div><span class="mail-chip">TRANSIENT SECRET</span></div>
+      <form id="mailPasswordForm" class="mail-form" autocomplete="off">
+        <label>Mailbox<select id="mailPasswordMailbox" required><option value="">جاري تحميل Mailboxes…</option></select></label>
+        <label>كلمة المرور الجديدة<input id="mailPasswordNew" type="password" minlength="14" maxlength="128" autocomplete="new-password" required></label>
+        <label>تأكيد كلمة المرور<input id="mailPasswordConfirm" type="password" minlength="14" maxlength="128" autocomplete="new-password" required></label>
+        <div class="mail-policy-note">لا تُطلب كلمة المرور القديمة ولا تُخزن الجديدة. السر يعبر Unix socket إلى Mail Agent، ويُكتب فقط Hash Dovecot بعد Validation/Reload ناجح.</div>
+        <button class="primary royal-action" type="submit">{{icon('shield')}} تغيير كلمة المرور</button>
+      </form>
+    </article>
+  </div>
+
+  <div class="mail-automation-shell royal-frame">
+    <div class="panel-head mail-automation-head">
+      <div><span class="kicker">MAIL AUTOMATION · DOVECOT SIEVE</span><h3>الردود التلقائية والفلاتر وسياسة Spam</h3></div>
+      <div class="mail-automation-picker"><label>Mailbox<select id="mailAutomationMailbox"><option value="">جاري تحميل Mailboxes…</option></select></label><span id="mailAutomationFeatureState" class="mail-chip">POLICY CHECK</span></div>
+    </div>
+    <div class="mail-policy-note mail-automation-note">تُولد اللوحة قواعد Sieve من حقول محددة فقط؛ لا يوجد محرر Script حر. سياسة Spam هنا تتصرف فقط عند وجود <code>X-Spam-Flag: YES</code> من Scanner خارجي مثل Rspamd/SpamAssassin، ولا تدّعي اللوحة تنفيذ Spam scoring بنفسها.</div>
+
+    <div class="mail-automation-grid">
+      <article class="panel frame-electric-black">
+        <div class="panel-head"><div><span class="kicker">AUTORESPONDER</span><h3>رد تلقائي</h3></div><span class="mail-chip">VACATION</span></div>
+        <form id="mailAutoresponderForm" class="mail-form automation-form">
+          <label class="mail-toggle"><input id="mailAutoresponderEnabled" type="checkbox"><span>تفعيل الرد التلقائي</span></label>
+          <label>فاصل الأيام<input id="mailAutoresponderDays" type="number" min="1" max="30" value="1"></label>
+          <label class="full-row">الموضوع<input id="mailAutoresponderSubject" maxlength="180" placeholder="Out of office"></label>
+          <label class="full-row">نص الرد<textarea id="mailAutoresponderBody" maxlength="5000" rows="6" placeholder="سنعاود التواصل معك قريبًا."></textarea></label>
+          <button id="mailAutoresponderSave" class="primary royal-action" type="submit">حفظ Autoresponder</button>
+        </form>
+      </article>
+
+      <article class="panel frame-silver">
+        <div class="panel-head"><div><span class="kicker">MAIL FILTERS</span><h3>فلاتر صندوق البريد</h3></div><span class="mail-chip">MAX 40</span></div>
+        <form id="mailFilterForm" class="mail-form automation-form">
+          <label>الحقل<select id="mailFilterField"><option value="subject">Subject</option><option value="from">From</option><option value="to">To</option><option value="spam_flag">X-Spam-Flag</option></select></label>
+          <label>المطابقة<select id="mailFilterMatch"><option value="contains">Contains</option><option value="is">Is exactly</option></select></label>
+          <label class="full-row">القيمة<input id="mailFilterPattern" maxlength="200" required placeholder="invoice"></label>
+          <label>الإجراء<select id="mailFilterAction"><option value="fileinto">Move to folder</option><option value="redirect">Redirect</option><option value="discard">Discard</option></select></label>
+          <label>الوجهة<input id="mailFilterDestination" maxlength="320" placeholder="Billing أو archive@example.com"></label>
+          <label>الأولوية<input id="mailFilterPriority" type="number" min="1" max="10000" value="100"></label>
+          <button class="primary royal-action" type="submit">إضافة Filter</button>
+        </form>
+        <div id="mailFilterList" class="mail-list automation-list"><div class="empty-state">اختر Mailbox لعرض الفلاتر.</div></div>
+      </article>
+
+      <article class="panel frame-electric-black mail-spam-card">
+        <div class="panel-head"><div><span class="kicker">SPAM ACTION POLICY</span><h3>التعامل مع البريد المعلّم Spam</h3></div><span class="mail-chip">HEADER DRIVEN</span></div>
+        <form id="mailSpamForm" class="mail-form automation-form">
+          <label class="mail-toggle"><input id="mailSpamEnabled" type="checkbox"><span>تفعيل السياسة</span></label>
+          <label>الإجراء<select id="mailSpamAction"><option value="junk">نقل إلى Junk</option><option value="discard">Discard</option></select></label>
+          <div class="mail-policy-note">الوضع الآمن الافتراضي هو Junk. خيار Discard متاح لكنه قد يحذف رسالة علّمها الـscanner خطأً؛ لذلك يتطلب Step-Up مثل باقي تعديلات البريد.</div>
+          <button class="primary royal-action" type="submit">حفظ Spam Policy</button>
+        </form>
+      </article>
+    </div>
+    <div id="mailAutomationStatus" class="mail-status" role="status"></div>
+  </div>
+
+  <article class="panel royal-frame frame-silver mail-trace-shell">
+    <div class="panel-head mail-trace-head">
+      <div><span class="kicker">TRACK DELIVERY · POSTFIX</span><h3>تتبّع تسليم البريد</h3></div>
+      <span class="mail-chip">TENANT SCOPED</span>
+    </div>
+    <div class="mail-policy-note">يعرض أحدث أحداث Postfix المرتبطة بالنطاق المحدد فقط. لا تُعرض سجلات Raw ولا Queue IDs لنطاقات أخرى، والقراءة محدودة الحجم والعدد للحفاظ على أداء الخادم.</div>
+    <div class="mail-trace-toolbar">
+      <label>النطاق<select id="mailTraceDomain"><option value="">جاري تحميل النطاقات…</option></select></label>
+      <button id="mailTraceRefresh" type="button" class="primary royal-action" disabled>قراءة أحدث الأحداث</button>
+    </div>
+    <div id="mailTraceStatus" class="mail-status" role="status"></div>
+    <div id="mailTraceList" class="mail-list mail-trace-list"><div class="empty-state">اختر نطاقًا لعرض أحدث أحداث التسليم.</div></div>
+  </article>
+
+  <div class="mail-inventory-grid">
+    <article class="panel royal-frame frame-electric-black">
+      <div class="panel-head"><div><span class="kicker">MAILBOX INVENTORY</span><h3>صناديق البريد</h3></div><button type="button" id="mailRefresh" class="tiny ghost">تحديث</button></div>
+      <div id="mailboxList" class="mail-list"><div class="empty-state">جاري التحميل…</div></div>
+    </article>
+    <article class="panel royal-frame frame-silver">
+      <div class="panel-head"><div><span class="kicker">FORWARDER INVENTORY</span><h3>التحويلات</h3></div><span class="mail-chip">AUDITED</span></div>
+      <div id="forwarderList" class="mail-list"><div class="empty-state">جاري التحميل…</div></div>
+    </article>
+  </div>
+  <div id="mailStatus" class="mail-status" role="status"></div>
+  <script src="/static/mail-automation.js"></script>
+  <script src="/static/mail-trace.js"></script>
+</section>

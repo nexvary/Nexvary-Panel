@@ -1,0 +1,8 @@
+/* Nexvary Panel — workspace visibility invariant
+   Loaded after visual theme layers so decoration can never expose inactive workspaces. */
+#workspaceStage > .workspace-page:not(.active-view){
+  display:none!important;
+}
+#workspaceStage > .workspace-page.active-view:not(#dashboard){
+  display:grid!important;
+}

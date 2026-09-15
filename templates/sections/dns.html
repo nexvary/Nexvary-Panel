@@ -1,0 +1,47 @@
+{% from "macros/icons.html" import icon %}
+<section id="dns" class="workspace-page dns-workspace" data-step-up="{{ '1' if step_up_active else '0' }}">
+  <div class="workspace-hero cyan-hero royal-frame">
+    <div class="hero-icon">{{icon('network')}}</div>
+    <div class="hero-copy"><span class="kicker">DNS INTELLIGENCE · PROTECTED WRITES</span><h2>DNS Center</h2><p>جرد DNS للمواقع المسجلة مع مسارات كتابة محمية. التغييرات الحساسة تمر عبر Zone Binding وSecret Vault وStep-Up، وDynamic DNS يستخدم Token مستقلًا لكل سجل A/AAAA.</p></div>
+    <div class="hero-stats"><div><small>MODE</small><strong>MANAGED</strong></div><div><small>RECORD TYPES</small><strong>6 + DMARC</strong></div><div><small>WRITE PATH</small><strong>STEP-UP + VAULT</strong></div></div>
+  </div>
+
+  <div class="dns-toolbar royal-frame">
+    <div class="dns-selector"><label for="dnsDomain">الموقع</label><select id="dnsDomain"><option value="">اختر موقعًا…</option>{% for s in sites %}<option value="{{s.domain}}">{{s.domain}}</option>{% endfor %}</select></div>
+    <button id="dnsInspect" type="button" class="compact-action">{{icon('search')}} فحص DNS</button>
+    <div class="dns-safety">{{icon('shield')}}<span>لا يتم قبول نطاق عشوائي؛ كل عمليات القراءة والكتابة مقيدة بالموقع المسجل وملكيته وHosting Feature Policy.</span></div>
+  </div>
+
+  <div class="dns-summary-grid">
+    <article class="dns-summary-card royal-frame"><small>POPULATED TYPES</small><strong id="dnsPopulated">—</strong><span>من أصل 6 أنواع أساسية</span></article>
+    <article class="dns-summary-card royal-frame"><small>MAIL ROUTING</small><strong id="dnsMxState">—</strong><span>MX presence</span></article>
+    <article class="dns-summary-card royal-frame"><small>DMARC</small><strong id="dnsDmarcState">—</strong><span>Mail policy posture</span></article>
+    <article class="dns-summary-card royal-frame"><small>CONTROL MODE</small><strong>PROTECTED</strong><span>Preview / Step-Up / scoped tokens</span></article>
+  </div>
+
+  <section class="dns-ddns-panel royal-frame">
+    <div class="dns-ddns-head">
+      <div><span class="kicker">DYNAMIC DNS</span><h3>Dynamic A / AAAA</h3><p>سجل متغير آمن لأجهزة أو بوابات ذات IP متغير. لكل سجل Token مستقل يُعرض مرة واحدة ولا يُخزن بصيغته الخام.</p></div>
+      <span class="step-badge {{'ok' if step_up_active else 'warning'}}">{{'STEP-UP ACTIVE' if step_up_active else 'STEP-UP REQUIRED FOR CREATE / ROTATE / DELETE'}}</span>
+    </div>
+    <form id="ddnsForm" class="dns-ddns-form">
+      <label>Hostname<input name="hostname" maxlength="253" placeholder="home أو home.example.com" required></label>
+      <label>Type<select name="record_type"><option value="A">A · IPv4</option><option value="AAAA">AAAA · IPv6</option></select></label>
+      <label>Public IP<input name="address" maxlength="64" placeholder="8.8.8.8" required></label>
+      <label>TTL<select name="ttl"><option value="60">60s</option><option value="120">120s</option><option value="300" selected>300s</option><option value="600">600s</option></select></label>
+      <button type="submit" class="compact-action" {{'' if step_up_active else 'disabled'}}>إنشاء Dynamic DNS</button>
+    </form>
+    <div id="ddnsStatus" class="dns-ddns-status" aria-live="polite"></div>
+    <div id="ddnsTokenReveal" class="dns-token-reveal" hidden></div>
+    <div id="ddnsList" class="dns-ddns-list"><div class="dns-empty">اختر موقعًا لعرض Dynamic DNS.</div></div>
+  </section>
+
+  <div id="dnsGrid" class="dns-record-grid">
+    {% for record_type in ['A','AAAA','NS','MX','TXT','CAA'] %}<article class="dns-record-card royal-frame" data-record-type="{{record_type}}"><div class="dns-record-head"><b>{{record_type}}</b><span>WAITING</span></div><div class="dns-record-body"><div class="dns-empty">اختر موقعًا ثم ابدأ الفحص.</div></div><footer><span>TTL —</span><span>LATENCY —</span></footer></article>{% endfor %}
+  </div>
+
+  <div class="dns-mail-panel royal-frame">
+    <div><span>{{icon('shield')}}</span><div><small>MAIL DNS POSTURE</small><h3>DMARC Inspector</h3></div></div>
+    <div id="dnsDmarcRecord" class="dns-dmarc-record">لا توجد نتيجة بعد.</div>
+  </div>
+</section>

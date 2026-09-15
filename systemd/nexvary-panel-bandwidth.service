@@ -1,0 +1,28 @@
+[Unit]
+Description=Nexvary Panel Monthly Bandwidth Accounting
+After=nginx.service
+Requires=nginx.service
+ConditionPathExists=/opt/nexvary-panel-agent/bandwidth_accounting.py
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/bandwidth_accounting.py
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX
+ReadOnlyPaths=/var/log/nginx
+ReadWritePaths=/var/lib/nexvary-panel/usage
+UMask=0077

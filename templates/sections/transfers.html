@@ -1,0 +1,48 @@
+{% from "macros/icons.html" import icon %}
+<section id="transfers" class="view workspace-page">
+  <div class="workspace-hero transfer-hero royal-frame">
+    <div class="hero-icon">{{icon('network')}}</div>
+    <div class="hero-copy">
+      <span class="kicker">KEY-ONLY · CHROOTED · NO SHELL</span>
+      <h2>مركز نقل الملفات الآمن</h2>
+      <p>SFTP Accounts مرتبطة بموقع واحد فقط. كل جلسة محصورة داخل <b>/site</b> وتستخدم مفتاح SSH عام بدون كلمة مرور أو Shell.</p>
+    </div>
+    <div class="hero-stats">
+      <div><small>PROVIDER</small><strong id="transferProviderState">CHECKING</strong><span id="transferProviderEngine">OpenSSH</span></div>
+      <div><small>AUTH</small><strong>PUBLIC KEY</strong><span>password disabled</span></div>
+      <div><small>BOUNDARY</small><strong>CHROOT</strong><span>site only</span></div>
+    </div>
+  </div>
+
+  <div id="transferNotice" class="transfer-notice royal-frame">جاري التحقق من OpenSSH Transfer Agent…</div>
+
+  <div class="transfer-layout">
+    <article class="panel royal-frame frame-silver transfer-create">
+      <div class="panel-head"><div><span class="kicker">CREATE SFTP ACCOUNT</span><h3>حساب نقل جديد</h3></div><span id="transferUsage" class="transfer-chip">— / —</span></div>
+      <form id="transferForm" class="transfer-form">
+        <label>اسم تعريفي<input id="transferLabel" required minlength="3" maxlength="32" autocomplete="off" placeholder="deployment-team"></label>
+        <label>الموقع<select id="transferDomain" required><option value="">جاري تحميل المواقع…</option></select></label>
+        <label class="transfer-key-field">SSH Public Key<textarea id="transferPublicKey" required rows="5" spellcheck="false" placeholder="ssh-ed25519 AAAA..."></textarea></label>
+        <div class="transfer-policy-note">المفتاح العام يُمرر إلى Transfer Agent ولا يُحفظ كاملًا في SQLite. اللوحة تحتفظ فقط ببصمة SHA256. لا يتم إنشاء كلمة مرور ولا صلاحية Terminal.</div>
+        <button class="primary royal-action" type="submit">{{icon('plus')}} إنشاء SFTP Account</button>
+      </form>
+      <div id="transferStatus" class="transfer-status" role="status"></div>
+    </article>
+
+    <article class="panel royal-frame frame-electric-black transfer-inventory">
+      <div class="panel-head"><div><span class="kicker">TRANSFER IDENTITIES</span><h3>الحسابات الحالية</h3></div><button id="transferRefresh" type="button" class="tiny ghost">{{icon('refresh')}} تحديث</button></div>
+      <div class="transfer-help"><b>طريقة الاتصال:</b><span>SFTP · Port 22 · Username كما يظهر أدناه · المسار يبدأ من /site</span></div>
+      <div id="transferList" class="transfer-list"><div class="empty-state">جاري تحميل الحسابات…</div></div>
+    </article>
+  </div>
+
+  <dialog id="transferKeyDialog" class="transfer-dialog royal-frame">
+    <form id="transferKeyForm" method="dialog">
+      <div class="panel-head"><div><span class="kicker">ROTATE PUBLIC KEY</span><h3>تدوير مفتاح SFTP</h3></div><button id="transferKeyClose" type="button" class="tiny ghost">إغلاق</button></div>
+      <p>سيتم استبدال المفتاح المصرح به فورًا. المفتاح السابق سيتوقف عن قبول جلسات جديدة.</p>
+      <textarea id="transferNewKey" rows="6" required spellcheck="false" placeholder="ssh-ed25519 AAAA..."></textarea>
+      <input id="transferKeyId" type="hidden">
+      <button class="primary royal-action" type="submit">تطبيق المفتاح الجديد</button>
+    </form>
+  </dialog>
+</section>

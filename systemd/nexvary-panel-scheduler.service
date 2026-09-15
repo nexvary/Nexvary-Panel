@@ -1,0 +1,31 @@
+[Unit]
+Description=Nexvary Panel Safe Scheduled Tasks Engine
+After=network-online.target nexvary-panel-agent.service
+Wants=network-online.target
+Requires=nexvary-panel-agent.service
+Before=nexvary-panel.service
+
+[Service]
+Type=simple
+User=nexvary-panel
+Group=nexvary-panel
+WorkingDirectory=/opt/nexvary-panel
+EnvironmentFile=-/etc/nexvary-panel/admin.env
+ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/scheduler_agent.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/nexvary-panel /run/nexvary-panel
+RestrictAddressFamilies=AF_UNIX
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

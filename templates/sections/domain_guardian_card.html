@@ -1,0 +1,29 @@
+<article class="panel royal-frame frame-silver adv-card" id="domainGuardianCard">
+  <div class="panel-head">
+    <div><span class="kicker">NEXVARY DOMAIN GUARDIAN</span><h3>Trust Automation</h3></div>
+    <span class="adv-chip">ANALYZE → SAFE PREPARE</span>
+  </div>
+  <div class="adv-form">
+    <select id="guardianDomain"><option value="">اختر نطاقًا…</option></select>
+    <div class="adv-inline">
+      <input id="guardianSelector" value="default" maxlength="63" placeholder="DKIM selector">
+      <input id="guardianEmail" type="email" maxlength="320" placeholder="AutoSSL contact email">
+    </div>
+    <div class="adv-inline">
+      <input id="guardianMailHost" maxlength="253" placeholder="mail.example.com">
+      <input id="guardianMailIpv4" inputmode="decimal" placeholder="Public mail IPv4 (اختياري)">
+    </div>
+    <div class="adv-inline">
+      <button id="guardianAnalyzeBtn" type="button" class="tiny ghost">تحليل الثقة</button>
+      <button id="guardianPrepareBtn" type="button" class="primary royal-action">تحضير الإصلاحات الآمنة</button>
+    </div>
+  </div>
+  <div class="metrics-summary">
+    <div><small>TRUST SCORE</small><b id="guardianScore">—</b></div>
+    <div><small>STATE</small><b id="guardianState">—</b></div>
+    <div><small>SAFE FIXES</small><b id="guardianSafeCount">0</b></div>
+  </div>
+  <div id="guardianNotice" class="adv-result">يجمع Readiness وDNS وAutoSSL وMail Deliverability وChange Safety في خطة واحدة.</div>
+  <div id="guardianPlan" class="adv-list"><div class="empty-state">اختر نطاقًا ثم شغّل التحليل.</div></div>
+  <div class="account-policy-note">Safe Prepare لا يطبق DNS خارجيًا ولا يصدر شهادة. ينشئ DNS previews قابلة للمراجعة وسياسة AutoSSL فقط، ثم تبقى عمليات Apply/Issue خلف Step-Up وPreflight.</div>
+</article>

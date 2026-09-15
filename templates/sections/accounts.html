@@ -1,0 +1,72 @@
+{% from "macros/icons.html" import icon %}
+<section id="accounts" class="view workspace-page">
+  <div class="workspace-hero accounts-hero royal-frame">
+    <div class="hero-icon">{{icon('users')}}</div>
+    <div class="hero-copy">
+      <span class="kicker">ACCOUNT & RESELLER CONTROL</span>
+      <h2>الحسابات والموزعون</h2>
+      <p>إدارة حسابات الاستضافة والحزم وحدود الموزعين ضمن Scope واضح، مع Step-Up وAudit لكل تغيير حساس.</p>
+    </div>
+    <div class="hero-stats">
+      <div><small>ACCOUNT SCOPE</small><strong>ISOLATED</strong><span>per reseller</span></div>
+      <div><small>PACKAGE</small><strong>ENFORCED</strong><span>quota + features</span></div>
+      <div><small>MUTATIONS</small><strong>STEP-UP</strong><span>audited</span></div>
+    </div>
+  </div>
+
+  <div class="accounts-layout">
+    <article class="panel account-create royal-frame frame-silver">
+      <div class="panel-head"><div><span class="kicker">CREATE HOSTING ACCOUNT</span><h3>حساب استضافة جديد</h3></div><span class="account-scope-chip">CONTROL PLANE</span></div>
+      <form id="hostingAccountForm" class="account-form">
+        <label>اسم المستخدم<input id="accountUsername" autocomplete="off" minlength="3" maxlength="32" required placeholder="client01"></label>
+        <label>النطاق الأساسي<input id="accountDomain" autocomplete="off" required placeholder="example.com"></label>
+        <label>الحزمة<select id="accountPackage" required><option value="">جاري تحميل الحزم…</option></select></label>
+        <label>كلمة المرور<input id="accountPassword" type="password" autocomplete="new-password" minlength="14" required placeholder="14+ characters"></label>
+        <div class="account-policy-note">إنشاء الحساب لا ينفذ Shell ولا يمنح صلاحية خادم. النطاق يصبح محجوزًا للحساب، وتتم إدارة المواقع لاحقًا ضمن Quota الحزمة.</div>
+        <button class="primary royal-action" type="submit">{{icon('plus')}} إنشاء الحساب</button>
+      </form>
+      <div id="accountStatus" class="account-status" role="status"></div>
+    </article>
+
+    <article class="panel account-inventory royal-frame frame-electric-black">
+      <div class="panel-head"><div><span class="kicker">HOSTING ACCOUNTS</span><h3>الحسابات الحالية</h3></div><div class="account-limit"><small>LIMIT</small><strong id="accountLimit">—</strong></div></div>
+      <div id="accountList" class="account-list"><div class="empty-state">جاري تحميل الحسابات…</div></div>
+    </article>
+  </div>
+
+  {% if role == 'admin' %}
+  <article class="panel whm-bulk-center royal-frame frame-electric-black" id="whmBulkPanel">
+    <div class="panel-head"><div><span class="kicker">WHM MULTI-ACCOUNT</span><h3>Bulk Account Operations</h3></div><span class="account-scope-chip">PREVIEW → APPLY</span></div>
+    <div class="whm-bulk-grid">
+      <form id="bulkPackageForm" class="account-form">
+        <label>الحسابات<select id="bulkPackageAccounts" class="bulk-account-select" multiple size="7" required></select></label>
+        <label>الحزمة المستهدفة<select id="bulkPackageTarget" required></select></label>
+        <div class="account-policy-note">All-or-Nothing: Preview يقيس Quotas لكل حساب أولًا. وجود حساب موقوف/مفقود أو Hard Quota واحدة يمنع تغيير الحزمة لكل الدفعة.</div>
+        <div class="bulk-actions"><button id="bulkPackagePreviewBtn" class="tiny ghost" type="submit">Preview Package Impact</button><button id="bulkPackageApplyBtn" class="primary royal-action" type="button" disabled>Apply Safe Package Batch</button></div>
+      </form>
+      <pre id="bulkPackagePreview" class="bulk-preview">اختر حسابًا أو أكثر وحزمة مستهدفة ثم نفّذ Preview. الحد الأقصى 100 حساب في العملية الواحدة.</pre>
+    </div>
+    <div class="whm-bulk-grid">
+      <form id="bulkStatusForm" class="account-form">
+        <label>الحالة المستهدفة<select id="bulkStatusTarget" required><option value="suspended">SUSPENDED · تعليق الحسابات والمواقع الفعالة</option><option value="active">ACTIVE · إعادة الحالة السابقة للمواقع</option></select></label>
+        <div class="account-policy-note">يستخدم نفس الحسابات المختارة أعلاه. التعليق يحفظ حالة المواقع قبل إيقافها؛ إعادة التفعيل تعيد فقط المواقع التي كانت فعالة قبل التعليق. إذا فشل Provider في منتصف الدفعة تُنفذ محاولة Rollback لما سبق تغييره.</div>
+        <div class="bulk-actions"><button id="bulkStatusPreviewBtn" class="tiny ghost" type="submit">Preview Lifecycle</button><button id="bulkStatusApplyBtn" class="primary royal-action" type="button" disabled>Apply Account Lifecycle</button></div>
+      </form>
+      <pre id="bulkStatusPreview" class="bulk-preview">اختيار الحسابات مشترك مع Bulk Package. نفّذ Lifecycle Preview قبل التعليق أو إعادة التفعيل.</pre>
+    </div>
+  </article>
+
+  <article class="panel reseller-center royal-frame frame-silver">
+    <div class="panel-head"><div><span class="kicker">RESELLER MANAGEMENT</span><h3>إدارة الموزعين</h3></div><span class="account-scope-chip">ADMIN ONLY</span></div>
+    <div class="reseller-grid">
+      <form id="resellerForm" class="account-form reseller-form">
+        <label>اسم الموزع<input id="resellerUsername" minlength="3" maxlength="32" required placeholder="partner01"></label>
+        <label>كلمة المرور<input id="resellerPassword" type="password" minlength="14" autocomplete="new-password" required></label>
+        <label>أقصى عدد حسابات<input id="resellerMaxAccounts" type="number" min="1" max="100000" value="25" required></label>
+        <button class="primary royal-action" type="submit">{{icon('plus')}} إنشاء موزع</button>
+      </form>
+      <div id="resellerList" class="reseller-list"><div class="empty-state">جاري تحميل الموزعين…</div></div>
+    </div>
+  </article>
+  {% endif %}
+</section>

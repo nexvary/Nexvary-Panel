@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Nexvary Panel AutoSSL policy checks
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=6h
+RandomizedDelaySec=10min
+Persistent=true
+Unit=nexvary-panel-autossl.service
+
+[Install]
+WantedBy=timers.target

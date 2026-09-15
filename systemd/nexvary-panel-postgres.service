@@ -1,0 +1,39 @@
+[Unit]
+Description=Nexvary Panel PostgreSQL Provider Agent
+After=postgresql.service
+Requires=postgresql.service
+ConditionPathExists=/opt/nexvary-panel-agent/postgres_agent.py
+
+[Service]
+Type=simple
+User=postgres
+Group=nexvary-panel
+SupplementaryGroups=postgres
+WorkingDirectory=/opt/nexvary-panel-agent
+RuntimeDirectory=nexvary-panel-postgres
+RuntimeDirectoryMode=0750
+StateDirectory=nexvary-panel-postgres
+StateDirectoryMode=0700
+Environment=NVP_POSTGRES_SNAPSHOT_DIR=/var/lib/nexvary-panel-postgres/snapshots
+ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/postgres_agent.py
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX
+ReadWritePaths=/run/nexvary-panel-postgres /var/lib/nexvary-panel-postgres
+
+[Install]
+WantedBy=multi-user.target
