@@ -21,7 +21,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-server-lifecycle-") as tmp:
     app = create_app()
     app.config.update(TESTING=True)
     client = app.test_client()
-    server_state = {"hostname": "host.example.com"}
+    server_state = {"hostname": "host.example.com", "update_fingerprint": "a" * 64, "update_count": 2}
 
     def admin_session(step_up: bool = True):
         with client.session_transaction() as sess:
@@ -53,7 +53,16 @@ with tempfile.TemporaryDirectory(prefix="nvp-server-lifecycle-") as tmp:
         if action == "server-processes":
             return {"ok": True, "processes": [{"pid": 10, "user": "root", "command": "nginx", "cpu": 1.2, "memory": 0.4, "elapsed_seconds": 600}]}
         if action == "server-updates-preview":
-            return {"ok": True, "count": 2, "packages": [{"name": "nginx", "version": "1.1"}, {"name": "openssl", "version": "3.1"}], "fingerprint": "a" * 64, "reboot_required": False, "generated_at": int(time.time()), "apply_supported": False}
+            count = int(server_state["update_count"])
+            packages = [{"name": "nginx", "version": "1.1"}, {"name": "openssl", "version": "3.1"}][:count]
+            return {"ok": True, "count": count, "packages": packages, "fingerprint": server_state["update_fingerprint"], "reboot_required": False, "generated_at": int(time.time()), "apply_supported": True}
+        if action == "server-updates-apply":
+            if payload.get("fingerprint") != server_state["update_fingerprint"]:
+                return {"ok": False, "error": "system-update-preview-stale"}
+            applied = int(server_state["update_count"])
+            server_state["update_count"] = 0
+            server_state["update_fingerprint"] = "e" * 64
+            return {"ok": True, "changed": bool(applied), "applied_count": applied, "remaining_count": 0, "fingerprint": server_state["update_fingerprint"], "reboot_required": True}
         if action == "server-time-enable-ntp":
             return {"ok": True, "time": {"timezone": "UTC", "ntp": True, "synchronized": True, "epoch": 1}}
         if action == "server-hostname-set":
@@ -62,7 +71,6 @@ with tempfile.TemporaryDirectory(prefix="nvp-server-lifecycle-") as tmp:
             return {"ok": True, "hostname": server_state["hostname"], "previous_hostname": previous, "changed": True}
         return {"ok": False, "error": "unexpected-action"}
 
-    # Unauthenticated API remains JSON 401.
     response = client.get("/api/server-lifecycle/overview")
     assert response.status_code == 401
 
@@ -80,7 +88,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-server-lifecycle-") as tmp:
         response = client.get("/api/server-lifecycle/updates")
         assert response.status_code == 200
         body = response.get_json()
-        assert body["count"] == 2 and body["apply_supported"] is False
+        assert body["count"] == 2 and body["apply_supported"] is True
 
         response = client.post(
             "/api/server-lifecycle/maintenance/preview",
@@ -101,13 +109,35 @@ with tempfile.TemporaryDirectory(prefix="nvp-server-lifecycle-") as tmp:
             f"/api/server-lifecycle/maintenance/{preview_id}/apply",
             headers={"X-CSRF-Token": "server-csrf"},
         )
-        assert response.status_code == 409  # system updates remain preview-only
+        assert response.status_code == 200
+        applied = response.get_json()
+        assert applied["status"] == "applied" and applied["applied_count"] == 2
+        assert applied["remaining_count"] == 0 and applied["reboot_required"] is True
 
         response = client.post(
             f"/api/server-lifecycle/maintenance/{preview_id}/cancel",
             headers={"X-CSRF-Token": "server-csrf"},
         )
-        assert response.status_code == 200 and response.get_json()["status"] == "cancelled"
+        assert response.status_code == 409
+
+        server_state["update_count"] = 1
+        server_state["update_fingerprint"] = "b" * 64
+        response = client.post(
+            "/api/server-lifecycle/maintenance/preview",
+            json={"kind": "system-updates"},
+            headers={"X-CSRF-Token": "server-csrf"},
+        )
+        assert response.status_code == 201
+        stale_update_id = response.get_json()["preview"]["id"]
+        server_state["update_fingerprint"] = "c" * 64
+        response = client.post(
+            f"/api/server-lifecycle/maintenance/{stale_update_id}/apply",
+            headers={"X-CSRF-Token": "server-csrf"},
+        )
+        assert response.status_code == 409
+        assert "changed since preview" in response.get_json()["error"]
+        server_state["update_count"] = 0
+        server_state["update_fingerprint"] = "e" * 64
 
         response = client.post(
             "/api/server-lifecycle/hostname/preview",
@@ -128,8 +158,8 @@ with tempfile.TemporaryDirectory(prefix="nvp-server-lifecycle-") as tmp:
         assert server_state["hostname"] == "edge01.example.com"
 
         response = client.get("/api/server-lifecycle/maintenance")
-        applied = next(item for item in response.get_json()["previews"] if item["id"] == hostname_preview["id"])
-        assert applied["status"] == "applied" and applied["applied_at"] > 0
+        applied_hostname = next(item for item in response.get_json()["previews"] if item["id"] == hostname_preview["id"])
+        assert applied_hostname["status"] == "applied" and applied_hostname["applied_at"] > 0
 
         response = client.post(
             "/api/server-lifecycle/hostname/preview",
@@ -165,6 +195,20 @@ with tempfile.TemporaryDirectory(prefix="nvp-server-lifecycle-") as tmp:
             headers={"X-CSRF-Token": "server-csrf"},
         )
         assert response.status_code == 400
+
+        response = client.post(
+            "/api/server-lifecycle/maintenance/preview",
+            json={"kind": "reboot"},
+            headers={"X-CSRF-Token": "server-csrf"},
+        )
+        assert response.status_code == 201
+        reboot_id = response.get_json()["preview"]["id"]
+        response = client.post(
+            f"/api/server-lifecycle/maintenance/{reboot_id}/apply",
+            headers={"X-CSRF-Token": "server-csrf"},
+        )
+        assert response.status_code == 409
+        assert "not exposed" in response.get_json()["error"]
 
     admin_session(step_up=False)
     with patch("panel.routes_server_lifecycle.server_call", side_effect=fake_server_call):
