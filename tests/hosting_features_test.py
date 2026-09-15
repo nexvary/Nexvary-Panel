@@ -31,8 +31,8 @@ with tempfile.TemporaryDirectory(prefix="nvp-hosting-") as tmp:
     assert len(feature_catalog("account")) > 50
     assert len(feature_catalog("server")) > 25
 
-    # These capabilities have concrete routes/providers/tests in Platform 0.7 and must
-    # never regress to a Roadmap-only label in Feature Manager.
+    # These capabilities have concrete routes/providers/tests and must never regress
+    # to a Roadmap-only label in Feature Manager.
     operational_foundations = {
         "files.directory_privacy",
         "domains.dynamic_dns",
@@ -43,6 +43,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-hosting-") as tmp:
         "advanced.indexes",
         "advanced.mime_types",
         "email.autoresponders",
+        "email.default_address",
         "email.filters",
         "email.spam_filters",
         "email.delivery_trace",
