@@ -2,14 +2,14 @@
 Description=Nexvary Panel Advanced Hosting Ops Agent
 After=network.target nginx.service mariadb.service
 Wants=nginx.service mariadb.service
-ConditionPathExists=/opt/nexvary-panel-agent/hosting_ops_entry.py
+ConditionPathExists=/opt/nexvary-panel-agent/hosting_ops_08_entry.py
 
 [Service]
 Type=simple
 User=root
 Group=root
 WorkingDirectory=/opt/nexvary-panel-agent
-ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/hosting_ops_entry.py
+ExecStart=/usr/bin/python3 /opt/nexvary-panel-agent/hosting_ops_08_entry.py
 Restart=on-failure
 RestartSec=3
 UMask=0077

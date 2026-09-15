@@ -37,8 +37,11 @@ with tempfile.TemporaryDirectory(prefix="nvp-extensions-") as tmp:
     body = catalog.get_json()
     assert body["execution_model"] == "curated-manifests-no-arbitrary-code"
     by_id = {item["extension_id"]: item for item in body["extensions"]}
-    for extension_id in ("dnssec", "autossl", "mail-queue", "deliverability", "fleet", "wordpress-staging"):
+    for extension_id in ("dnssec", "autossl", "mail-queue", "deliverability", "fleet", "migration-center", "wordpress-staging"):
         assert extension_id in by_id and by_id[extension_id]["state"]["enabled"] is True
+    assert by_id["fleet"]["maturity"] == "provider"
+    assert by_id["migration-center"]["maturity"] == "provider"
+    assert "/api/migration-center" in by_id["migration-center"]["api_prefixes"]
     assert all(prefix.startswith("/api/") for item in body["extensions"] for prefix in item["api_prefixes"])
 
     disable = client.put(
@@ -59,6 +62,24 @@ with tempfile.TemporaryDirectory(prefix="nvp-extensions-") as tmp:
     assert enable.status_code == 200 and enable.get_json()["enabled"] is True
     restored = client.get("/api/fleet")
     assert restored.status_code == 200, restored.data
+
+    disable_migration = client.put(
+        "/api/extensions/migration-center",
+        json={"enabled": False},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert disable_migration.status_code == 200 and disable_migration.get_json()["enabled"] is False
+    blocked_migration = client.get("/api/migration-center/uploads")
+    assert blocked_migration.status_code == 503
+    assert blocked_migration.get_json()["error"] == "extension disabled: migration-center"
+    enable_migration = client.put(
+        "/api/extensions/migration-center",
+        json={"enabled": True},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert enable_migration.status_code == 200 and enable_migration.get_json()["enabled"] is True
+    restored_migration = client.get("/api/migration-center/uploads")
+    assert restored_migration.status_code == 200, restored_migration.data
 
     invalid = client.put(
         "/api/extensions/not-real",
@@ -85,9 +106,13 @@ with tempfile.TemporaryDirectory(prefix="nvp-extensions-") as tmp:
 
     with db() as conn:
         fleet = conn.execute("SELECT enabled,updated_by FROM extension_states WHERE extension_id='fleet'").fetchone()
+        migration = conn.execute("SELECT enabled,updated_by FROM extension_states WHERE extension_id='migration-center'").fetchone()
         assert fleet and int(fleet["enabled"]) == 1 and fleet["updated_by"] == "admin"
+        assert migration and int(migration["enabled"]) == 1 and migration["updated_by"] == "admin"
         rows = conn.execute("SELECT action,detail FROM audit WHERE action='extension-state' ORDER BY id").fetchall()
-        assert len(rows) == 2
-        assert all("extension=fleet" in str(row["detail"]) for row in rows)
+        assert len(rows) == 4
+        details = [str(row["detail"]) for row in rows]
+        assert sum("extension=fleet" in detail for detail in details) == 2
+        assert sum("extension=migration-center" in detail for detail in details) == 2
 
 print("Nexvary Panel curated Extension Hub / kill-switch gate: PASS")

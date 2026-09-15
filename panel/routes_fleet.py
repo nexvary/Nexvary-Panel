@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 import ipaddress
 import json
 import re
+import secrets
 import socket
 import sqlite3
 import time
@@ -12,19 +15,28 @@ import urllib.request
 
 from flask import jsonify, request, session
 
+from .agent_client import agent_call
+from .config import VERSION
 from .core import audit, db
+from .provider_client import provider_call
 from .security import role_required, step_up_required
+from .server_client import server_call
 
 NODE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_. -]{2,63}$")
+SECRET_REF_RE = re.compile(r"^[a-z][a-z0-9_-]{2,47}$")
+TOKEN_LABEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_. -]{2,63}$")
 CAPABILITY_KEY_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
+REQUEST_ID_RE = re.compile(r"^[a-f0-9]{32}$")
+FINGERPRINT_RE = re.compile(r"^[a-f0-9]{64}$")
 MAX_FLEET_NODES = 100
 MAX_PROBE_BATCH = 25
 ALLOWED_PORTS = {443, 8443}
+REQUEST_TTL_SECONDS = 300
 PLAN_OPERATIONS = {
-    "upgrade-panel": "panel.upgrade",
-    "renew-autossl": "autossl",
-    "reload-nginx": "nginx",
-    "flush-mail-queue": "mail",
+    "restart-nginx": "service.nginx.restart",
+    "restart-mariadb": "service.mariadb.restart",
+    "enable-ntp": "server.time.ntp",
+    "system-updates": "server.updates.apply",
 }
 
 
@@ -112,11 +124,11 @@ def _safe_capabilities(value: object) -> dict[str, object]:
 
 def _probe_endpoint(endpoint: str) -> dict:
     endpoint = _public_https(endpoint)
-    url = endpoint.rstrip("/") + "/api/health"
+    url = endpoint.rstrip("/") + "/api/fleet/v1/health"
     opener = urllib.request.build_opener(_NoRedirect())
     started = time.monotonic()
     try:
-        req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "Nexvary-Fleet/0.7"}, method="GET")
+        req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "Nexvary-Fleet/0.8"}, method="GET")
         with opener.open(req, timeout=5) as response:
             if int(getattr(response, "status", 200)) != 200:
                 raise ValueError("unexpected fleet health status")
@@ -179,6 +191,7 @@ def _node_payload(conn, row) -> dict:
         "id": int(row["id"]),
         "name": str(row["name"]),
         "endpoint": str(row["endpoint"]),
+        "credential_configured": bool(str(row["credential_ref"] or "")),
         "enabled": bool(row["enabled"]),
         "status": str(row["status"]),
         "last_seen": int(row["last_seen"]),
@@ -217,6 +230,51 @@ def _select_nodes(conn, raw_ids: object) -> tuple[list, str | None]:
     return list(rows), None
 
 
+def _token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _authenticate_machine_token(token: str) -> dict | None:
+    if not re.fullmatch(r"nvp_fleet_[A-Za-z0-9_-]{40,180}", token):
+        return None
+    digest = _token_hash(token)
+    with db() as conn:
+        rows = conn.execute("SELECT id,label,token_hash,owner FROM fleet_inbound_tokens WHERE enabled=1 ORDER BY id LIMIT 200").fetchall()
+    for row in rows:
+        if hmac.compare_digest(str(row["token_hash"]), digest):
+            return {"id": int(row["id"]), "label": str(row["label"]), "owner": str(row["owner"])}
+    return None
+
+
+def _safe_result(value: object) -> dict:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        str(key)[:64]: raw
+        for key, raw in list(value.items())[:32]
+        if isinstance(raw, (str, int, float, bool, type(None)))
+    }
+
+
+def _execute_inbound(operation: str, payload: dict) -> dict:
+    if operation == "restart-nginx":
+        result = agent_call({"action": "service-restart", "name": "nginx"}, timeout=45)
+    elif operation == "restart-mariadb":
+        result = agent_call({"action": "service-restart", "name": "mariadb"}, timeout=45)
+    elif operation == "enable-ntp":
+        result = server_call({"action": "server-time-enable-ntp"}, timeout=30)
+    elif operation == "system-updates":
+        fingerprint = str(payload.get("fingerprint", "")).strip().lower()
+        if not FINGERPRINT_RE.fullmatch(fingerprint):
+            return {"ok": False, "error": "system-updates requires the reviewed 64-character fingerprint"}
+        result = server_call({"action": "server-updates-apply", "fingerprint": fingerprint}, timeout=1900)
+    else:
+        return {"ok": False, "error": "fleet operation not allowed"}
+    if not isinstance(result, dict) or not result.get("ok"):
+        return {"ok": False, "error": str(result.get("error", "fleet local provider failed"))[:180] if isinstance(result, dict) else "fleet local provider failed"}
+    return {"ok": True, "result": _safe_result(result)}
+
+
 def register_fleet_routes(app):
     @app.before_request
     def fleet_legacy_guard():
@@ -225,6 +283,67 @@ def register_fleet_routes(app):
             if request.method in {"POST", "DELETE", "PUT", "PATCH"}:
                 return jsonify(ok=False, error="legacy Fleet API retired; use /api/fleet endpoints"), 410
         return None
+
+    @app.get("/api/fleet/v1/health")
+    def fleet_machine_health():
+        return jsonify(
+            ok=True,
+            version=VERSION,
+            protocol="fleet-v1",
+            capabilities={key: True for key in PLAN_OPERATIONS.values()},
+        )
+
+    @app.post("/api/fleet/v1/apply")
+    def fleet_machine_apply():
+        auth = str(request.headers.get("Authorization", ""))
+        token = auth[7:] if auth.startswith("Bearer ") else ""
+        identity = _authenticate_machine_token(token)
+        if not identity:
+            return jsonify(ok=False, error="fleet authentication failed"), 401
+        data = request.get_json(silent=True) or {}
+        if not isinstance(data, dict):
+            return jsonify(ok=False, error="invalid fleet request"), 400
+        operation = str(data.get("operation", "")).strip().lower()
+        request_id = str(data.get("request_id", "")).strip().lower()
+        payload = data.get("payload") if isinstance(data.get("payload"), dict) else {}
+        try:
+            issued_at = int(data.get("issued_at", 0) or 0)
+        except (TypeError, ValueError):
+            issued_at = 0
+        if operation not in PLAN_OPERATIONS or not REQUEST_ID_RE.fullmatch(request_id):
+            return jsonify(ok=False, error="invalid fleet operation or request id"), 400
+        if str(request.headers.get("Idempotency-Key", "")) != request_id:
+            return jsonify(ok=False, error="fleet idempotency key mismatch"), 400
+        now = int(time.time())
+        if abs(now - issued_at) > REQUEST_TTL_SECONDS:
+            return jsonify(ok=False, error="fleet request timestamp outside allowed window"), 409
+        owner = str(identity["owner"])[:64]
+        with db() as conn:
+            existing = conn.execute("SELECT operation,status,detail_json FROM fleet_jobs WHERE request_id=? AND direction='inbound' AND owner=?", (request_id, owner)).fetchone()
+            if existing:
+                try:
+                    detail = json.loads(existing["detail_json"] or "{}")
+                except Exception:
+                    detail = {}
+                if str(existing["operation"]) != operation:
+                    return jsonify(ok=False, error="request id already used for a different operation"), 409
+                return jsonify(ok=str(existing["status"]) == "applied", request_id=request_id, operation=operation, status=str(existing["status"]), result=_safe_result(detail.get("result", {}))), 200
+            conn.execute(
+                "INSERT INTO fleet_jobs(request_id,node_id,direction,operation,status,detail_json,owner,created_at,updated_at) VALUES(?,NULL,'inbound',?,'running','{}',?,?,?)",
+                (request_id, operation, owner, now, now),
+            )
+        execution = _execute_inbound(operation, payload)
+        status = "applied" if execution.get("ok") else "failed"
+        detail = {"result": _safe_result(execution.get("result", {}))}
+        if not execution.get("ok"):
+            detail["error"] = str(execution.get("error", "fleet operation failed"))[:180]
+        with db() as conn:
+            conn.execute("UPDATE fleet_jobs SET status=?,detail_json=?,updated_at=? WHERE request_id=?", (status, json.dumps(detail, separators=(",", ":")), int(time.time()), request_id))
+            conn.execute("UPDATE fleet_inbound_tokens SET last_used=? WHERE id=?", (int(time.time()), int(identity["id"])))
+        audit("fleet-inbound-apply" if execution.get("ok") else "fleet-inbound-failed", f"request={request_id} operation={operation} peer={identity['label']}")
+        if not execution.get("ok"):
+            return jsonify(ok=False, request_id=request_id, operation=operation, status=status, error=detail["error"]), 503
+        return jsonify(ok=True, request_id=request_id, operation=operation, status=status, result=detail["result"])
 
     @app.get("/api/fleet")
     @role_required("admin")
@@ -237,7 +356,7 @@ def register_fleet_routes(app):
         for node in nodes:
             state = str(node["status"])
             counts[state if state in counts else "unknown"] += 1
-        return jsonify(ok=True, nodes=nodes, counts=counts, batch_limit=MAX_PROBE_BATCH, remote_apply_supported=False)
+        return jsonify(ok=True, nodes=nodes, counts=counts, batch_limit=MAX_PROBE_BATCH, remote_apply_supported=True)
 
     @app.post("/api/fleet")
     @role_required("admin")
@@ -246,8 +365,11 @@ def register_fleet_routes(app):
         data = request.get_json(silent=True) or {}
         name = str(data.get("name", "")).strip()
         endpoint_raw = str(data.get("endpoint", "")).strip()
+        credential_ref = str(data.get("credential_ref", "")).strip().lower()
         if not NODE_NAME_RE.fullmatch(name):
             return jsonify(ok=False, error="invalid fleet node name"), 400
+        if credential_ref and not SECRET_REF_RE.fullmatch(credential_ref):
+            return jsonify(ok=False, error="invalid fleet credential reference"), 400
         try:
             endpoint = _public_https(endpoint_raw)
         except ValueError as exc:
@@ -260,14 +382,76 @@ def register_fleet_routes(app):
                 if used >= MAX_FLEET_NODES:
                     return jsonify(ok=False, error=f"fleet node limit reached ({MAX_FLEET_NODES})"), 409
                 cur = conn.execute(
-                    "INSERT INTO fleet_nodes(name,endpoint,enabled,owner,status,last_seen,created_at,updated_at) VALUES(?,?,1,?,'unknown',0,?,?)",
-                    (name, endpoint, owner, now, now),
+                    "INSERT INTO fleet_nodes(name,endpoint,credential_ref,enabled,owner,status,last_seen,created_at,updated_at) VALUES(?,?,?,1,?,'unknown',0,?,?)",
+                    (name, endpoint, credential_ref, owner, now, now),
                 )
                 node_id = int(cur.lastrowid)
         except sqlite3.IntegrityError:
             return jsonify(ok=False, error="fleet node name already exists"), 409
-        audit("fleet-node-create", f"id={node_id} name={name} endpoint={endpoint}")
-        return jsonify(ok=True, id=node_id, name=name, endpoint=endpoint), 201
+        audit("fleet-node-create", f"id={node_id} name={name} endpoint={endpoint} credential={'yes' if credential_ref else 'no'}")
+        return jsonify(ok=True, id=node_id, name=name, endpoint=endpoint, credential_configured=bool(credential_ref)), 201
+
+    @app.patch("/api/fleet/<int:node_id>/credential")
+    @role_required("admin")
+    @step_up_required
+    def fleet_set_credential(node_id: int):
+        data = request.get_json(silent=True) or {}
+        credential_ref = str(data.get("credential_ref", "")).strip().lower()
+        if not SECRET_REF_RE.fullmatch(credential_ref):
+            return jsonify(ok=False, error="invalid fleet credential reference"), 400
+        owner = _admin_owner()
+        with db() as conn:
+            row = conn.execute("SELECT name FROM fleet_nodes WHERE id=? AND owner=?", (node_id, owner)).fetchone()
+            if not row:
+                return jsonify(ok=False, error="fleet node not found"), 404
+            conn.execute("UPDATE fleet_nodes SET credential_ref=?,updated_at=? WHERE id=? AND owner=?", (credential_ref, int(time.time()), node_id, owner))
+        audit("fleet-node-credential", f"id={node_id} name={row['name']} ref={credential_ref}")
+        return jsonify(ok=True, id=node_id, credential_configured=True)
+
+    @app.post("/api/fleet/auth/tokens")
+    @role_required("admin")
+    @step_up_required
+    def fleet_create_inbound_token():
+        data = request.get_json(silent=True) or {}
+        label = str(data.get("label", "")).strip()
+        if not TOKEN_LABEL_RE.fullmatch(label):
+            return jsonify(ok=False, error="invalid fleet token label"), 400
+        token = "nvp_fleet_" + secrets.token_urlsafe(48)
+        digest = _token_hash(token)
+        owner = _admin_owner()
+        now = int(time.time())
+        try:
+            with db() as conn:
+                cur = conn.execute(
+                    "INSERT INTO fleet_inbound_tokens(label,token_hash,enabled,owner,created_at,last_used) VALUES(?,?,1,?,?,0)",
+                    (label, digest, owner, now),
+                )
+                token_id = int(cur.lastrowid)
+        except sqlite3.IntegrityError:
+            return jsonify(ok=False, error="fleet token label already exists"), 409
+        audit("fleet-token-create", f"id={token_id} label={label}")
+        return jsonify(ok=True, id=token_id, label=label, token_once=token, store_as={"kind": "fleet", "suggested_id": f"fleet-{token_id}"}), 201
+
+    @app.get("/api/fleet/auth/tokens")
+    @role_required("admin")
+    def fleet_list_inbound_tokens():
+        owner = _admin_owner()
+        with db() as conn:
+            rows = conn.execute("SELECT id,label,enabled,created_at,last_used FROM fleet_inbound_tokens WHERE owner=? ORDER BY id DESC", (owner,)).fetchall()
+        return jsonify(ok=True, tokens=[{"id": int(row["id"]), "label": str(row["label"]), "enabled": bool(row["enabled"]), "created_at": int(row["created_at"]), "last_used": int(row["last_used"])} for row in rows])
+
+    @app.delete("/api/fleet/auth/tokens/<int:token_id>")
+    @role_required("admin")
+    @step_up_required
+    def fleet_revoke_inbound_token(token_id: int):
+        owner = _admin_owner()
+        with db() as conn:
+            row = conn.execute("SELECT label FROM fleet_inbound_tokens WHERE id=? AND owner=?", (token_id, owner)).fetchone()
+            if not row:
+                return jsonify(ok=False, error="fleet token not found"), 404
+            conn.execute("UPDATE fleet_inbound_tokens SET enabled=0 WHERE id=? AND owner=?", (token_id, owner))
+        audit("fleet-token-revoke", f"id={token_id} label={row['label']}")
+        return jsonify(ok=True, id=token_id, enabled=False)
 
     @app.post("/api/fleet/<int:node_id>/probe")
     @role_required("admin")
@@ -323,27 +507,91 @@ def register_fleet_routes(app):
                 caps = latest.get("capabilities", {}) if latest else {}
                 online = bool(latest and latest.get("status") == "online")
                 capable = bool(caps.get(required)) if isinstance(caps, dict) else False
-                plans.append(
-                    {
-                        "id": int(node["id"]),
-                        "name": str(node["name"]),
-                        "status": latest.get("status", "unknown") if latest else "unknown",
-                        "remote_version": latest.get("remote_version", "") if latest else "",
-                        "required_capability": required,
-                        "ready": online and capable,
-                        "reason": "ready" if online and capable else ("node is not online" if not online else f"missing capability: {required}"),
-                    }
+                credential = bool(str(node["credential_ref"] or ""))
+                ready = online and capable and credential
+                reason = "ready"
+                if not online:
+                    reason = "node is not online"
+                elif not capable:
+                    reason = f"missing capability: {required}"
+                elif not credential:
+                    reason = "fleet credential reference is not configured"
+                plans.append({
+                    "id": int(node["id"]),
+                    "name": str(node["name"]),
+                    "status": latest.get("status", "unknown") if latest else "unknown",
+                    "remote_version": latest.get("remote_version", "") if latest else "",
+                    "required_capability": required,
+                    "credential_configured": credential,
+                    "ready": ready,
+                    "reason": reason,
+                })
+        return jsonify(ok=True, operation=operation, required_capability=required, nodes=plans, ready_count=sum(1 for plan in plans if plan["ready"]), blocked_count=sum(1 for plan in plans if not plan["ready"]), apply_supported=True, policy="allow-listed node operations only; credentials remain inside the root-owned Secret Vault")
+
+    @app.post("/api/fleet/apply")
+    @role_required("admin")
+    @step_up_required
+    def fleet_apply():
+        data = request.get_json(silent=True) or {}
+        if not isinstance(data, dict):
+            return jsonify(ok=False, error="invalid fleet apply request"), 400
+        operation = str(data.get("operation", "")).strip().lower()
+        required = PLAN_OPERATIONS.get(operation)
+        if not required:
+            return jsonify(ok=False, error="unsupported fleet operation"), 400
+        payload = data.get("payload") if isinstance(data.get("payload"), dict) else {}
+        if len(json.dumps(payload, separators=(",", ":")).encode("utf-8")) > 4096:
+            return jsonify(ok=False, error="fleet operation payload too large"), 400
+        if operation == "system-updates" and not FINGERPRINT_RE.fullmatch(str(payload.get("fingerprint", "")).strip().lower()):
+            return jsonify(ok=False, error="system-updates requires the reviewed remote fingerprint"), 400
+        raw_ids = data.get("node_ids")
+        with db() as conn:
+            nodes, error = _select_nodes(conn, raw_ids)
+            if error:
+                return jsonify(ok=False, error=error), 400
+            selected = []
+            for node in nodes:
+                latest = _latest_probe(conn, int(node["id"]))
+                caps = latest.get("capabilities", {}) if latest else {}
+                if not latest or latest.get("status") != "online" or not bool(caps.get(required)) or not str(node["credential_ref"] or ""):
+                    return jsonify(ok=False, error=f"fleet node is not ready for apply: {node['name']}"), 409
+                selected.append(dict(node))
+        owner = _admin_owner()
+        jobs = []
+        for node in selected:
+            request_id = secrets.token_hex(16)
+            issued_at = int(time.time())
+            with db() as conn:
+                cur = conn.execute(
+                    "INSERT INTO fleet_jobs(request_id,node_id,direction,operation,status,detail_json,owner,created_at,updated_at) VALUES(?,?,'outbound',?,'running','{}',?,?,?)",
+                    (request_id, int(node["id"]), operation, owner, issued_at, issued_at),
                 )
-        return jsonify(
-            ok=True,
-            operation=operation,
-            required_capability=required,
-            nodes=plans,
-            ready_count=sum(1 for plan in plans if plan["ready"]),
-            blocked_count=sum(1 for plan in plans if not plan["ready"]),
-            apply_supported=False,
-            policy="preview-only until authenticated node-to-node execution is introduced; no remote command is sent by this endpoint",
-        )
+                job_id = int(cur.lastrowid)
+            result = provider_call({"action": "fleet-apply", "endpoint": str(node["endpoint"]), "secret_id": str(node["credential_ref"]), "operation": operation, "request_id": request_id, "issued_at": issued_at, "payload": payload}, timeout=1910)
+            status = "applied" if result.get("ok") else "failed"
+            detail = {"result": _safe_result(result.get("result", {}))}
+            if not result.get("ok"):
+                detail["error"] = str(result.get("error", "remote fleet apply failed"))[:180]
+            with db() as conn:
+                conn.execute("UPDATE fleet_jobs SET status=?,detail_json=?,updated_at=? WHERE id=?", (status, json.dumps(detail, separators=(",", ":")), int(time.time()), job_id))
+            jobs.append({"id": job_id, "request_id": request_id, "node_id": int(node["id"]), "name": str(node["name"]), "status": status, "error": detail.get("error", "")})
+            audit("fleet-outbound-apply" if result.get("ok") else "fleet-outbound-failed", f"request={request_id} node={node['id']} operation={operation}")
+        return jsonify(ok=all(job["status"] == "applied" for job in jobs), operation=operation, applied_count=sum(1 for job in jobs if job["status"] == "applied"), failed_count=sum(1 for job in jobs if job["status"] == "failed"), jobs=jobs), (200 if all(job["status"] == "applied" for job in jobs) else 207)
+
+    @app.get("/api/fleet/jobs")
+    @role_required("admin")
+    def fleet_jobs():
+        owner = _admin_owner()
+        with db() as conn:
+            rows = conn.execute("SELECT id,request_id,node_id,direction,operation,status,detail_json,created_at,updated_at FROM fleet_jobs WHERE owner=? ORDER BY id DESC LIMIT 100", (owner,)).fetchall()
+        items = []
+        for row in rows:
+            try:
+                detail = json.loads(row["detail_json"] or "{}")
+            except Exception:
+                detail = {}
+            items.append({"id": int(row["id"]), "request_id": str(row["request_id"]), "node_id": row["node_id"], "direction": str(row["direction"]), "operation": str(row["operation"]), "status": str(row["status"]), "detail": detail if isinstance(detail, dict) else {}, "created_at": int(row["created_at"]), "updated_at": int(row["updated_at"])})
+        return jsonify(ok=True, jobs=items)
 
     @app.delete("/api/fleet/<int:node_id>")
     @role_required("admin")

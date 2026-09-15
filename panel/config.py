@@ -6,10 +6,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 try:
-    VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip() or "0.7.0"
+    VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip() or "0.8.0"
 except OSError:
-    VERSION = "0.7.0"
+    VERSION = "0.8.0"
 APP_DIR = Path(os.environ.get("NVP_DATA_DIR", "/var/lib/nexvary-panel"))
+# Backward/feature-module compatibility alias. New modules may refer to DATA_DIR,
+# while the established control-plane configuration uses APP_DIR.
+DATA_DIR = APP_DIR
 DB_PATH = Path(os.environ.get("NVP_DB_PATH", str(APP_DIR / "panel.db")))
 ADMIN_FILE = Path(os.environ.get("NVP_ADMIN_FILE", "/etc/nexvary-panel/admin.env"))
 AGENT_SOCK = os.environ.get("NVP_AGENT_SOCK", "/run/nexvary-panel/agent.sock")

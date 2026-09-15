@@ -10,7 +10,7 @@ from pathlib import Path
 
 DEFAULT_VAULT_DIR = Path("/etc/nexvary-panel/credentials")
 SECRET_ID_RE = re.compile(r"^[a-z][a-z0-9_-]{2,47}$")
-SECRET_KINDS = {"cloudflare", "powerdns", "s3", "restic", "rclone"}
+SECRET_KINDS = {"cloudflare", "powerdns", "s3", "restic", "rclone", "fleet"}
 MAX_SECRET_BYTES = 16 * 1024
 MIN_SECRET_BYTES = 8
 

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+[[ ${EUID:-999} -eq 0 ]] || { echo 'Run as root: sudo nvp-migration-stage /path/to/archive' >&2; exit 1; }
+source_path="${1:-}"
+[[ -n "$source_path" && -f "$source_path" && ! -L "$source_path" ]] || { echo 'A regular migration archive is required.' >&2; exit 2; }
+base="$(basename -- "$source_path")"
+case "${base,,}" in
+  *.tar.gz|*.tgz|*.tar|*.zip) ;;
+  *) echo 'Supported migration archives: .tar.gz, .tgz, .tar, .zip' >&2; exit 2 ;;
+esac
+size="$(stat -c %s -- "$source_path")"
+(( size > 0 && size <= 8589934592 )) || { echo 'Migration archive must be between 1 byte and 8 GiB.' >&2; exit 2; }
+id nexvary-panel >/dev/null 2>&1 || { echo 'Nexvary Panel user is not installed.' >&2; exit 3; }
+inbox=/var/lib/nexvary-panel/migration-inbox
+install -d -m 0700 -o nexvary-panel -g nexvary-panel "$inbox"
+stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+random="$(openssl rand -hex 8)"
+case "${base,,}" in
+  *.tar.gz) suffix='.tar.gz' ;;
+  *.tgz) suffix='.tgz' ;;
+  *.tar) suffix='.tar' ;;
+  *.zip) suffix='.zip' ;;
+esac
+destination="$inbox/import-${stamp}-${random}${suffix}"
+temporary="${destination}.part"
+cleanup(){ rm -f -- "$temporary"; }
+trap cleanup EXIT
+install -m 0600 -o nexvary-panel -g nexvary-panel "$source_path" "$temporary"
+mv -- "$temporary" "$destination"
+trap - EXIT
+printf '%s\n' "$(basename -- "$destination")"

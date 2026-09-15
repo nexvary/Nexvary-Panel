@@ -6,7 +6,9 @@ import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+AGENT_DIR = ROOT / "agent"
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(AGENT_DIR))
 
 vault_spec = importlib.util.spec_from_file_location("nvp_secret_vault_provider_test", ROOT / "agent" / "secret_vault.py")
 vault_mod = importlib.util.module_from_spec(vault_spec)

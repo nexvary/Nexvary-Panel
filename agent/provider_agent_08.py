@@ -52,13 +52,11 @@ def _run(args: list[str], timeout: int = 900) -> dict:
     except (OSError, subprocess.SubprocessError):
         return {"ok": False, "error": "provider execution failed", "code": "provider-exec-failed"}
     if proc.returncode:
-        # Do not return provider stderr/stdout to the web tier: CLIs may echo endpoints or provider details.
         return {"ok": False, "error": f"provider operation failed (exit {proc.returncode})", "code": "provider-command-failed"}
     return {"ok": True, "output": (proc.stdout or "")[-MAX_OUTPUT:]}
 
 
 def _validate_vault_boundary() -> None:
-    """Provider Agent is a read-only Vault consumer; it must never chmod/create the Vault."""
     try:
         st = os.lstat(VAULT.base)
     except OSError as exc:
@@ -166,13 +164,7 @@ def rclone_preflight(secret_id: str, endpoint: str) -> dict:
     except (OSError, ValueError, configparser.Error, UnicodeError) as exc:
         return {"ok": False, "error": str(exc), "code": "contract-invalid"}
     version = _run([rclone, "version"], timeout=8)
-    return {
-        "ok": True,
-        "provider": "rclone",
-        "version": (version.get("output") or "").splitlines()[0][:160] if version.get("ok") else "",
-        "contract": {k: v for k, v in contract.items() if k != "config_path"},
-        "network_tested": False,
-    }
+    return {"ok": True, "provider": "rclone", "version": (version.get("output") or "").splitlines()[0][:160] if version.get("ok") else "", "contract": {k: v for k, v in contract.items() if k != "config_path"}, "network_tested": False}
 
 
 def rclone_upload(domain: str, archive: str, secret_id: str, endpoint: str) -> dict:
@@ -186,17 +178,10 @@ def rclone_upload(domain: str, archive: str, secret_id: str, endpoint: str) -> d
         return {"ok": False, "error": str(exc)}
     destination_dir = f"{contract['remote']}:{contract['remote_path']}"
     destination = destination_dir.rstrip("/") + "/" + source.name
-    result = _run([
-        rclone, "copyto", "--config", contract["config_path"], "--immutable", "--no-traverse",
-        "--retries", "2", "--low-level-retries", "2", "--contimeout", "10s", "--timeout", "60s",
-        "--", str(source), destination,
-    ], timeout=1800)
+    result = _run([rclone, "copyto", "--config", contract["config_path"], "--immutable", "--no-traverse", "--retries", "2", "--low-level-retries", "2", "--contimeout", "10s", "--timeout", "60s", "--", str(source), destination], timeout=1800)
     if not result.get("ok"):
         return result
-    check = _run([
-        rclone, "size", "--config", contract["config_path"], "--json", "--max-depth", "1",
-        "--include", source.name, "--", destination_dir,
-    ], timeout=120)
+    check = _run([rclone, "size", "--config", contract["config_path"], "--json", "--max-depth", "1", "--include", source.name, "--", destination_dir], timeout=120)
     verified = False
     remote_bytes = 0
     if check.get("ok"):
@@ -208,17 +193,7 @@ def rclone_upload(domain: str, archive: str, secret_id: str, endpoint: str) -> d
             pass
     if not verified:
         return {"ok": False, "error": "upload completed but remote size verification failed"}
-    return {
-        "ok": True,
-        "meta": {
-            "provider": "rclone",
-            "encryption": "rclone-crypt",
-            "backing": "s3",
-            "object": destination,
-            "bytes": remote_bytes,
-            "verification": "remote-size",
-        },
-    }
+    return {"ok": True, "meta": {"provider": "rclone", "encryption": "rclone-crypt", "backing": "s3", "object": destination, "bytes": remote_bytes, "verification": "remote-size"}}
 
 
 def handle(req: dict) -> dict:
@@ -226,24 +201,13 @@ def handle(req: dict) -> dict:
     if action == "rclone-preflight":
         return rclone_preflight(str(req.get("secret_id", "")), str(req.get("endpoint", "")))
     if action == "rclone-upload-backup":
-        return rclone_upload(
-            str(req.get("domain", "")), str(req.get("archive", "")),
-            str(req.get("secret_id", "")), str(req.get("endpoint", "")),
-        )
+        return rclone_upload(str(req.get("domain", "")), str(req.get("archive", "")), str(req.get("secret_id", "")), str(req.get("endpoint", "")))
     if action == "fleet-apply":
         try:
             issued_at = int(req.get("issued_at", 0) or 0)
         except (TypeError, ValueError):
             issued_at = 0
-        return send_apply(
-            VAULT,
-            endpoint=str(req.get("endpoint", "")),
-            secret_id=str(req.get("secret_id", "")),
-            operation=str(req.get("operation", "")),
-            request_id=str(req.get("request_id", "")),
-            issued_at=issued_at,
-            payload=req.get("payload") if isinstance(req.get("payload"), dict) else {},
-        )
+        return send_apply(VAULT, endpoint=str(req.get("endpoint", "")), secret_id=str(req.get("secret_id", "")), operation=str(req.get("operation", "")), request_id=str(req.get("request_id", "")), issued_at=issued_at, payload=req.get("payload") if isinstance(req.get("payload"), dict) else {})
     return {"ok": False, "error": "action not allowed"}
 
 

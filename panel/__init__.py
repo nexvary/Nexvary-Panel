@@ -10,6 +10,7 @@ from flask import Flask
 from .config import VERSION
 from .core import csrf_guard, csrf_token, ensure_schema_columns
 from .module_registry import initialize_module_schemas, register_modules
+from .routes_migration_center import register_migration_center_routes
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -43,4 +44,5 @@ def create_app() -> Flask:
         return f"{n:.1f} TB"
 
     register_modules(app)
+    register_migration_center_routes(app)
     return app
