@@ -36,12 +36,12 @@ await firstToggle.click();
 await page.waitForFunction(()=>/Step-Up/.test(document.querySelector('#extensionNotice')?.textContent||''),null,{timeout:5000});
 if(pageErrors.length)throw new Error(`Extension Hub page error: ${pageErrors.join(' | ')}`);
 if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error('Extension Hub desktop horizontal overflow');
-await page.screenshot({path:`${out}/nexvary-panel-0.7-extension-hub-desktop.png`,fullPage:true});
+await page.screenshot({path:`${out}/nexvary-panel-0.8-extension-hub-desktop.png`,fullPage:true});
 
 await page.setViewportSize({width:390,height:844});
 await page.waitForTimeout(250);
 if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error('Extension Hub mobile horizontal overflow');
-await page.screenshot({path:`${out}/nexvary-panel-0.7-extension-hub-mobile.png`,fullPage:true});
+await page.screenshot({path:`${out}/nexvary-panel-0.8-extension-hub-mobile.png`,fullPage:true});
 
 await browser.close();
 console.log('Nexvary Panel Curated Extension Hub Chromium Gate: PASS');
