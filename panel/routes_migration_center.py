@@ -14,7 +14,8 @@ from .ops_client import ops_call
 from .security import role_required, step_up_required
 
 IMPORT_INBOX = DATA_DIR / "migration-inbox"
-MAX_IMPORT_BYTES = 8 * 1024 * 1024 * 1024
+BROWSER_UPLOAD_MAX_BYTES = 15 * 1024 * 1024
+STAGED_IMPORT_MAX_BYTES = 8 * 1024 * 1024 * 1024
 UPLOAD_CHUNK = 1024 * 1024
 SAFE_UPLOAD_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,180}$")
 ARCHIVE_SUFFIXES = (".tar.gz", ".tgz", ".tar", ".zip")
@@ -56,19 +57,29 @@ def register_migration_center_routes(app):
                 if not any(path.name.lower().endswith(suffix) for suffix in ARCHIVE_SUFFIXES):
                     continue
                 st = path.stat()
+                if int(st.st_size) > STAGED_IMPORT_MAX_BYTES:
+                    continue
                 items.append({"filename": path.name, "size_bytes": int(st.st_size), "uploaded_at": int(st.st_mtime)})
                 if len(items) >= 100:
                     break
             except OSError:
                 continue
-        return jsonify(ok=True, uploads=items, max_upload_bytes=MAX_IMPORT_BYTES, supported_panels=["cpanel", "directadmin", "plesk"])
+        return jsonify(
+            ok=True,
+            uploads=items,
+            browser_upload_max_bytes=BROWSER_UPLOAD_MAX_BYTES,
+            staged_import_max_bytes=STAGED_IMPORT_MAX_BYTES,
+            large_archive_command="sudo nvp-migration-stage /path/to/backup.tar.gz",
+            supported_panels=["cpanel", "directadmin", "plesk"],
+        )
 
     @app.post("/api/migration-center/uploads")
     @role_required("admin")
     @step_up_required
     def migration_center_upload():
-        # Flask 3.1 supports a per-request limit. Keep the rest of the panel at its global 16 MiB cap.
-        request.max_content_length = MAX_IMPORT_BYTES + (16 * 1024 * 1024)
+        # Keep browser uploads below the panel's global 16 MiB reverse-proxy policy.
+        # Large backups are staged locally with the root-only nvp-migration-stage command.
+        request.max_content_length = BROWSER_UPLOAD_MAX_BYTES
         uploaded = request.files.get("archive")
         if uploaded is None or not uploaded.filename:
             return jsonify(ok=False, error="archive upload is required"), 400
@@ -90,8 +101,8 @@ def register_migration_center_routes(app):
                     if not chunk:
                         break
                     total += len(chunk)
-                    if total > MAX_IMPORT_BYTES:
-                        raise ValueError("migration archive exceeds 8 GiB policy")
+                    if total > BROWSER_UPLOAD_MAX_BYTES:
+                        raise ValueError("browser migration upload exceeds 15 MiB; use nvp-migration-stage for large archives")
                     handle.write(chunk)
                 handle.flush()
                 os.fsync(handle.fileno())
@@ -117,6 +128,8 @@ def register_migration_center_routes(app):
             return jsonify(ok=False, error=str(exc)), 400
         if not path.is_file() or path.is_symlink():
             return jsonify(ok=False, error="migration upload not found"), 404
+        if path.stat().st_size > STAGED_IMPORT_MAX_BYTES:
+            return jsonify(ok=False, error="migration archive exceeds 8 GiB staged-import policy"), 400
         result = ops_call(
             {"action": "migration-import-inspect", "filename": path.name, "source_domain": str(data.get("source_domain", ""))},
             timeout=180,
@@ -137,6 +150,8 @@ def register_migration_center_routes(app):
             return jsonify(ok=False, error=str(exc)), 400
         if not path.is_file() or path.is_symlink():
             return jsonify(ok=False, error="migration upload not found"), 404
+        if path.stat().st_size > STAGED_IMPORT_MAX_BYTES:
+            return jsonify(ok=False, error="migration archive exceeds 8 GiB staged-import policy"), 400
         payload = {
             "action": "migration-import-normalize",
             "filename": path.name,
