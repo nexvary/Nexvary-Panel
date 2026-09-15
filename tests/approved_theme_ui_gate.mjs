@@ -41,12 +41,15 @@ for(const target of await trustFixes.evaluateAll(nodes=>nodes.map(n=>n.getAttrib
 }
 
 const nav=page.locator('#nav a[href="#sites"]');
-const navStyle=await nav.evaluate(el=>{const s=getComputedStyle(el);return{color:s.color,family:s.fontFamily,shadow:s.textShadow,border:s.borderColor,bgImage:s.backgroundImage,bgColor:s.backgroundColor};});
+const navStyle=await nav.evaluate(el=>{const s=getComputedStyle(el);return{color:s.color,family:s.fontFamily,shadow:s.textShadow};});
 if(!navStyle.family.includes('Noto Kufi Arabic'))throw new Error(`Kufi font stack missing: ${navStyle.family}`);
 if(navStyle.color!=='rgb(203, 211, 221)')throw new Error(`Sidebar text is not the approved platinum tone: ${navStyle.color}`);
 if(navStyle.shadow!=='none')throw new Error(`Sidebar typography should be restrained, not neon-glowing: ${navStyle.shadow}`);
-const surfaceMissing=(navStyle.bgImage==='none')&&(navStyle.bgColor==='rgba(0, 0, 0, 0)'||navStyle.bgColor==='transparent');
-if(surfaceMissing)throw new Error(`Sidebar enterprise surface missing: image=${navStyle.bgImage}, color=${navStyle.bgColor}`);
+
+const sidebarStyle=await page.locator('#sidebar').evaluate(el=>{const s=getComputedStyle(el);return{bgImage:s.backgroundImage,bgColor:s.backgroundColor,border:s.borderRightColor,shadow:s.boxShadow};});
+const sidebarSurfaceMissing=(sidebarStyle.bgImage==='none')&&(sidebarStyle.bgColor==='rgba(0, 0, 0, 0)'||sidebarStyle.bgColor==='transparent');
+if(sidebarSurfaceMissing)throw new Error(`Sidebar enterprise surface missing: image=${sidebarStyle.bgImage}, color=${sidebarStyle.bgColor}`);
+if(!sidebarStyle.shadow||sidebarStyle.shadow==='none')throw new Error('Sidebar depth cue missing');
 
 const activeNav=page.locator('#nav a.active');
 const activeStyle=await activeNav.evaluate(el=>{const s=getComputedStyle(el);return{color:s.color,border:s.borderColor,shadow:s.boxShadow};});
