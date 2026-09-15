@@ -46,11 +46,20 @@ def _db(value: object) -> str:
 
 
 def _safe_name(raw: str) -> str:
-    name = str(raw or "").replace("\\", "/").lstrip("./")
-    path = PurePosixPath(name)
-    if not name or path.is_absolute() or ".." in path.parts or "\x00" in name:
+    name = str(raw or "").replace("\\", "/")
+    # Strip only explicit benign "./" prefixes. Never use lstrip("./") here:
+    # it would transform traversal such as "../../etc/passwd" into a safe-looking path.
+    while name.startswith("./"):
+        name = name[2:]
+    if not name or "\x00" in name or re.match(r"^[A-Za-z]:/", name):
         raise ValueError("unsafe-migration-archive")
-    return "/".join(part for part in path.parts if part not in {"", "."})
+    path = PurePosixPath(name)
+    if path.is_absolute() or ".." in path.parts:
+        raise ValueError("unsafe-migration-archive")
+    clean = tuple(part for part in path.parts if part not in {"", "."})
+    if not clean:
+        raise ValueError("unsafe-migration-archive")
+    return "/".join(clean)
 
 
 def inbox_archive(value: str, inbox: Path) -> Path:
