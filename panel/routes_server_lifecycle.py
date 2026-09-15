@@ -189,17 +189,54 @@ def register_server_lifecycle_routes(app):
             if int(row["expires_at"]) < now:
                 conn.execute("UPDATE server_maintenance_previews SET status='expired' WHERE id=?", (preview_id,))
                 return jsonify(ok=False, error="maintenance preview expired"), 409
-            if str(row["kind"]) != "hostname":
-                return jsonify(ok=False, error="this maintenance kind is preview-only"), 409
+            kind = str(row["kind"])
             try:
                 snapshot = json.loads(row["snapshot_json"] or "{}")
             except Exception:
                 return jsonify(ok=False, error="maintenance preview snapshot is invalid"), 409
-            desired = str(snapshot.get("desired_hostname", "")).strip().lower().rstrip(".")
-            current_at_preview = str(snapshot.get("current_hostname", "")).strip().lower().rstrip(".")
-            if not HOSTNAME_RE.fullmatch(desired) or not current_at_preview:
-                return jsonify(ok=False, error="maintenance preview snapshot is invalid"), 409
             expected_fingerprint = str(row["fingerprint"])
+
+        if kind == "system-updates":
+            current_snapshot, current_fingerprint = _snapshot_for("system-updates")
+            if current_snapshot is None:
+                return jsonify(ok=False, error=current_fingerprint), 503
+            if current_fingerprint != expected_fingerprint:
+                return jsonify(ok=False, error="system update plan changed since preview; create a new preview"), 409
+            result = server_call(
+                {"action": "server-updates-apply", "fingerprint": expected_fingerprint},
+                timeout=1900,
+            )
+            if not result.get("ok"):
+                error = str(result.get("error", "system update failed"))[:180]
+                status = 409 if error == "system-update-preview-stale" else 503
+                return jsonify(ok=False, error=error), status
+            with db() as conn:
+                conn.execute("UPDATE server_maintenance_previews SET status='applied',applied_at=? WHERE id=?", (now, preview_id))
+            audit(
+                "server-updates-apply",
+                f"id={preview_id} fingerprint={expected_fingerprint[:16]} applied={int(result.get('applied_count', 0) or 0)}",
+            )
+            return jsonify(
+                ok=True,
+                id=preview_id,
+                status="applied",
+                changed=bool(result.get("changed")),
+                applied_count=int(result.get("applied_count", 0) or 0),
+                remaining_count=int(result.get("remaining_count", 0) or 0),
+                reboot_required=bool(result.get("reboot_required")),
+                fingerprint=str(result.get("fingerprint", ""))[:128],
+            )
+
+        if kind == "reboot":
+            return jsonify(ok=False, error="reboot execution is intentionally not exposed through the web control plane"), 409
+
+        if kind != "hostname":
+            return jsonify(ok=False, error="unsupported maintenance preview kind"), 409
+
+        desired = str(snapshot.get("desired_hostname", "")).strip().lower().rstrip(".")
+        current_at_preview = str(snapshot.get("current_hostname", "")).strip().lower().rstrip(".")
+        if not HOSTNAME_RE.fullmatch(desired) or not current_at_preview:
+            return jsonify(ok=False, error="maintenance preview snapshot is invalid"), 409
 
         current = server_call({"action": "server-overview"}, timeout=15)
         if not current.get("ok"):
