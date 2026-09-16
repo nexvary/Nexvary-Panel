@@ -53,10 +53,12 @@ if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documen
 await page.screenshot({path:`${out}/nexvary-panel-0.9-andalusian-dashboard-desktop.png`,fullPage:true});
 
 await page.setViewportSize({width:390,height:844});
-await page.waitForTimeout(80);
+await page.waitForTimeout(120);
 if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2)) throw new Error('Mobile horizontal overflow after Andalusian refinement');
-const portalBounds=await portal.boundingBox();
-if(!portalBounds||portalBounds.width>390) throw new Error(`Andalusian portal exceeds mobile viewport: ${JSON.stringify(portalBounds)}`);
+const portalMobile=await portal.evaluate(el=>({display:getComputedStyle(el).display,width:el.getBoundingClientRect().width}));
+// The established mobile baseline intentionally hides the decorative center portal below 900px.
+// If a future responsive pass renders it, it must remain within the viewport.
+if(portalMobile.display!=='none'&&portalMobile.width>390) throw new Error(`Andalusian portal exceeds mobile viewport: ${JSON.stringify(portalMobile)}`);
 await page.screenshot({path:`${out}/nexvary-panel-0.9-andalusian-dashboard-mobile.png`,fullPage:true});
 
 await browser.close();
