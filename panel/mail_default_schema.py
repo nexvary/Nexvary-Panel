@@ -17,5 +17,15 @@ def ensure_mail_default_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_mail_default_owner
               ON mail_default_addresses(owner,mode);
+
+            CREATE TABLE IF NOT EXISTS mail_routing_policies (
+              domain TEXT PRIMARY KEY,
+              mode TEXT NOT NULL DEFAULT 'local',
+              owner TEXT NOT NULL,
+              updated_at INTEGER NOT NULL,
+              CHECK(mode IN ('local','remote'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_mail_routing_owner
+              ON mail_routing_policies(owner,mode);
             """
         )
