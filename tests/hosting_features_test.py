@@ -45,6 +45,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-hosting-") as tmp:
         "email.autoresponders",
         "email.default_address",
         "email.routing",
+        "email.mailing_lists",
         "email.address_importer",
         "email.filters",
         "email.spam_filters",
@@ -81,7 +82,6 @@ with tempfile.TemporaryDirectory(prefix="nvp-hosting-") as tmp:
     assert body["package"]["name"] == "NEXVARY Unlimited"
     assert len(body["catalog"]) == len(FEATURES)
     assert any(row["feature_id"] == "email.accounts" for row in body["catalog"])
-    assert next(row for row in body["catalog"] if row["feature_id"] == "email.mailing_lists")["operational"] is False
     for feature_id in operational_foundations:
         assert next(row for row in body["catalog"] if row["feature_id"] == feature_id)["operational"] is True
 
