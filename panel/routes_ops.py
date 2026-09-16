@@ -9,11 +9,13 @@ from flask import flash, jsonify, redirect, request, session, url_for
 
 from .config import DOMAIN_RE, ROLES, USER_RE
 from .core import agent_call, audit, can_manage_domain, db, notify, password_hash, role_required
+from .security import step_up_required
 
 
 def register_ops_routes(app):
     @app.post("/services/restart")
     @role_required("admin")
+    @step_up_required
     def restart_service():
         name = request.form.get("name", "")
         if name not in {"nginx", "mariadb", "fail2ban", "docker"}:
