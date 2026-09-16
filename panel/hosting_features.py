@@ -142,6 +142,7 @@ _FEATURES: tuple[HostingFeature, ...] = (
     HostingFeature("whm.processes", "monitoring", "Process Manager", "server", "foundation", risk="privileged"),
     HostingFeature("whm.disk_usage", "monitoring", "Disk Usage", "server", "native"),
     HostingFeature("whm.reboot", "server", "System Reboot", "server", "planned", risk="privileged"),
+    HostingFeature("whm.fleet", "server", "Fleet Orchestration", "server", "foundation", risk="privileged", provider="fleet", description="Authenticated provider orchestration with scoped targets, SSRF defenses and replay protection"),
 )
 
 FEATURES: dict[str, HostingFeature] = {item.feature_id: item for item in _FEATURES}

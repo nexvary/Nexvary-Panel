@@ -44,6 +44,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-hosting-") as tmp:
         "advanced.mime_types",
         "email.autoresponders",
         "email.default_address",
+        "email.address_importer",
         "email.filters",
         "email.spam_filters",
         "email.delivery_trace",
@@ -53,6 +54,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-hosting-") as tmp:
         "whm.mail_queue",
         "whm.api_tokens",
         "whm.hostname",
+        "whm.fleet",
     }
     for feature_id in operational_foundations:
         assert FEATURES[feature_id].maturity in {"native", "foundation"}, (feature_id, FEATURES[feature_id].maturity)
