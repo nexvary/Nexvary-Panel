@@ -65,7 +65,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-mail-auto-") as tmp:
     r = client.get(f"/api/mail/automation/{mailbox_id}")
     assert r.status_code == 200, r.data
     features = r.get_json()["features"]
-    assert features == {"autoresponders": True, "filters": True, "spam_filters": True}
+    assert features == {"autoresponders": True, "filters": True, "spam_filters": True, "global_filters": False}
 
     r = client.post(
         f"/api/mail/automation/{mailbox_id}/filters",
@@ -87,6 +87,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-mail-auto-") as tmp:
     filter_id = int(r.get_json()["filter_id"])
     assert calls[-1]["action"] == "sieve-sync"
     assert calls[-1]["address"] == "info@example.test"
+    assert calls[-1]["global_filters"] == []
     assert "password" not in str(calls[-1]).lower()
 
     r = client.put(
