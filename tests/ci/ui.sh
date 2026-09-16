@@ -44,6 +44,7 @@ for test_file in \
   tests/domain_health_ui_gate.mjs \
   tests/domain_guardian_ui_gate.mjs \
   tests/doctor_remediation_ui_gate.mjs \
+  tests/maintenance_center_ui_gate.mjs \
   tests/change_safety_ui_gate.mjs \
   tests/wordpress_lifecycle_ui_gate.mjs \
   tests/wordpress_selective_ui_gate.mjs \
