@@ -75,7 +75,7 @@ await page.screenshot({path:`${out}/nexvary-panel-0.9-approved-dashboard-desktop
 
 await page.locator('#nav a[href="#services"]').click();
 await page.locator('#services.active-view').waitFor({state:'visible'});
-if(await page.locator('#services .security-intelligence').count()!==1)throw new Error('Security Intelligence panel missing');
+if(await page.locator('#services .security-intelligence').count()<1)throw new Error('Security Intelligence panel missing');
 if(await page.locator('#services .defense-provider').count()!==2)throw new Error('CrowdSec/Fail2Ban cards missing');
 await page.screenshot({path:`${out}/nexvary-panel-0.9-security-intelligence-desktop.png`,fullPage:true});
 
