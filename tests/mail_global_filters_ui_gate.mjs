@@ -25,29 +25,40 @@ await page.route('**/api/mail',async route=>{
   })});
 });
 
-await page.route('**/api/mail/global-filters**',async route=>{
+await page.route('**/api/mail/global-filters',async route=>{
   const request=route.request();
   const url=new URL(request.url());
-  if(url.pathname==='/api/mail/global-filters'&&request.method()==='GET'){
+  if(url.pathname!=='/api/mail/global-filters')return route.fallback();
+  if(request.method()==='GET'){
     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
       ok:true,owner:'client01',scope:'account',selected_domain:url.searchParams.get('domain')||'example.com',
       owner_domains:['example.com','second.example'],feature_allowed:true,filters:rows,mailbox_count:2,max_filters:30
     })});
   }
-  if(url.pathname==='/api/mail/global-filters'&&request.method()==='POST'){
+  if(request.method()==='POST'){
     const payload=request.postDataJSON();lastWrite={method:'POST',payload};
     const item={id:nextId++,owner:'client01',...payload,created_at:1,updated_at:1,enabled:payload.enabled?1:0};
     rows=[...rows,item];
     return route.fulfill({status:201,contentType:'application/json',body:JSON.stringify({ok:true,filter_id:item.id,owner:'client01',filters:rows,mailbox_count:2})});
   }
-  const match=url.pathname.match(/^\/api\/mail\/global-filters\/(\d+)$/);
-  if(match&&request.method()==='PUT'){
-    const id=Number(match[1]),payload=request.postDataJSON();lastWrite={method:'PUT',id,payload};
+  return route.fallback();
+});
+
+await page.route('**/api/mail/global-filters/*',async route=>{
+  const request=route.request();
+  const url=new URL(request.url());
+  const prefix='/api/mail/global-filters/';
+  if(!url.pathname.startsWith(prefix))return route.fallback();
+  const rawId=url.pathname.slice(prefix.length);
+  const id=Number(rawId);
+  if(!/^\d+$/.test(rawId)||!Number.isInteger(id)||id<1)return route.fallback();
+  if(request.method()==='PUT'){
+    const payload=request.postDataJSON();lastWrite={method:'PUT',id,payload};
     rows=rows.map(item=>item.id===id?{...item,...payload,enabled:payload.enabled?1:0,updated_at:2}:item);
     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,filter_id:id,owner:'client01',filters:rows,mailbox_count:2})});
   }
-  if(match&&request.method()==='DELETE'){
-    const id=Number(match[1]);lastWrite={method:'DELETE',id};rows=rows.filter(item=>item.id!==id);
+  if(request.method()==='DELETE'){
+    lastWrite={method:'DELETE',id};rows=rows.filter(item=>item.id!==id);
     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,id,owner:'client01',filters:rows,mailbox_count:2})});
   }
   return route.fallback();
@@ -89,22 +100,15 @@ await page.locator('#mailGlobalFilterDestination').fill('archive@external.exampl
 const updateResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/mail/global-filters/1'&&response.request().method()==='PUT',{timeout:10000});
 await page.locator('#mailGlobalFilterSave').click();
 await updateResponse;
-await page.waitForTimeout(300);
 if(!lastWrite||lastWrite.method!=='PUT'||lastWrite.id!==1)throw new Error(`Global filter update did not call item API: ${JSON.stringify(lastWrite)}`);
 if(lastWrite.payload.field!=='subject'||lastWrite.payload.pattern!=='billing'||lastWrite.payload.destination!=='archive@external.example')throw new Error(`Global filter update payload malformed: ${JSON.stringify(lastWrite)}`);
-const updateState=await page.evaluate(()=>({
-  list:document.querySelector('#mailGlobalFilterList')?.textContent||'',
-  status:document.querySelector('#mailGlobalFilterStatus')?.textContent||'',
-  editCount:document.querySelectorAll('[data-global-filter-edit="1"]').length,
-  field:document.querySelector('#mailGlobalFilterField')?.value||'',
-  pattern:document.querySelector('#mailGlobalFilterPattern')?.value||'',
-  action:document.querySelector('#mailGlobalFilterAction')?.value||'',
-  destination:document.querySelector('#mailGlobalFilterDestination')?.value||''
-}));
-if(!updateState.list.includes('subject')||!updateState.list.includes('billing')||!updateState.list.includes('archive@external.example')){
-  throw new Error(`Global filter acknowledged edit was not rendered: state=${JSON.stringify(updateState)} lastWrite=${JSON.stringify(lastWrite)} pageErrors=${JSON.stringify(pageErrors)}`);
-}
-if(!updateState.status.includes('تم تحديث Global Filter'))throw new Error(`Global filter update status missing: state=${JSON.stringify(updateState)} pageErrors=${JSON.stringify(pageErrors)}`);
+await page.waitForFunction(()=>{
+  const edit=document.querySelector('[data-global-filter-edit="1"]');
+  const text=edit?.closest('.mail-row')?.textContent||'';
+  return text.includes('subject')&&text.includes('billing')&&text.includes('archive@external.example');
+},null,{timeout:10000});
+const updatedStatus=await page.locator('#mailGlobalFilterStatus').textContent();
+if(!updatedStatus?.includes('تم تحديث Global Filter'))throw new Error(`Global filter update status missing after rendered update: ${updatedStatus}`);
 
 lastWrite=null;
 await page.locator('[data-global-filter-edit="1"]').click();
