@@ -76,7 +76,7 @@ await page.locator('#mailGlobalFilterSave').click();
 await page.waitForFunction(()=>document.querySelector('#mailGlobalFilterStatus')?.textContent?.includes('تم إنشاء Global Filter'),null,{timeout:10000});
 if(!lastWrite||lastWrite.method!=='POST')throw new Error('Global filter create did not call API');
 if(lastWrite.payload.field!=='header'||lastWrite.payload.header_name!=='X-Campaign-ID'||lastWrite.payload.destination!=='Global')throw new Error(`Global filter create payload malformed: ${JSON.stringify(lastWrite)}`);
-await page.getByText('header contains “vip”',{exact:true}).waitFor({state:'visible'});
+await page.getByText('X-Campaign-ID contains “vip”',{exact:true}).waitFor({state:'visible'});
 
 await page.locator('[data-global-filter-edit="1"]').click();
 if(!(await page.locator('#mailGlobalFilterDomain').isDisabled()))throw new Error('Account selector must be immutable during global filter edit');
