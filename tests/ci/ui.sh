@@ -19,6 +19,7 @@ run_ui_gate() {
 for test_file in \
   tests/final_design_review_ui_gate.mjs \
   tests/ui_gate.mjs \
+  tests/heavy_navigation_ui_gate.mjs \
   tests/backups_ui_gate.mjs \
   tests/vault_ui_gate.mjs \
   tests/integrations_ui_gate.mjs \
