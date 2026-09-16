@@ -61,22 +61,26 @@ if(await page.locator('#mailDavMailbox').inputValue()!=='7')throw new Error('DAV
 
 const secret='UiDavCredential!2026';
 await page.locator('#mailDavPassword').fill(secret);
-await page.locator('#mailDavSave').click();
+await page.locator('#mailDavForm').scrollIntoViewIfNeeded();
+await page.locator('#mailDavPassword').press('Enter');
 await page.waitForFunction(()=>document.querySelector('#mailDavStatus')?.textContent?.includes('تم تفعيل'),null,{timeout:10000});
 if(!lastWrite||lastWrite.method!=='POST'||lastWrite.payload.mailbox_id!==7||lastWrite.payload.password!==secret)throw new Error(`DAV create payload malformed: ${JSON.stringify(lastWrite)}`);
 await page.getByText('calendar@example.com',{exact:true}).waitFor({state:'visible'});
 if((await page.locator('#mailDavShell').textContent()).includes(secret))throw new Error('DAV secret leaked into rendered UI');
 await page.screenshot({path:'tests/artifacts/nexvary-panel-0.9-calendars-contacts-desktop.png',fullPage:true});
 
+await page.locator('[data-dav-rotate="1"]').scrollIntoViewIfNeeded();
 await page.locator('[data-dav-rotate="1"]').click();
 if(!(await page.locator('#mailDavMailbox').isDisabled()))throw new Error('DAV mailbox selector must lock during credential rotation');
 const rotated='UiDavRotated!2026';
 await page.locator('#mailDavPassword').fill(rotated);
-await page.locator('#mailDavSave').click();
+await page.locator('#mailDavForm').scrollIntoViewIfNeeded();
+await page.locator('#mailDavPassword').press('Enter');
 await page.waitForFunction(()=>document.querySelector('#mailDavStatus')?.textContent?.includes('تم تدوير'),null,{timeout:10000});
 if(!lastWrite||lastWrite.method!=='PUT'||lastWrite.id!==1||lastWrite.payload.password!==rotated)throw new Error(`DAV rotate payload malformed: ${JSON.stringify(lastWrite)}`);
 if((await page.locator('#mailDavShell').textContent()).includes(rotated))throw new Error('Rotated DAV secret leaked into rendered UI');
 
+await page.locator('[data-dav-delete="1"]').scrollIntoViewIfNeeded();
 await page.locator('[data-dav-delete="1"]').click();
 await page.waitForFunction(()=>document.querySelector('#mailDavStatus')?.textContent?.includes('تم إلغاء'),null,{timeout:10000});
 if(!lastWrite||lastWrite.method!=='DELETE'||lastWrite.id!==1)throw new Error('DAV revoke did not call item API');
