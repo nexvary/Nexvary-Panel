@@ -46,6 +46,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-hosting-") as tmp:
         "email.default_address",
         "email.routing",
         "email.mailing_lists",
+        "email.global_filters",
         "email.address_importer",
         "email.filters",
         "email.spam_filters",
