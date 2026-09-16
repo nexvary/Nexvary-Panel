@@ -80,7 +80,10 @@ if(await page.locator('#services .defense-provider').count()!==2)throw new Error
 await page.screenshot({path:`${out}/nexvary-panel-0.9-security-intelligence-desktop.png`,fullPage:true});
 
 await page.setViewportSize({width:390,height:844});
-await page.locator('#nav a[href="#dashboard"]').click();
+// The responsive sidebar is intentionally off-canvas at this width. Trigger the
+// same DOM click handler without requiring Playwright to scroll the hidden drawer
+// into the viewport; mobile drawer actionability is covered by the broader UI gate.
+await page.locator('#nav a[href="#dashboard"]').evaluate(el=>el.click());
 await page.locator('#dashboard.active-view').waitFor({state:'visible'});
 if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error('Reference dashboard mobile horizontal overflow');
 await page.screenshot({path:`${out}/nexvary-panel-0.9-approved-dashboard-mobile.png`,fullPage:true});
