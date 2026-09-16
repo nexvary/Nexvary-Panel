@@ -85,9 +85,11 @@ await page.locator('#mailGlobalFilterPattern').fill('billing');
 await page.locator('#mailGlobalFilterAction').selectOption('redirect');
 await page.locator('#mailGlobalFilterDestination').fill('archive@external.example');
 await page.locator('#mailGlobalFilterSave').click();
-await page.waitForFunction(()=>document.querySelector('#mailGlobalFilterStatus')?.textContent?.includes('تم تحديث Global Filter'),null,{timeout:10000});
-if(!lastWrite||lastWrite.method!=='PUT'||lastWrite.id!==1)throw new Error('Global filter update did not call item API');
+await page.getByText('subject contains “billing”',{exact:true}).waitFor({state:'visible',timeout:10000});
+if(!lastWrite||lastWrite.method!=='PUT'||lastWrite.id!==1)throw new Error(`Global filter update did not call item API: ${JSON.stringify(lastWrite)}`);
 if(lastWrite.payload.destination!=='archive@external.example')throw new Error('Global filter redirect destination malformed');
+const updatedStatus=await page.locator('#mailGlobalFilterStatus').textContent();
+if(!updatedStatus?.includes('تم تحديث Global Filter'))throw new Error(`Global filter update status missing after rendered update: ${updatedStatus}`);
 
 lastWrite=null;
 await page.locator('[data-global-filter-edit="1"]').click();
