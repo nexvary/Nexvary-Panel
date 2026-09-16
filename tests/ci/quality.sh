@@ -58,6 +58,7 @@ python tests/deliverability_test.py
 python tests/domain_health_test.py
 python tests/domain_guardian_test.py
 python tests/doctor_remediation_test.py
+python tests/maintenance_center_test.py
 python tests/change_safety_test.py
 python tests/wordpress_agent_test.py
 python tests/wordpress_lifecycle_test.py
