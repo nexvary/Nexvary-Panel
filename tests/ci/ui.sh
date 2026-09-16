@@ -33,6 +33,7 @@ for test_file in \
   tests/mail_ui_gate.mjs \
   tests/mail_import_ui_gate.mjs \
   tests/mail_default_ui_gate.mjs \
+  tests/mail_routing_ui_gate.mjs \
   tests/transfer_ui_gate.mjs \
   tests/advanced_ops_ui_gate.mjs \
   tests/dynamic_dns_ui_gate.mjs \
