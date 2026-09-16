@@ -64,6 +64,33 @@ local=call({'action':'routing-sync','domain':'remote-ci.example','mode':'local'}
 assert local.get('mode')=='local', local
 conflict=call({'action':'routing-sync','domain':'example.test','mode':'remote'}, expect_ok=False)
 assert conflict.get('ok') is False and conflict.get('error')=='routing-conflict-local-resources', conflict
+
+# Distribution-list provider uses optimistic expected-members and survives reload validation.
+created=call({
+  'action':'mailing-list-sync','address':'team@list-ci.example',
+  'members':['one@external.example','two@external.example'],'expected_members':[]
+})
+assert created.get('member_count')==2, created
+updated=call({
+  'action':'mailing-list-sync','address':'team@list-ci.example',
+  'members':['one@external.example','three@external.example'],
+  'expected_members':['one@external.example','two@external.example']
+})
+assert updated.get('member_count')==2, updated
+call({
+  'action':'mailing-list-sync','address':'delete@list-ci.example',
+  'members':['one@external.example'],'expected_members':[]
+})
+removed=call({
+  'action':'mailing-list-sync','address':'delete@list-ci.example',
+  'members':[],'expected_members':['one@external.example']
+})
+assert removed.get('member_count')==0, removed
+stale=call({
+  'action':'mailing-list-sync','address':'team@list-ci.example',
+  'members':['x@external.example'],'expected_members':['wrong@external.example']
+}, expect_ok=False)
+assert stale.get('error')=='mailing-list-provider-conflict', stale
 PY
 SIEVE=/var/mail/vhosts/example.test/ci/.dovecot.sieve
 SVBIN=/var/mail/vhosts/example.test/ci/.dovecot.svbin
@@ -76,5 +103,10 @@ sudo grep -q 'vacation :days 1' "$SIEVE"
 sudo grep -q 'fileinto :create "Billing"' "$SIEVE"
 sudo grep -q 'fileinto :create "Junk"' "$SIEVE"
 sudo grep -q '^remote-ci.example OK$' /etc/nexvary-panel/mail/domains
+sudo grep -Fq 'team@list-ci.example one@external.example,three@external.example' /etc/nexvary-panel/mail/virtual
+if sudo grep -Fq 'delete@list-ci.example' /etc/nexvary-panel/mail/virtual; then
+  echo 'Deleted mailing list remains in Postfix virtual map' >&2
+  exit 1
+fi
 sudo postfix check
 sudo dovecot -n >/dev/null
