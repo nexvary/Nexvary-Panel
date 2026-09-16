@@ -25,7 +25,7 @@ await page.route('**/api/mail',async route=>{
   })});
 });
 
-await page.route('**/api/mail/global-filters',async route=>{
+await page.route(/\/api\/mail\/global-filters(?:\?.*)?$/,async route=>{
   const request=route.request();
   const url=new URL(request.url());
   if(url.pathname!=='/api/mail/global-filters')return route.fallback();
@@ -44,7 +44,7 @@ await page.route('**/api/mail/global-filters',async route=>{
   return route.fallback();
 });
 
-await page.route('**/api/mail/global-filters/*',async route=>{
+await page.route(/\/api\/mail\/global-filters\/\d+(?:\?.*)?$/,async route=>{
   const request=route.request();
   const url=new URL(request.url());
   const prefix='/api/mail/global-filters/';
