@@ -44,6 +44,26 @@ def _owner_feature_allowed(conn, owner: str, feature_id: str) -> bool:
     return feature_id in enabled_features(conn, package_id, role)
 
 
+def _owner_domains(conn, owner: str) -> list[str]:
+    domains: set[str] = set()
+    for row in conn.execute("SELECT domain FROM sites WHERE enabled=1 AND owner=?", (owner,)).fetchall():
+        domains.add(str(row["domain"]).strip().lower().rstrip("."))
+    for row in conn.execute("SELECT primary_domain FROM hosting_accounts WHERE status='active' AND username=?", (owner,)).fetchall():
+        domains.add(str(row["primary_domain"]).strip().lower().rstrip("."))
+    for row in conn.execute("SELECT domain FROM mail_domains WHERE owner=?", (owner,)).fetchall():
+        domains.add(str(row["domain"]).strip().lower().rstrip("."))
+    return sorted(domain for domain in domains if DOMAIN_RE.fullmatch(domain))
+
+
+def _owner_global_filters(conn, owner: str) -> list[dict]:
+    rows = conn.execute(
+        """SELECT id,priority,field,header_name,match_type,pattern,action,destination,enabled
+           FROM mail_global_filters WHERE owner=? ORDER BY priority,id""",
+        (owner,),
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def _domain_allowed(conn, domain: str) -> tuple[bool, str | None]:
     if not DOMAIN_RE.fullmatch(domain):
         return False, None
@@ -174,6 +194,33 @@ def register_mail_routes(app):
                 "INSERT INTO mailboxes(domain,localpart,quota_mb,enabled,owner,created_at,updated_at) VALUES(?,?,?,1,?,?,?)",
                 (domain, localpart, quota_mb, owner, now, now),
             )
+            apply_global = _owner_feature_allowed(conn, owner, "email.global_filters")
+            global_filters = _owner_global_filters(conn, owner) if apply_global else []
+            global_domains = _owner_domains(conn, owner)
+
+        if global_filters:
+            sync = mail_call(
+                {
+                    "action": "sieve-sync",
+                    "address": address,
+                    "autoresponder": {"enabled": False, "subject": "", "body": "", "interval_days": 1},
+                    "filters": [],
+                    "spam": {"enabled": False, "action": "junk"},
+                    "global_filters": global_filters,
+                    "global_domains": global_domains,
+                },
+                timeout=35,
+            )
+            if not sync.get("ok"):
+                rollback = mail_call({"action": "mailbox-delete", "address": address}, timeout=30)
+                with db() as conn:
+                    conn.execute("DELETE FROM mailboxes WHERE domain=? AND localpart=?", (domain, localpart))
+                return jsonify(
+                    ok=False,
+                    error=str(sync.get("error", "global mail filter provider failed"))[:160],
+                    rolled_back=bool(rollback.get("ok")),
+                ), 502
+
         audit("mailbox-create", f"address={address} owner={owner} quota_mb={quota_mb}")
         return jsonify(ok=True, address=address), 201
 

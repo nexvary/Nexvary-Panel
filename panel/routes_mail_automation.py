@@ -7,7 +7,7 @@ from flask import jsonify, request, session
 
 from .core import audit, db
 from .mail_client import mail_call
-from .routes_mail import _owner_feature_allowed
+from .routes_mail import _owner_domains, _owner_feature_allowed, _owner_global_filters
 from .security import role_required, step_up_required
 
 FILTER_FIELDS = {"from", "to", "subject", "spam_flag"}
@@ -45,6 +45,7 @@ def _clean_text(value: object, limit: int) -> str:
 
 def _automation_payload(conn, mailbox) -> dict:
     mailbox_id = int(mailbox["id"])
+    owner = str(mailbox["owner"])
     address = f"{mailbox['localpart']}@{mailbox['domain']}"
     auto = conn.execute(
         "SELECT enabled,subject,body,interval_days FROM mail_autoresponders WHERE mailbox_id=?",
@@ -59,12 +60,15 @@ def _automation_payload(conn, mailbox) -> dict:
         "SELECT enabled,action FROM mail_spam_policies WHERE mailbox_id=?",
         (mailbox_id,),
     ).fetchone()
+    global_filters = _owner_global_filters(conn, owner) if _feature(conn, owner, "email.global_filters") else []
     return {
         "action": "sieve-sync",
         "address": address,
         "autoresponder": dict(auto) if auto else {"enabled": 0, "subject": "", "body": "", "interval_days": 1},
         "filters": [dict(row) for row in filters],
         "spam": dict(spam) if spam else {"enabled": 0, "action": "junk"},
+        "global_filters": global_filters,
+        "global_domains": _owner_domains(conn, owner),
     }
 
 
@@ -99,6 +103,7 @@ def _inventory(conn, mailbox) -> dict:
             "autoresponders": _feature(conn, owner, "email.autoresponders"),
             "filters": _feature(conn, owner, "email.filters"),
             "spam_filters": _feature(conn, owner, "email.spam_filters"),
+            "global_filters": _feature(conn, owner, "email.global_filters"),
         },
         "autoresponder": dict(auto) if auto else {"enabled": 0, "subject": "", "body": "", "interval_days": 1, "updated_at": 0},
         "filters": [dict(row) for row in filters],

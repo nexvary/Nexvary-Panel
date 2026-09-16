@@ -52,7 +52,7 @@ MAX_TRACE_EVENTS = 200
 MAIL_LOG = Path(os.environ.get("NVP_MAIL_LOG", "/var/log/mail.log"))
 ACTIONS = {
     "status", "mailbox-upsert", "mailbox-delete", "forwarder-upsert", "forwarder-delete",
-    "default-address-sync", "routing-sync", "mailing-list-sync", "queue-delete", "sieve-sync", "delivery-trace",
+    "default-address-sync", "routing-sync", "queue-delete", "sieve-sync", "delivery-trace",
 }
 SAFE_ERROR_RE = re.compile(r"^[a-z0-9][a-z0-9-]{2,79}$")
 DOMAIN_RE = re.compile(r"^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$")
@@ -103,58 +103,6 @@ def _routing_sync(domain: object, mode: object) -> dict:
         _backend._rollback(snapshot)
         raise
     return {"ok": True, "domain": domain, "mode": mode}
-
-
-def _validated_members(value: object, source: str, *, allow_empty: bool) -> list[str]:
-    if not isinstance(value, list) or len(value) > 100 or (not allow_empty and not value):
-        raise ValueError("invalid-mailing-list-members")
-    members: list[str] = []
-    seen: set[str] = set()
-    for raw in value:
-        localpart, domain = _backend._address(str(raw or ""))
-        address = f"{localpart}@{domain}".lower()
-        if address == source:
-            raise ValueError("mailing-list-self-loop")
-        if address in seen:
-            continue
-        seen.add(address)
-        members.append(address)
-    if not allow_empty and not members:
-        raise ValueError("invalid-mailing-list-members")
-    return members
-
-
-def _mailing_list_sync(address: object, members: object, expected_members: object) -> dict:
-    localpart, domain = _backend._address(str(address or ""))
-    source = f"{localpart}@{domain}".lower()
-    desired = _validated_members(members, source, allow_empty=True)
-    expected = _validated_members(expected_members, source, allow_empty=True)
-
-    snapshot = _backend._snapshot()
-    state = {name: dict(values) for name, values in snapshot.items()}
-    current = str(state["aliases"].get(source, "")).strip()
-    expected_value = ",".join(expected)
-    if expected:
-        if current != expected_value:
-            raise RuntimeError("mailing-list-provider-conflict")
-    elif current:
-        raise RuntimeError("mailing-list-provider-conflict")
-
-    if desired:
-        if source in state["boxes"] or source in state["users"]:
-            raise RuntimeError("mailing-list-address-conflict")
-        state["domains"][domain] = "OK"
-        state["aliases"][source] = ",".join(desired)
-    else:
-        state["aliases"].pop(source, None)
-
-    try:
-        _backend._write_state(state)
-        _backend._reload()
-    except Exception:
-        _backend._rollback(snapshot)
-        raise
-    return {"ok": True, "address": source, "member_count": len(desired)}
 
 
 def _regular_log(path: Path) -> bool:
@@ -267,8 +215,6 @@ def _dispatch(data: dict) -> dict:
         return default_address_sync(data.get("domain", ""), data.get("mode", "reject"), data.get("destination", ""))
     if action == "routing-sync":
         return _routing_sync(data.get("domain", ""), data.get("mode", "local"))
-    if action == "mailing-list-sync":
-        return _mailing_list_sync(data.get("address", ""), data.get("members", []), data.get("expected_members", []))
     if action == "queue-delete":
         return queue_delete(str(data.get("queue_id", "")))
     if action == "delivery-trace":
@@ -278,6 +224,8 @@ def _dispatch(data: dict) -> dict:
         data.get("autoresponder", {}),
         data.get("filters", []),
         data.get("spam", {}),
+        data.get("global_filters", []),
+        data.get("global_domains", []),
     )
 
 
