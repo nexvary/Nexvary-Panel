@@ -20,7 +20,7 @@ await page.route('**/api/mail',async route=>{
   })});
 });
 
-await page.route('**/api/mail/mailing-lists**',async route=>{
+const mailingListRoute=async route=>{
   const request=route.request();
   const url=new URL(request.url());
   if(url.pathname==='/api/mail/mailing-lists'&&request.method()==='GET'){
@@ -43,7 +43,9 @@ await page.route('**/api/mail/mailing-lists**',async route=>{
     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,id})});
   }
   return route.fallback();
-});
+};
+await page.route('**/api/mail/mailing-lists',mailingListRoute);
+await page.route('**/api/mail/mailing-lists/*',mailingListRoute);
 
 await page.goto(`${base}/login`,{waitUntil:'networkidle'});
 await page.locator('input[name="username"]').fill('admin');
