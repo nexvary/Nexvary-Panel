@@ -6,6 +6,8 @@ if(!password)throw new Error('NVP_TEST_PASSWORD is required');
 
 const browser=await chromium.launch({headless:true});
 const page=await browser.newPage({viewport:{width:1500,height:1000}});
+const pageErrors=[];
+page.on('pageerror',error=>pageErrors.push(String(error?.stack||error?.message||error)));
 let rows=[];
 let nextId=1;
 let lastWrite=null;
@@ -87,15 +89,22 @@ await page.locator('#mailGlobalFilterDestination').fill('archive@external.exampl
 const updateResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/mail/global-filters/1'&&response.request().method()==='PUT',{timeout:10000});
 await page.locator('#mailGlobalFilterSave').click();
 await updateResponse;
-await page.waitForFunction(()=>{
-  const edit=document.querySelector('[data-global-filter-edit="1"]');
-  const text=edit?.closest('.mail-row')?.textContent||'';
-  return text.includes('subject')&&text.includes('billing')&&text.includes('archive@external.example');
-},null,{timeout:10000});
+await page.waitForTimeout(300);
 if(!lastWrite||lastWrite.method!=='PUT'||lastWrite.id!==1)throw new Error(`Global filter update did not call item API: ${JSON.stringify(lastWrite)}`);
 if(lastWrite.payload.field!=='subject'||lastWrite.payload.pattern!=='billing'||lastWrite.payload.destination!=='archive@external.example')throw new Error(`Global filter update payload malformed: ${JSON.stringify(lastWrite)}`);
-const updatedStatus=await page.locator('#mailGlobalFilterStatus').textContent();
-if(!updatedStatus?.includes('تم تحديث Global Filter'))throw new Error(`Global filter update status missing after rendered update: ${updatedStatus}`);
+const updateState=await page.evaluate(()=>({
+  list:document.querySelector('#mailGlobalFilterList')?.textContent||'',
+  status:document.querySelector('#mailGlobalFilterStatus')?.textContent||'',
+  editCount:document.querySelectorAll('[data-global-filter-edit="1"]').length,
+  field:document.querySelector('#mailGlobalFilterField')?.value||'',
+  pattern:document.querySelector('#mailGlobalFilterPattern')?.value||'',
+  action:document.querySelector('#mailGlobalFilterAction')?.value||'',
+  destination:document.querySelector('#mailGlobalFilterDestination')?.value||''
+}));
+if(!updateState.list.includes('subject')||!updateState.list.includes('billing')||!updateState.list.includes('archive@external.example')){
+  throw new Error(`Global filter acknowledged edit was not rendered: state=${JSON.stringify(updateState)} lastWrite=${JSON.stringify(lastWrite)} pageErrors=${JSON.stringify(pageErrors)}`);
+}
+if(!updateState.status.includes('تم تحديث Global Filter'))throw new Error(`Global filter update status missing: state=${JSON.stringify(updateState)} pageErrors=${JSON.stringify(pageErrors)}`);
 
 lastWrite=null;
 await page.locator('[data-global-filter-edit="1"]').click();
@@ -110,6 +119,7 @@ await page.locator('[data-global-filter-delete="1"]').click();
 await page.waitForFunction(()=>document.querySelector('#mailGlobalFilterStatus')?.textContent?.includes('تم حذف Global Filter'),null,{timeout:10000});
 if(!lastWrite||lastWrite.method!=='DELETE'||lastWrite.id!==1)throw new Error('Global filter delete did not call item API');
 if(await page.locator('[data-global-filter-edit="1"]').count())throw new Error('Deleted Global Filter remained in inventory');
+if(pageErrors.length)throw new Error(`Global Email Filters emitted page errors: ${JSON.stringify(pageErrors)}`);
 
 if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error('Global Email Filters UI caused desktop horizontal overflow');
 await page.setViewportSize({width:390,height:844});
