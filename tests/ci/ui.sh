@@ -23,6 +23,7 @@ for test_file in \
   tests/vault_ui_gate.mjs \
   tests/integrations_ui_gate.mjs \
   tests/approved_theme_ui_gate.mjs \
+  tests/andalusian_visual_gate.mjs \
   tests/internal_workspace_ui_gate.mjs \
   tests/hosting_ui_gate.mjs \
   tests/schedules_ui_gate.mjs \
