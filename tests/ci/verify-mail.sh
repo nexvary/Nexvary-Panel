@@ -42,13 +42,26 @@ def call(payload, expect_ok=True):
 body=call({'action':'status'})
 assert body.get('engine')=='postfix-dovecot', body
 call({'action':'mailbox-upsert','address':'ci@example.test','password':'CiMailAutomation!2026'})
-call({
+sieve=call({
   'action':'sieve-sync',
   'address':'ci@example.test',
   'autoresponder':{'enabled':True,'subject':'CI Away','body':'Automated CI response.','interval_days':1},
   'filters':[{'priority':10,'field':'subject','match_type':'contains','pattern':'invoice','action':'fileinto','destination':'Billing','enabled':1}],
   'spam':{'enabled':True,'action':'junk'},
+  'global_filters':[{'priority':5,'field':'header','header_name':'X-Campaign-ID','match_type':'contains','pattern':'vip','action':'fileinto','destination':'Global','enabled':1}],
+  'global_domains':['example.test','second.example'],
 })
+assert sieve.get('global_filters')==1, sieve
+loop=call({
+  'action':'sieve-sync',
+  'address':'ci@example.test',
+  'autoresponder':{'enabled':False,'subject':'','body':'','interval_days':1},
+  'filters':[],
+  'spam':{'enabled':False,'action':'junk'},
+  'global_filters':[{'priority':1,'field':'subject','header_name':'','match_type':'contains','pattern':'loop','action':'redirect','destination':'archive@second.example','enabled':1}],
+  'global_domains':['example.test','second.example'],
+}, expect_ok=False)
+assert loop.get('error')=='global-filter-redirect-loop', loop
 trace=call({'action':'delivery-trace','domain':'example.test','limit':25})
 assert trace.get('domain')=='example.test', trace
 assert trace.get('source') in {'mail.log','journalctl'}, trace
@@ -99,6 +112,9 @@ sudo test -f "$SVBIN"
 test "$(sudo stat -c '%a %U %G' "$SIEVE")" = "600 vmail vmail"
 test "$(sudo stat -c '%a %U %G' "$SVBIN")" = "600 vmail vmail"
 sudo grep -q 'Managed by Nexvary Panel' "$SIEVE"
+sudo grep -q 'Account-wide global filters' "$SIEVE"
+sudo grep -q 'X-Campaign-ID' "$SIEVE"
+sudo grep -q 'fileinto :create "Global"' "$SIEVE"
 sudo grep -q 'vacation :days 1' "$SIEVE"
 sudo grep -q 'fileinto :create "Billing"' "$SIEVE"
 sudo grep -q 'fileinto :create "Junk"' "$SIEVE"
