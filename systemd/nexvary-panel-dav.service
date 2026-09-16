@@ -8,6 +8,7 @@ Type=simple
 User=radicale
 Group=radicale
 ExecStart=/usr/bin/radicale --config /etc/nexvary-panel-radicale/config
+ExecStartPost=/bin/bash -c 'for i in {1..30}; do (echo > /dev/tcp/127.0.0.1/5232) >/dev/null 2>&1 && exit 0; sleep 0.2; done; exit 1'
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
