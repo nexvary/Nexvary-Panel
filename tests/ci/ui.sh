@@ -35,6 +35,7 @@ for test_file in \
   tests/mail_default_ui_gate.mjs \
   tests/mail_routing_ui_gate.mjs \
   tests/mail_mailing_lists_ui_gate.mjs \
+  tests/mail_global_filters_ui_gate.mjs \
   tests/transfer_ui_gate.mjs \
   tests/advanced_ops_ui_gate.mjs \
   tests/dynamic_dns_ui_gate.mjs \
