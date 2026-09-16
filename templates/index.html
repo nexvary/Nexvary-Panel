@@ -77,7 +77,7 @@
       <a href="#docker" data-title="Docker Center" data-subtitle="حالة الحاويات والتحكم التشغيلي المقيد">{{icon('docker')}}<span>Docker Center</span><em></em></a>
 
       <span class="nav-label nav-gap">مراقبة وإدارة السيرفر</span>
-      <a href="#services" data-title="مراقبة السيرفر" data-subtitle="صحة الخدمات وNEXVARY Doctor والتشخيص">{{icon('activity')}}<span>مراقبة السيرفر</span><em></em></a>
+      <a href="#services" data-title="قسم الصيانة" data-subtitle="Maintenance Center رسومي للفحص والإصلاح المقيد بدون Root Shell حر">{{icon('activity')}}<span>قسم الصيانة</span><em></em></a>
       <a href="#dns" data-title="إدارة DNS" data-subtitle="جرد DNS وMail posture للمواقع المسجلة">{{icon('network')}}<span>إدارة DNS</span><em></em></a>
       {% if role == 'admin' %}<a href="#parity" data-title="Parity Center" data-subtitle="قياس داخلي لتغطية القدرات ونضجها والفجوات المتبقية">{{icon('layers')}}<span>Parity Center</span><em></em></a>{% endif %}
       <a href="#notifications" data-title="التنبيهات" data-subtitle="تنبيهات الصحة والأمان والاستعادة والنشر">{{icon('bell')}}<span>التنبيهات</span>{% if notifications_unread %}<strong class="nav-badge" aria-label="{{notifications_unread}} تنبيه غير مقروء">{{notifications_unread if notifications_unread < 100 else '99+'}}</strong>{% endif %}<em></em></a>
