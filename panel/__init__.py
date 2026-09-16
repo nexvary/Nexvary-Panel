@@ -10,6 +10,7 @@ from flask import Flask
 from .config import VERSION
 from .core import csrf_guard, csrf_token, ensure_schema_columns
 from .module_registry import initialize_module_schemas, register_modules
+from .routes_mail_dav import register_mail_dav_routes
 from .routes_mail_global_filters import register_mail_global_filter_routes
 from .routes_mail_lists import register_mail_list_routes
 from .routes_migration_center import register_migration_center_routes
@@ -46,6 +47,7 @@ def create_app() -> Flask:
         return f"{n:.1f} TB"
 
     register_modules(app)
+    register_mail_dav_routes(app)
     register_mail_global_filter_routes(app)
     register_mail_list_routes(app)
     register_migration_center_routes(app)

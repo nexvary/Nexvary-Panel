@@ -7,6 +7,7 @@ from flask import jsonify, request, session
 
 from .config import DOMAIN_RE, PASSWORD_RE
 from .core import audit, db
+from .dav_client import dav_call
 from .hosting_policy import enabled_features, package_for_user
 from .mail_client import mail_call
 from .security import role_required, step_up_required
@@ -236,12 +237,19 @@ def register_mail_routes(app):
                 return jsonify(ok=False, error="mailbox is outside your hosting scope"), 403
             if not _owner_feature_allowed(conn, str(row["owner"]), "email.accounts"):
                 return jsonify(ok=False, error="email.accounts is disabled by target hosting policy"), 403
+            dav_row = conn.execute("SELECT id,username FROM mail_dav_accounts WHERE mailbox_id=?", (mailbox_id,)).fetchone()
         address = f"{row['localpart']}@{row['domain']}"
+        if dav_row:
+            dav_result = dav_call({"action": "credential-delete", "username": str(dav_row["username"])}, timeout=35)
+            if not dav_result.get("ok"):
+                return jsonify(ok=False, error=str(dav_result.get("error", "DAV provider failed"))[:160]), 503
         result = mail_call({"action": "mailbox-delete", "address": address}, timeout=30)
         if not result.get("ok"):
             return jsonify(ok=False, error=str(result.get("error", "mail provider failed"))[:160]), 503
         with db() as conn:
             conn.execute("DELETE FROM mailboxes WHERE id=?", (mailbox_id,))
+        if dav_row:
+            audit("dav-account-delete", f"address={dav_row['username']} owner={row['owner']} reason=mailbox-delete")
         audit("mailbox-delete", f"address={address} owner={row['owner']}")
         return jsonify(ok=True)
 

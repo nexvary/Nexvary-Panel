@@ -7,12 +7,22 @@ check_service(){
   sudo journalctl -u "$svc" -n 120 --no-pager || true
   return 1
 }
-for svc in postfix dovecot nexvary-panel-mail; do check_service "$svc"; done
+for svc in postfix dovecot nexvary-panel-mail nexvary-panel-dav nexvary-panel-dav-agent; do check_service "$svc"; done
 command -v sievec >/dev/null
+command -v htpasswd >/dev/null
 test -f /opt/nexvary-panel-agent/mail_sieve.py
+test -f /opt/nexvary-panel-agent/dav_agent.py
 test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/mail.sock)" = "660 root nexvary-panel"
+test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/dav.sock)" = "660 root nexvary-panel"
 test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/mail/users)" = "640 root dovecot"
 test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/mail/domains)" = "640 root postfix"
+test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/radicale/users)" = "640 root radicale"
+test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/radicale/config)" = "640 root radicale"
+sudo grep -q '^type = htpasswd$' /etc/nexvary-panel/radicale/config
+sudo grep -q '^htpasswd_encryption = bcrypt$' /etc/nexvary-panel/radicale/config
+sudo grep -q '^type = owner_only$' /etc/nexvary-panel/radicale/config
+sudo grep -q 'NEXVARY_DAV_BEGIN' /etc/nginx/sites-available/nexvary-panel.conf
+sudo nginx -t
 sudo postfix check
 sudo dovecot -n >/dev/null
 sudo postconf virtual_mailbox_domains | grep -q '/etc/nexvary-panel/mail/domains'
@@ -68,41 +78,20 @@ assert trace.get('source') in {'mail.log','journalctl'}, trace
 assert isinstance(trace.get('events'),list), trace
 assert len(trace['events'])<=25, trace
 assert all('raw' not in event for event in trace['events']), trace
-
-# Routing is provider-backed and fail-closed. An empty domain can move remote/local,
-# while a domain with local mailboxes cannot be switched remote.
 remote=call({'action':'routing-sync','domain':'remote-ci.example','mode':'remote'})
 assert remote.get('mode')=='remote', remote
 local=call({'action':'routing-sync','domain':'remote-ci.example','mode':'local'})
 assert local.get('mode')=='local', local
 conflict=call({'action':'routing-sync','domain':'example.test','mode':'remote'}, expect_ok=False)
 assert conflict.get('ok') is False and conflict.get('error')=='routing-conflict-local-resources', conflict
-
-# Distribution-list provider uses optimistic expected-members and survives reload validation.
-created=call({
-  'action':'mailing-list-sync','address':'team@list-ci.example',
-  'members':['one@external.example','two@external.example'],'expected_members':[]
-})
+created=call({'action':'mailing-list-sync','address':'team@list-ci.example','members':['one@external.example','two@external.example'],'expected_members':[]})
 assert created.get('member_count')==2, created
-updated=call({
-  'action':'mailing-list-sync','address':'team@list-ci.example',
-  'members':['one@external.example','three@external.example'],
-  'expected_members':['one@external.example','two@external.example']
-})
+updated=call({'action':'mailing-list-sync','address':'team@list-ci.example','members':['one@external.example','three@external.example'],'expected_members':['one@external.example','two@external.example']})
 assert updated.get('member_count')==2, updated
-call({
-  'action':'mailing-list-sync','address':'delete@list-ci.example',
-  'members':['one@external.example'],'expected_members':[]
-})
-removed=call({
-  'action':'mailing-list-sync','address':'delete@list-ci.example',
-  'members':[],'expected_members':['one@external.example']
-})
+call({'action':'mailing-list-sync','address':'delete@list-ci.example','members':['one@external.example'],'expected_members':[]})
+removed=call({'action':'mailing-list-sync','address':'delete@list-ci.example','members':[],'expected_members':['one@external.example']})
 assert removed.get('member_count')==0, removed
-stale=call({
-  'action':'mailing-list-sync','address':'team@list-ci.example',
-  'members':['x@external.example'],'expected_members':['wrong@external.example']
-}, expect_ok=False)
+stale=call({'action':'mailing-list-sync','address':'team@list-ci.example','members':['x@external.example'],'expected_members':['wrong@external.example']}, expect_ok=False)
 assert stale.get('error')=='mailing-list-provider-conflict', stale
 PY
 SIEVE=/var/mail/vhosts/example.test/ci/.dovecot.sieve
@@ -126,3 +115,63 @@ if sudo grep -Fq 'delete@list-ci.example' /etc/nexvary-panel/mail/virtual; then
 fi
 sudo postfix check
 sudo dovecot -n >/dev/null
+
+DAV_USER='calendar@example.test'
+DAV_PASS='CiDavCredential!2026'
+DAV_ROTATED='CiDavRotated!2026'
+sudo -u nexvary-panel env DAV_USER="$DAV_USER" DAV_PASS="$DAV_PASS" python3 - <<'PY'
+import json,os,socket
+
+def call(payload, expect_ok=True):
+    s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM); s.settimeout(20); s.connect('/run/nexvary-panel/dav.sock')
+    s.sendall((json.dumps(payload,separators=(',',':'))+'\n').encode())
+    data=b''
+    while not data.endswith(b'\n'):
+        data+=s.recv(4096)
+    s.close()
+    body=json.loads(data)
+    if expect_ok:
+        assert body.get('ok') is True, body
+    return body
+
+status=call({'action':'status'})
+assert status.get('online') is True and status.get('engine')=='radicale-caldav-carddav', status
+created=call({'action':'credential-sync','username':os.environ['DAV_USER'],'password':os.environ['DAV_PASS'],'expected_present':False})
+assert created.get('username')==os.environ['DAV_USER'], created
+stale=call({'action':'credential-sync','username':os.environ['DAV_USER'],'password':os.environ['DAV_PASS'],'expected_present':False}, expect_ok=False)
+assert stale.get('error')=='dav-provider-conflict', stale
+PY
+curl -kfsS -X PROPFIND -H 'Depth: 0' -u "$DAV_USER:$DAV_PASS" "https://127.0.0.1:8443/dav/$DAV_USER/" >/dev/null
+sudo grep -q '^calendar@example\.test:\$2' /etc/nexvary-panel/radicale/users
+if sudo grep -Fq "$DAV_PASS" /etc/nexvary-panel/radicale/users; then
+  echo 'DAV cleartext password leaked into htpasswd file' >&2
+  exit 1
+fi
+sudo -u nexvary-panel env DAV_USER="$DAV_USER" DAV_ROTATED="$DAV_ROTATED" python3 - <<'PY'
+import json,os,socket
+s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM); s.settimeout(20); s.connect('/run/nexvary-panel/dav.sock')
+payload={'action':'credential-sync','username':os.environ['DAV_USER'],'password':os.environ['DAV_ROTATED'],'expected_present':True}
+s.sendall((json.dumps(payload,separators=(',',':'))+'\n').encode()); data=b''
+while not data.endswith(b'\n'): data+=s.recv(4096)
+s.close(); body=json.loads(data); assert body.get('ok') is True, body
+PY
+if curl -kfsS -X PROPFIND -H 'Depth: 0' -u "$DAV_USER:$DAV_PASS" "https://127.0.0.1:8443/dav/$DAV_USER/" >/dev/null 2>&1; then
+  echo 'Old DAV credential still authenticates after rotation' >&2
+  exit 1
+fi
+curl -kfsS -X PROPFIND -H 'Depth: 0' -u "$DAV_USER:$DAV_ROTATED" "https://127.0.0.1:8443/dav/$DAV_USER/" >/dev/null
+sudo -u nexvary-panel env DAV_USER="$DAV_USER" python3 - <<'PY'
+import json,os,socket
+s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM); s.settimeout(20); s.connect('/run/nexvary-panel/dav.sock')
+s.sendall((json.dumps({'action':'credential-delete','username':os.environ['DAV_USER']},separators=(',',':'))+'\n').encode()); data=b''
+while not data.endswith(b'\n'): data+=s.recv(4096)
+s.close(); body=json.loads(data); assert body.get('ok') is True, body
+PY
+if curl -kfsS -X PROPFIND -H 'Depth: 0' -u "$DAV_USER:$DAV_ROTATED" "https://127.0.0.1:8443/dav/$DAV_USER/" >/dev/null 2>&1; then
+  echo 'Revoked DAV credential still authenticates' >&2
+  exit 1
+fi
+if sudo grep -q '^calendar@example\.test:' /etc/nexvary-panel/radicale/users; then
+  echo 'Revoked DAV account remains in htpasswd file' >&2
+  exit 1
+fi

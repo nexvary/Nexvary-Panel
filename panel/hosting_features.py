@@ -49,7 +49,7 @@ _FEATURES: tuple[HostingFeature, ...] = (
     HostingFeature("email.deliverability", "email", "Email Deliverability", "account", "foundation", provider="mail"),
     HostingFeature("email.address_importer", "email", "Address Importer", "account", "foundation", provider="mail", description="Bounded bulk mailbox/forwarder import with Step-Up, ownership and quota policy, conflict validation, provider rollback and audit"),
     HostingFeature("email.spam_filters", "email", "Spam Filters", "account", "foundation", provider="mail"),
-    HostingFeature("email.calendars_contacts", "email", "Calendars & Contacts", "account", "planned", provider="mail"),
+    HostingFeature("email.calendars_contacts", "email", "Calendars & Contacts", "account", "foundation", provider="mail", description="Radicale-backed CalDAV/CardDAV identities tied to scoped mailboxes with transient credentials, bcrypt hashing, Step-Up and audit"),
     HostingFeature("email.encryption", "email", "Email Encryption", "account", "planned", risk="sensitive", provider="mail"),
 
     HostingFeature("databases.mariadb", "databases", "MariaDB Databases", "account", "native"),
@@ -96,7 +96,6 @@ _FEATURES: tuple[HostingFeature, ...] = (
     HostingFeature("preferences.language", "preferences", "Language", "account", "foundation"),
     HostingFeature("preferences.users", "preferences", "User Manager", "account", "native", risk="sensitive"),
     HostingFeature("preferences.contact", "preferences", "Contact Information", "account", "planned"),
-
     HostingFeature("whm.basic_setup", "server", "Basic Server Setup", "server", "foundation", risk="privileged"),
     HostingFeature("whm.quotas", "server", "Quota Setup", "server", "foundation", risk="privileged"),
     HostingFeature("whm.server_profile", "server", "Server Profile", "server", "foundation", risk="privileged"),
