@@ -52,7 +52,7 @@ MAX_TRACE_EVENTS = 200
 MAIL_LOG = Path(os.environ.get("NVP_MAIL_LOG", "/var/log/mail.log"))
 ACTIONS = {
     "status", "mailbox-upsert", "mailbox-delete", "forwarder-upsert", "forwarder-delete",
-    "default-address-sync", "queue-delete", "sieve-sync", "delivery-trace",
+    "default-address-sync", "routing-sync", "queue-delete", "sieve-sync", "delivery-trace",
 }
 SAFE_ERROR_RE = re.compile(r"^[a-z0-9][a-z0-9-]{2,79}$")
 DOMAIN_RE = re.compile(r"^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$")
@@ -72,6 +72,37 @@ def _valid_trace_domain(value: object) -> str:
     if not DOMAIN_RE.fullmatch(domain):
         raise ValueError("invalid-mail-domain")
     return domain
+
+
+def _routing_sync(domain: object, mode: object) -> dict:
+    domain = _valid_trace_domain(domain)
+    mode = str(mode or "").strip().lower()
+    if mode not in {"local", "remote"}:
+        raise ValueError("invalid-mail-routing-mode")
+
+    snapshot = _backend._snapshot()
+    state = {name: dict(values) for name, values in snapshot.items()}
+    suffix = f"@{domain}"
+    if mode == "remote":
+        has_mailboxes = any(str(key).lower().endswith(suffix) for key in state["boxes"])
+        has_users = any(str(key).lower().endswith(suffix) for key in state["users"])
+        has_aliases = any(
+            str(key).lower() == suffix or str(key).lower().endswith(suffix)
+            for key in state["aliases"]
+        )
+        if has_mailboxes or has_users or has_aliases:
+            raise RuntimeError("routing-conflict-local-resources")
+        state["domains"].pop(domain, None)
+    else:
+        state["domains"][domain] = "OK"
+
+    try:
+        _backend._write_state(state)
+        _backend._reload()
+    except Exception:
+        _backend._rollback(snapshot)
+        raise
+    return {"ok": True, "domain": domain, "mode": mode}
 
 
 def _regular_log(path: Path) -> bool:
@@ -182,6 +213,8 @@ def _dispatch(data: dict) -> dict:
         return forwarder_delete(str(data.get("source", "")))
     if action == "default-address-sync":
         return default_address_sync(data.get("domain", ""), data.get("mode", "reject"), data.get("destination", ""))
+    if action == "routing-sync":
+        return _routing_sync(data.get("domain", ""), data.get("mode", "local"))
     if action == "queue-delete":
         return queue_delete(str(data.get("queue_id", "")))
     if action == "delivery-trace":
