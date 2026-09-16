@@ -44,7 +44,7 @@ _FEATURES: tuple[HostingFeature, ...] = (
     HostingFeature("email.default_address", "email", "Default Address", "account", "foundation", provider="mail", description="Reject-or-forward catch-all policy with provider rollback, scope checks and loop prevention"),
     HostingFeature("email.mailing_lists", "email", "Mailing Lists", "account", "foundation", provider="mail", description="Provider-managed distribution lists with scoped membership, loop detection, optimistic provider conflict checks, rollback, Step-Up and audit"),
     HostingFeature("email.delivery_trace", "email", "Track Delivery", "account", "foundation", provider="mail"),
-    HostingFeature("email.global_filters", "email", "Global Email Filters", "account", "planned", provider="mail"),
+    HostingFeature("email.global_filters", "email", "Global Email Filters", "account", "foundation", provider="mail", description="Account-wide provider-backed Sieve filters with custom-header validation, same-account redirect loop prevention, Step-Up, rollback and audit"),
     HostingFeature("email.filters", "email", "Email Filters", "account", "foundation", provider="mail"),
     HostingFeature("email.deliverability", "email", "Email Deliverability", "account", "foundation", provider="mail"),
     HostingFeature("email.address_importer", "email", "Address Importer", "account", "foundation", provider="mail", description="Bounded bulk mailbox/forwarder import with Step-Up, ownership and quota policy, conflict validation, provider rollback and audit"),
