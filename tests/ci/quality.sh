@@ -25,6 +25,7 @@ python tests/postgres_access_agent_test.py
 python tests/postgres_access_test.py
 python tests/mail_policy_test.py
 python tests/mail_default_address_test.py
+python tests/mail_routing_test.py
 python tests/mail_address_import_test.py
 python tests/mail_password_rotation_test.py
 python tests/mail_automation_test.py
