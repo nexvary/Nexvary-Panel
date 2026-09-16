@@ -123,15 +123,37 @@ SQL
   doctor)
     python3 - <<'PY'
 import json,os,shutil,subprocess
+
 def run(c):
  try:
   p=subprocess.run(c,capture_output=True,text=True,timeout=12);return p.returncode==0,(p.stdout or p.stderr).strip()[-500:]
  except Exception as e:return False,str(e)
+
+def version_ge(installed, minimum):
+ try:
+  return subprocess.run(['dpkg','--compare-versions',installed,'ge',minimum],timeout=4).returncode==0
+ except Exception:
+  return False
+
 checks=[]
 def add(n,o,d,s='warning'):checks.append({'name':n,'ok':bool(o),'severity':'ok' if o else s,'detail':d})
 ok,out=run(['nginx','-t']);add('NGINX configuration',ok,out,'critical')
 for svc in ['nginx','mariadb','fail2ban']:
  ok,_=run(['systemctl','is-active','--quiet',svc]);add('Service: '+svc,ok,'active' if ok else 'inactive','critical' if svc in ('nginx','mariadb') else 'warning')
+# Ubuntu USN-8563-5 (2026-09-14) fixes CVE-2026-42533 on Noble in nginx 1.24.0-2ubuntu7.18.
+# This is a detection-only pre-check: Maintenance Center never performs an unrestricted apt operation.
+try:
+ os_release={}
+ for line in open('/etc/os-release',encoding='utf-8'):
+  if '=' in line:
+   k,v=line.rstrip().split('=',1);os_release[k]=v.strip().strip('"')
+ if os_release.get('ID')=='ubuntu' and os_release.get('VERSION_ID')=='24.04':
+  ok_ver,installed=run(['dpkg-query','-W','-f=${Version}','nginx'])
+  minimum='1.24.0-2ubuntu7.18'
+  safe=ok_ver and version_ge(installed,minimum)
+  add('NGINX security baseline',safe,(f'{installed} meets Ubuntu USN-8563-5 baseline' if safe else f'installed {installed or "unknown"}; require >= {minimum} (USN-8563-5 / CVE-2026-42533)'),'critical')
+except Exception as exc:
+ add('NGINX security baseline',False,f'could not verify Ubuntu nginx security baseline: {exc}','warning')
 u=shutil.disk_usage('/');pct=u.used/u.total*100 if u.total else 0;add('Disk capacity',pct<90,f'{pct:.1f}% used','critical' if pct>=95 else 'warning')
 load=float(open('/proc/loadavg').read().split()[0]);cpus=os.cpu_count() or 1;add('System load',load<cpus*2,f'1m load {load:.2f} / {cpus} CPU')
 ok,_=run(['certbot','certificates']);add('Certbot',ok,'certificate inventory readable' if ok else 'unavailable')
