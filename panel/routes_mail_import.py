@@ -8,7 +8,15 @@ from flask import jsonify, request
 from .config import DOMAIN_RE, PASSWORD_RE
 from .core import audit, db
 from .mail_client import mail_call
-from .routes_mail import EMAIL_RE, _domain_allowed, _mail_limits, _owner_feature_allowed, _valid_localpart
+from .routes_mail import (
+    EMAIL_RE,
+    _domain_allowed,
+    _mail_limits,
+    _owner_domains,
+    _owner_feature_allowed,
+    _owner_global_filters,
+    _valid_localpart,
+)
 from .security import role_required, step_up_required
 
 MAX_IMPORT_ENTRIES = 100
@@ -170,6 +178,46 @@ def register_mail_import_routes(app):
                             "INSERT INTO mail_forwarders(domain,localpart,destination,enabled,owner,created_at,updated_at) VALUES(?,?,?,1,?,?,?)",
                             (domain, item["localpart"], item["destination"], owner, now, now),
                         )
+
+                # A bulk import must preserve the same account-wide filter semantics as
+                # interactive mailbox creation. New mailbox homes are provisioned first,
+                # then every imported mailbox receives the current global Sieve layer
+                # before metadata is committed. Any sync failure rolls back the entire
+                # import, including provider-created mailboxes/forwarders.
+                global_filters = (
+                    _owner_global_filters(conn, owner)
+                    if mailbox_count and _owner_feature_allowed(conn, owner, "email.global_filters")
+                    else []
+                )
+                global_domains = _owner_domains(conn, owner) if global_filters else []
+                if global_filters:
+                    for item in entries:
+                        if item["kind"] != "mailbox":
+                            continue
+                        sync = mail_call(
+                            {
+                                "action": "sieve-sync",
+                                "address": item["source"],
+                                "autoresponder": {"enabled": False, "subject": "", "body": "", "interval_days": 1},
+                                "filters": [],
+                                "spam": {"enabled": False, "action": "junk"},
+                                "global_filters": global_filters,
+                                "global_domains": global_domains,
+                            },
+                            timeout=35,
+                        )
+                        if not sync.get("ok"):
+                            conn.rollback()
+                            rollback_failed = _rollback_provider(created)
+                            payload = {
+                                "ok": False,
+                                "error": str(sync.get("error", "global mail filter provider failed"))[:160],
+                                "failed_source": item["source"],
+                                "rolled_back": not rollback_failed,
+                            }
+                            if rollback_failed:
+                                payload["rollback_failed"] = rollback_failed
+                            return jsonify(payload), 502
         except sqlite3.Error:
             rollback_failed = _rollback_provider(created)
             payload = {
