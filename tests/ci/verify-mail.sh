@@ -16,11 +16,11 @@ test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/mail.sock)" = "660 root nexva
 test "$(sudo stat -c '%a %U %G' /run/nexvary-panel/dav.sock)" = "660 root nexvary-panel"
 test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/mail/users)" = "640 root dovecot"
 test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/mail/domains)" = "640 root postfix"
-test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/radicale/users)" = "640 root radicale"
-test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel/radicale/config)" = "640 root radicale"
-sudo grep -q '^type = htpasswd$' /etc/nexvary-panel/radicale/config
-sudo grep -q '^htpasswd_encryption = bcrypt$' /etc/nexvary-panel/radicale/config
-sudo grep -q '^type = owner_only$' /etc/nexvary-panel/radicale/config
+test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel-radicale/users)" = "640 root radicale"
+test "$(sudo stat -c '%a %U %G' /etc/nexvary-panel-radicale/config)" = "640 root radicale"
+sudo grep -q '^type = htpasswd$' /etc/nexvary-panel-radicale/config
+sudo grep -q '^htpasswd_encryption = bcrypt$' /etc/nexvary-panel-radicale/config
+sudo grep -q '^type = owner_only$' /etc/nexvary-panel-radicale/config
 sudo grep -q 'NEXVARY_DAV_BEGIN' /etc/nginx/sites-available/nexvary-panel.conf
 sudo nginx -t
 sudo postfix check
@@ -142,8 +142,8 @@ stale=call({'action':'credential-sync','username':os.environ['DAV_USER'],'passwo
 assert stale.get('error')=='dav-provider-conflict', stale
 PY
 curl -kfsS -X PROPFIND -H 'Depth: 0' -u "$DAV_USER:$DAV_PASS" "https://127.0.0.1:8443/dav/$DAV_USER/" >/dev/null
-sudo grep -q '^calendar@example\.test:\$2' /etc/nexvary-panel/radicale/users
-if sudo grep -Fq "$DAV_PASS" /etc/nexvary-panel/radicale/users; then
+sudo grep -q '^calendar@example\.test:\$2' /etc/nexvary-panel-radicale/users
+if sudo grep -Fq "$DAV_PASS" /etc/nexvary-panel-radicale/users; then
   echo 'DAV cleartext password leaked into htpasswd file' >&2
   exit 1
 fi
@@ -171,7 +171,7 @@ if curl -kfsS -X PROPFIND -H 'Depth: 0' -u "$DAV_USER:$DAV_ROTATED" "https://127
   echo 'Revoked DAV credential still authenticates' >&2
   exit 1
 fi
-if sudo grep -q '^calendar@example\.test:' /etc/nexvary-panel/radicale/users; then
+if sudo grep -q '^calendar@example\.test:' /etc/nexvary-panel-radicale/users; then
   echo 'Revoked DAV account remains in htpasswd file' >&2
   exit 1
 fi
