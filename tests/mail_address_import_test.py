@@ -27,7 +27,12 @@ with tempfile.TemporaryDirectory(prefix="nvp-mail-import-") as tmp:
     fail_forwarder = False
 
     def fake_mail(payload, timeout=0):
-        provider_calls.append(dict(payload))
+        snapshot = dict(payload)
+        if isinstance(payload.get("global_filters"), list):
+            snapshot["global_filters"] = [dict(item) for item in payload["global_filters"]]
+        if isinstance(payload.get("global_domains"), list):
+            snapshot["global_domains"] = list(payload["global_domains"])
+        provider_calls.append(snapshot)
         if fail_forwarder and payload.get("action") == "forwarder-upsert":
             return {"ok": False, "error": "synthetic-provider-failure"}
         return {"ok": True}
@@ -79,6 +84,38 @@ with tempfile.TemporaryDirectory(prefix="nvp-mail-import-") as tmp:
         assert "Nexvary-Test-Password-2026!" not in details
         assert "sales@external.example" not in details
         assert "domain=example.com" in details and "entries=2" in details
+
+    # Imported mailboxes must inherit an already-active account-wide filter set,
+    # just like mailboxes created interactively.
+    with db() as conn:
+        conn.execute(
+            "INSERT INTO hosting_package_features(package_id,feature_id,enabled,updated_at) VALUES(?,?,1,?)",
+            (core_id, "email.global_filters", now),
+        )
+        conn.execute(
+            """INSERT INTO mail_global_filters(owner,priority,field,header_name,match_type,pattern,action,destination,enabled,created_at,updated_at)
+               VALUES(?,?,?,?,?,?,?,?,1,?,?)""",
+            ("client01", 10, "subject", "", "contains", "billing", "fileinto", "Global", now, now),
+        )
+    provider_calls.clear()
+    r = client.post(
+        "/api/mail/import",
+        json={
+            "domain": "example.com",
+            "entries": [
+                {"kind": "mailbox", "localpart": "bob", "password": "Nexvary-Global-Import-2026!", "quota_mb": 512},
+            ],
+        },
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 201, r.data
+    actions = [call["action"] for call in provider_calls]
+    assert actions == ["mailbox-upsert", "sieve-sync"], actions
+    global_sync = provider_calls[-1]
+    assert global_sync["address"] == "bob@example.com"
+    assert len(global_sync["global_filters"]) == 1
+    assert global_sync["global_filters"][0]["pattern"] == "billing"
+    assert "example.com" in global_sync["global_domains"]
 
     before = len(provider_calls)
     r = client.post(
@@ -145,4 +182,4 @@ with tempfile.TemporaryDirectory(prefix="nvp-mail-import-") as tmp:
         assert conn.execute("SELECT 1 FROM mailboxes WHERE domain='example.com' AND localpart='rollbackbox'").fetchone() is None
         assert conn.execute("SELECT 1 FROM mail_forwarders WHERE domain='example.com' AND localpart='rollbackfwd'").fetchone() is None
 
-print("Nexvary Panel address importer policy/Step-Up/rollback/audit tests: PASS")
+print("Nexvary Panel address importer policy/Step-Up/global-filter/rollback/audit tests: PASS")
