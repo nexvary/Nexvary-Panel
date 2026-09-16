@@ -27,7 +27,7 @@ sudo grep -q '^preserve.example OK$' /etc/nexvary-panel/mail/domains
 sudo -u nexvary-panel python3 - <<'PY'
 import json,socket
 
-def call(payload):
+def call(payload, expect_ok=True):
     s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM); s.settimeout(15); s.connect('/run/nexvary-panel/mail.sock')
     s.sendall((json.dumps(payload,separators=(',',':'))+'\n').encode())
     data=b''
@@ -35,7 +35,8 @@ def call(payload):
         data+=s.recv(4096)
     s.close()
     body=json.loads(data)
-    assert body.get('ok') is True, body
+    if expect_ok:
+        assert body.get('ok') is True, body
     return body
 
 body=call({'action':'status'})
@@ -54,6 +55,15 @@ assert trace.get('source') in {'mail.log','journalctl'}, trace
 assert isinstance(trace.get('events'),list), trace
 assert len(trace['events'])<=25, trace
 assert all('raw' not in event for event in trace['events']), trace
+
+# Routing is provider-backed and fail-closed. An empty domain can move remote/local,
+# while a domain with local mailboxes cannot be switched remote.
+remote=call({'action':'routing-sync','domain':'remote-ci.example','mode':'remote'})
+assert remote.get('mode')=='remote', remote
+local=call({'action':'routing-sync','domain':'remote-ci.example','mode':'local'})
+assert local.get('mode')=='local', local
+conflict=call({'action':'routing-sync','domain':'example.test','mode':'remote'}, expect_ok=False)
+assert conflict.get('ok') is False and conflict.get('error')=='routing-conflict-local-resources', conflict
 PY
 SIEVE=/var/mail/vhosts/example.test/ci/.dovecot.sieve
 SVBIN=/var/mail/vhosts/example.test/ci/.dovecot.svbin
@@ -65,5 +75,6 @@ sudo grep -q 'Managed by Nexvary Panel' "$SIEVE"
 sudo grep -q 'vacation :days 1' "$SIEVE"
 sudo grep -q 'fileinto :create "Billing"' "$SIEVE"
 sudo grep -q 'fileinto :create "Junk"' "$SIEVE"
+sudo grep -q '^remote-ci.example OK$' /etc/nexvary-panel/mail/domains
 sudo postfix check
 sudo dovecot -n >/dev/null
