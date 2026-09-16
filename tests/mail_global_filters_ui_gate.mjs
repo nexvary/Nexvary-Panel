@@ -84,10 +84,16 @@ await page.locator('#mailGlobalFilterField').selectOption('subject');
 await page.locator('#mailGlobalFilterPattern').fill('billing');
 await page.locator('#mailGlobalFilterAction').selectOption('redirect');
 await page.locator('#mailGlobalFilterDestination').fill('archive@external.example');
+const updateResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/mail/global-filters/1'&&response.request().method()==='PUT',{timeout:10000});
 await page.locator('#mailGlobalFilterSave').click();
-await page.getByText('subject contains “billing”',{exact:true}).waitFor({state:'visible',timeout:10000});
+await updateResponse;
+await page.waitForFunction(()=>{
+  const edit=document.querySelector('[data-global-filter-edit="1"]');
+  const text=edit?.closest('.mail-row')?.textContent||'';
+  return text.includes('subject')&&text.includes('billing')&&text.includes('archive@external.example');
+},null,{timeout:10000});
 if(!lastWrite||lastWrite.method!=='PUT'||lastWrite.id!==1)throw new Error(`Global filter update did not call item API: ${JSON.stringify(lastWrite)}`);
-if(lastWrite.payload.destination!=='archive@external.example')throw new Error('Global filter redirect destination malformed');
+if(lastWrite.payload.field!=='subject'||lastWrite.payload.pattern!=='billing'||lastWrite.payload.destination!=='archive@external.example')throw new Error(`Global filter update payload malformed: ${JSON.stringify(lastWrite)}`);
 const updatedStatus=await page.locator('#mailGlobalFilterStatus').textContent();
 if(!updatedStatus?.includes('تم تحديث Global Filter'))throw new Error(`Global filter update status missing after rendered update: ${updatedStatus}`);
 
@@ -103,7 +109,7 @@ await page.locator('#mailGlobalFilterCancel').click();
 await page.locator('[data-global-filter-delete="1"]').click();
 await page.waitForFunction(()=>document.querySelector('#mailGlobalFilterStatus')?.textContent?.includes('تم حذف Global Filter'),null,{timeout:10000});
 if(!lastWrite||lastWrite.method!=='DELETE'||lastWrite.id!==1)throw new Error('Global filter delete did not call item API');
-if(await page.getByText('subject contains “billing”',{exact:true}).count())throw new Error('Deleted Global Filter remained in inventory');
+if(await page.locator('[data-global-filter-edit="1"]').count())throw new Error('Deleted Global Filter remained in inventory');
 
 if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error('Global Email Filters UI caused desktop horizontal overflow');
 await page.setViewportSize({width:390,height:844});
