@@ -12,7 +12,7 @@ import tempfile
 from pathlib import Path
 
 SOCKET_PATH = Path(os.environ.get("NVP_DAV_SOCK", "/run/nexvary-panel/dav.sock"))
-USERS_FILE = Path(os.environ.get("NVP_DAV_USERS", "/etc/nexvary-panel/radicale/users"))
+USERS_FILE = Path(os.environ.get("NVP_DAV_USERS", "/etc/nexvary-panel-radicale/users"))
 SERVICE = os.environ.get("NVP_DAV_SERVICE", "nexvary-panel-dav")
 MAX_REQUEST = 32 * 1024
 BASE_ENV = {"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8"}

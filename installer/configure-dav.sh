@@ -7,22 +7,29 @@ apt-get update
 apt-get install -y radicale apache2-utils python3-bcrypt
 
 getent group radicale >/dev/null || groupadd --system radicale
-id radicale >/dev/null 2>&1 || useradd --system --gid radicale --home-dir /var/lib/nexvary-panel/dav --shell /usr/sbin/nologin radicale
+id radicale >/dev/null 2>&1 || useradd --system --gid radicale --home-dir /var/lib/nexvary-panel-dav --shell /usr/sbin/nologin radicale
 getent group nexvary-panel >/dev/null || { echo 'nexvary-panel group is required'; exit 2; }
 
 systemctl disable --now radicale.service >/dev/null 2>&1 || true
 
-install -d -m 0750 -o root -g radicale /etc/nexvary-panel/radicale
-install -d -m 0750 -o radicale -g radicale /var/lib/nexvary-panel/dav /var/lib/nexvary-panel/dav/collections
-if [[ ! -e /etc/nexvary-panel/radicale/users ]]; then
-  install -m 0640 -o root -g radicale /dev/null /etc/nexvary-panel/radicale/users
+DAV_ETC=/etc/nexvary-panel-radicale
+DAV_STATE=/var/lib/nexvary-panel-dav
+OLD_DAV_ETC=/etc/nexvary-panel/radicale
+install -d -m 0750 -o root -g radicale "$DAV_ETC"
+install -d -m 0750 -o radicale -g radicale "$DAV_STATE" "$DAV_STATE/collections"
+
+if [[ ! -e "$DAV_ETC/users" && -f "$OLD_DAV_ETC/users" && ! -L "$OLD_DAV_ETC/users" ]]; then
+  install -m 0640 -o root -g radicale "$OLD_DAV_ETC/users" "$DAV_ETC/users"
+fi
+if [[ ! -e "$DAV_ETC/users" ]]; then
+  install -m 0640 -o root -g radicale /dev/null "$DAV_ETC/users"
 else
-  [[ ! -L /etc/nexvary-panel/radicale/users && -f /etc/nexvary-panel/radicale/users ]] || { echo 'Unsafe DAV users file boundary'; exit 3; }
-  chown root:radicale /etc/nexvary-panel/radicale/users
-  chmod 0640 /etc/nexvary-panel/radicale/users
+  [[ ! -L "$DAV_ETC/users" && -f "$DAV_ETC/users" ]] || { echo 'Unsafe DAV users file boundary'; exit 3; }
+  chown root:radicale "$DAV_ETC/users"
+  chmod 0640 "$DAV_ETC/users"
 fi
 
-cat > /etc/nexvary-panel/radicale/config <<'EOF'
+cat > "$DAV_ETC/config" <<EOF
 [server]
 hosts = 127.0.0.1:5232
 max_connections = 20
@@ -30,7 +37,7 @@ timeout = 30
 
 [auth]
 type = htpasswd
-htpasswd_filename = /etc/nexvary-panel/radicale/users
+htpasswd_filename = $DAV_ETC/users
 htpasswd_encryption = bcrypt
 delay = 1
 
@@ -38,7 +45,7 @@ delay = 1
 type = owner_only
 
 [storage]
-filesystem_folder = /var/lib/nexvary-panel/dav/collections
+filesystem_folder = $DAV_STATE/collections
 
 [web]
 type = internal
@@ -46,8 +53,15 @@ type = internal
 [logging]
 level = warning
 EOF
-chown root:radicale /etc/nexvary-panel/radicale/config
-chmod 0640 /etc/nexvary-panel/radicale/config
+chown root:radicale "$DAV_ETC/config"
+chmod 0640 "$DAV_ETC/config"
+
+# Compatibility aliases for pre-release verification and upgrades. Radicale itself
+# never traverses the restricted /etc/nexvary-panel parent; it reads DAV_ETC above.
+install -d -m 0750 -o root -g root "$OLD_DAV_ETC"
+rm -f "$OLD_DAV_ETC/users" "$OLD_DAV_ETC/config"
+ln -s "$DAV_ETC/users" "$OLD_DAV_ETC/users"
+ln -s "$DAV_ETC/config" "$OLD_DAV_ETC/config"
 
 install -d -m 0750 -o root -g root /opt/nexvary-panel-agent
 install -m 0750 -o root -g root agent/dav_agent.py /opt/nexvary-panel-agent/dav_agent.py
@@ -87,15 +101,26 @@ PY
 
 nginx -t
 systemctl daemon-reload
-systemctl enable --now nexvary-panel-dav nexvary-panel-dav-agent
+systemctl enable nexvary-panel-dav nexvary-panel-dav-agent >/dev/null
+systemctl restart nexvary-panel-dav
+systemctl restart nexvary-panel-dav-agent
 systemctl reload nginx
 
+ready=0
 for _ in {1..30}; do
-  systemctl is-active --quiet nexvary-panel-dav && [[ -S /run/nexvary-panel/dav.sock ]] && break
+  if systemctl is-active --quiet nexvary-panel-dav \
+    && systemctl is-active --quiet nexvary-panel-dav-agent \
+    && [[ -S /run/nexvary-panel/dav.sock ]] \
+    && curl -sS --max-time 2 -o /dev/null http://127.0.0.1:5232/; then
+    ready=1
+    break
+  fi
   sleep 1
 done
-systemctl is-active --quiet nexvary-panel-dav
-systemctl is-active --quiet nexvary-panel-dav-agent
-[[ -S /run/nexvary-panel/dav.sock ]] || { echo 'DAV provider socket did not become ready'; exit 5; }
-curl -fsS -o /dev/null http://127.0.0.1:5232/ || true
+if (( ! ready )); then
+  echo 'CalDAV/CardDAV provider failed readiness checks.' >&2
+  systemctl status nexvary-panel-dav nexvary-panel-dav-agent --no-pager || true
+  journalctl -u nexvary-panel-dav -u nexvary-panel-dav-agent -n 120 --no-pager || true
+  exit 5
+fi
 printf 'Nexvary Panel CalDAV/CardDAV provider configured at /dav/.\n'

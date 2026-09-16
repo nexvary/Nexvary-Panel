@@ -21,7 +21,7 @@ ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
-ReadWritePaths=/etc/nexvary-panel/radicale /run/nexvary-panel
+ReadWritePaths=/etc/nexvary-panel-radicale /run/nexvary-panel
 RestrictAddressFamilies=AF_UNIX
 
 [Install]

@@ -1,13 +1,13 @@
 [Unit]
 Description=Nexvary Panel Radicale CalDAV/CardDAV Service
 After=network.target
-ConditionPathExists=/etc/nexvary-panel/radicale/config
+ConditionPathExists=/etc/nexvary-panel-radicale/config
 
 [Service]
 Type=simple
 User=radicale
 Group=radicale
-ExecStart=/usr/bin/radicale --config /etc/nexvary-panel/radicale/config
+ExecStart=/usr/bin/radicale --config /etc/nexvary-panel-radicale/config
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
@@ -19,7 +19,7 @@ ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
-ReadWritePaths=/var/lib/nexvary-panel/dav
+ReadWritePaths=/var/lib/nexvary-panel-dav
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 
 [Install]
