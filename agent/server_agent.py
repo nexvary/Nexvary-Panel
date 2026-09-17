@@ -192,44 +192,37 @@ def _updates_apply(expected_fingerprint: object) -> dict:
         return before
     actual = str(before.get("fingerprint", ""))
     if actual != expected:
-        return {
-            "ok": False,
-            "error": "system-update-preview-stale",
-            "expected_fingerprint": expected,
-            "actual_fingerprint": actual,
-        }
+        return {"ok": False, "error": "system-update-preview-stale", "expected_fingerprint": expected, "actual_fingerprint": actual}
     planned = int(before.get("count", 0) or 0)
     if planned == 0:
-        return {
-            "ok": True,
-            "changed": False,
-            "applied_count": 0,
-            "fingerprint": actual,
-            "reboot_required": Path("/var/run/reboot-required").exists(),
-        }
+        return {"ok": True, "changed": False, "applied_count": 0, "fingerprint": actual, "reboot_required": Path("/var/run/reboot-required").exists(), "post_check": "clean"}
     try:
-        _run([
-            "apt-get", "-y", "-o", "Dpkg::Options::=--force-confold", "--with-new-pkgs", "upgrade"
-        ], 1800)
+        _run(["apt-get", "-y", "-o", "Dpkg::Options::=--force-confold", "--with-new-pkgs", "upgrade"], 1800)
     except Exception:
-        return {"ok": False, "error": "system-update-apply-failed"}
+        return {"ok": False, "error": "system-update-apply-failed", "changed": False, "post_check": "not-run"}
     after = _updates_preview()
     if not after.get("ok"):
-        after = {"count": 0, "fingerprint": "", "reboot_required": Path("/var/run/reboot-required").exists()}
+        return {"ok": False, "error": "system-update-post-check-failed", "changed": True, "applied_count": planned, "rollback": "package-upgrade-not-automatic", "recovery": "inspect-package-state"}
+    remaining = int(after.get("count", 0) or 0)
     return {
         "ok": True,
         "changed": True,
         "applied_count": planned,
-        "remaining_count": int(after.get("count", 0) or 0),
+        "remaining_count": remaining,
         "previous_fingerprint": actual,
         "fingerprint": str(after.get("fingerprint", "")),
         "reboot_required": bool(after.get("reboot_required")),
+        "post_check": "clean" if remaining == 0 else "updates-remain",
+        "rollback": "package-upgrade-not-automatic",
     }
 
 
 def _enable_ntp() -> dict:
     _run(["timedatectl", "set-ntp", "true"], 20)
-    return {"ok": True, "time": _time_state()}
+    state = _time_state()
+    if not state.get("ntp"):
+        return {"ok": False, "error": "ntp-post-check-failed", "time": state}
+    return {"ok": True, "time": state, "post_check": "ntp-enabled"}
 
 
 def _set_hostname(value: object) -> dict:
@@ -238,15 +231,21 @@ def _set_hostname(value: object) -> dict:
         return {"ok": False, "error": "invalid-server-hostname"}
     previous = socket.gethostname()[:253]
     if previous.lower().rstrip(".") == hostname:
-        state = _overview()
-        state.update(changed=False, previous_hostname=previous)
-        return state
+        state = _overview(); state.update(changed=False, previous_hostname=previous, post_check="unchanged"); return state
     try:
         _run(["hostnamectl", "set-hostname", hostname], 30)
     except Exception:
         return {"ok": False, "error": "server-hostname-change-failed"}
     state = _overview()
-    state.update(changed=True, previous_hostname=previous)
+    observed = str(state.get("hostname", "")).lower().rstrip(".")
+    if observed != hostname:
+        try:
+            _run(["hostnamectl", "set-hostname", previous], 30)
+            rollback = "restored"
+        except Exception:
+            rollback = "failed"
+        return {"ok": False, "error": "server-hostname-post-check-failed", "previous_hostname": previous, "requested_hostname": hostname, "observed_hostname": observed, "rollback": rollback}
+    state.update(changed=True, previous_hostname=previous, post_check="hostname-verified", rollback="previous-hostname-available")
     return state
 
 
@@ -254,38 +253,26 @@ def dispatch(req: dict) -> dict:
     action = str(req.get("action", ""))
     if action not in ACTIONS:
         return {"ok": False, "error": "server-action-not-allowed"}
-    if action == "server-overview":
-        return _overview()
-    if action == "server-network":
-        return _network()
-    if action == "server-processes":
-        return _processes()
-    if action == "server-updates-preview":
-        return _updates_preview()
-    if action == "server-updates-apply":
-        return _updates_apply(req.get("fingerprint", ""))
-    if action == "server-hostname-set":
-        return _set_hostname(req.get("hostname", ""))
+    if action == "server-overview": return _overview()
+    if action == "server-network": return _network()
+    if action == "server-processes": return _processes()
+    if action == "server-updates-preview": return _updates_preview()
+    if action == "server-updates-apply": return _updates_apply(req.get("fingerprint", ""))
+    if action == "server-hostname-set": return _set_hostname(req.get("hostname", ""))
     return _enable_ntp()
 
 
 def _reply(conn: socket.socket, body: dict) -> None:
     raw = (json.dumps(body, separators=(",", ":")) + "\n").encode()
-    if len(raw) > MAX_RESPONSE:
-        raw = b'{"ok":false,"error":"server-response-too-large"}\n'
+    if len(raw) > MAX_RESPONSE: raw = b'{"ok":false,"error":"server-response-too-large"}\n'
     conn.sendall(raw)
 
 
 def main() -> None:
     SOCK.parent.mkdir(parents=True, exist_ok=True)
-    if SOCK.exists() or SOCK.is_symlink():
-        SOCK.unlink()
-    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    server.bind(str(SOCK))
-    gid = grp.getgrnam("nexvary-panel").gr_gid
-    os.chown(SOCK, 0, gid)
-    os.chmod(SOCK, 0o660)
-    server.listen(16)
+    if SOCK.exists() or SOCK.is_symlink(): SOCK.unlink()
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); server.bind(str(SOCK))
+    gid = grp.getgrnam("nexvary-panel").gr_gid; os.chown(SOCK, 0, gid); os.chmod(SOCK, 0o660); server.listen(16)
     while True:
         conn, _ = server.accept()
         with conn:
@@ -293,18 +280,14 @@ def main() -> None:
                 data = b""
                 while not data.endswith(b"\n") and len(data) < MAX_REQUEST:
                     chunk = conn.recv(4096)
-                    if not chunk:
-                        break
+                    if not chunk: break
                     data += chunk
-                if len(data) >= MAX_REQUEST:
-                    raise ValueError("request-too-large")
+                if len(data) >= MAX_REQUEST: raise ValueError("request-too-large")
                 req = json.loads(data.decode("utf-8"))
-                if not isinstance(req, dict):
-                    raise ValueError("object-required")
+                if not isinstance(req, dict): raise ValueError("object-required")
                 _reply(conn, dispatch(req))
             except Exception:
                 _reply(conn, {"ok": False, "error": "server-request-failed"})
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": main()
