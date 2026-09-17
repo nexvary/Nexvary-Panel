@@ -62,6 +62,7 @@ python tests/doctor_remediation_test.py
 python tests/maintenance_center_test.py
 python tests/change_safety_test.py
 python tests/privileged_agent_contract_test.py
+python tests/privileged_policy_test.py
 python tests/wordpress_agent_test.py
 python tests/wordpress_lifecycle_test.py
 python tests/wordpress_components_test.py
