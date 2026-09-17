@@ -9,6 +9,7 @@ from flask import flash, jsonify, redirect, request, session, url_for
 
 from .config import DOMAIN_RE, ROLES, USER_RE
 from .core import agent_call, audit, can_manage_domain, db, notify, password_hash, role_required
+from .maintenance_policy import restart_operation_for_target
 from .security import step_up_required
 
 
@@ -17,13 +18,17 @@ def register_ops_routes(app):
     @role_required("admin")
     @step_up_required
     def restart_service():
-        name = request.form.get("name", "")
-        if name not in {"nginx", "mariadb", "fail2ban", "docker"}:
+        # Resolve the browser value through the finite maintenance registry.  The
+        # browser never selects an executable, argv, systemd unit or agent action.
+        requested = request.form.get("name", "").strip()
+        operation = restart_operation_for_target(requested)
+        if operation is None or "admin" not in operation.roles or not operation.step_up:
+            audit("maintenance-policy-deny", requested[:80] or "empty")
             flash("الخدمة غير مسموح بإدارتها من اللوحة.", "error")
             return redirect(url_for("home") + "#services")
-        result = agent_call({"action": "service-restart", "name": name}, timeout=35)
-        audit("service-restart", name + (" ok" if result.get("ok") else " failed"))
-        notify("ok" if result.get("ok") else "critical", f"Service {name} " + ("restarted" if result.get("ok") else "restart failed"),
+        result = agent_call({"action": operation.agent_action, "name": operation.target}, timeout=operation.timeout)
+        audit(operation.id, operation.target + (" ok" if result.get("ok") else " failed"))
+        notify("ok" if result.get("ok") else "critical", f"Service {operation.target} " + ("restarted" if result.get("ok") else "restart failed"),
                str(result.get("error", ""))[-300:], "service")
         flash("تمت إعادة تشغيل الخدمة." if result.get("ok") else "فشل تشغيل الخدمة: " + str(result.get("error", ""))[-150:],
               "ok" if result.get("ok") else "error")
