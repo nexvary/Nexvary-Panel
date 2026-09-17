@@ -1,7 +1,7 @@
 <article class="panel royal-frame frame-electric-black adv-card" id="advServerLifecycleCard">
   <div class="panel-head">
     <div><span class="kicker">SERVER LIFECYCLE</span><h3>Server Maintenance Center</h3></div>
-    <span class="adv-chip">PREVIEW-FIRST</span>
+    <span class="adv-chip">ALLOWLISTED · STEP-UP</span>
   </div>
   <div class="metrics-summary server-lifecycle-summary">
     <div><small>HOST</small><b id="serverLifecycleHost">—</b></div>
@@ -21,16 +21,10 @@
   </div>
   <div id="serverLifecycleMeta" class="adv-result">جاري فحص Server Lifecycle Provider…</div>
   <div class="adv-runtime-columns">
-    <div>
-      <span class="kicker">NETWORK &amp; RESOLVERS</span>
-      <div id="serverLifecycleNetwork" class="adv-list"><div class="empty-state">لم تُحمّل الشبكة بعد.</div></div>
-    </div>
-    <div>
-      <span class="kicker">TOP PROCESSES</span>
-      <div id="serverLifecycleProcesses" class="adv-list"><div class="empty-state">لم تُحمّل العمليات بعد.</div></div>
-    </div>
+    <div><span class="kicker">NETWORK &amp; RESOLVERS</span><div id="serverLifecycleNetwork" class="adv-list"><div class="empty-state">لم تُحمّل الشبكة بعد.</div></div></div>
+    <div><span class="kicker">TOP PROCESSES</span><div id="serverLifecycleProcesses" class="adv-list"><div class="empty-state">لم تُحمّل العمليات بعد.</div></div></div>
   </div>
   <div class="panel-head server-maintenance-history-head"><div><span class="kicker">MAINTENANCE PREVIEWS</span><h3>Review Queue</h3></div><span class="adv-chip">15 MIN TTL</span></div>
   <div id="serverLifecycleMaintenance" class="adv-list"><div class="empty-state">لا توجد Maintenance Previews.</div></div>
-  <div class="account-policy-note">تغيير Hostname يعمل بنمط <strong>Preview → Step-Up → Apply</strong> مع فحص أن Hostname لم يتغير بين المرحلتين. System Updates وReboot يظلان Preview فقط في Platform 0.7 ولا يتم تنفيذهما مباشرة من الواجهة.</div>
+  <div class="account-policy-note"><strong>Safe Change Lifecycle:</strong> Preview → Step-Up → server-side revalidation → bounded privileged action → post-check → audit. System Updates require an unchanged package-plan fingerprint before Apply; Hostname verifies current state and restores the previous hostname if its post-check fails. Package upgrades are deliberately not auto-downgraded after execution because blind package rollback can make the host less recoverable. Reboot remains preview-only and is never executed from the browser. No command, argv, terminal, or free-form root shell is accepted by this control plane.</div>
 </article>
