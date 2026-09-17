@@ -8,6 +8,7 @@ class MaintenanceOperation:
     id: str
     label: str
     agent_action: str
+    target: str
     roles: tuple[str, ...]
     step_up: bool
     timeout: int
@@ -18,14 +19,23 @@ class MaintenanceOperation:
 
 
 # Deliberately finite: the browser never supplies an executable, argv, shell fragment,
-# unit name, filesystem path or other root-controlled primitive.
+# unit name, filesystem path or other root-controlled primitive.  The submitted
+# operation ID is resolved here to a fixed privileged-agent action and target.
 OPERATIONS: dict[str, MaintenanceOperation] = {
-    "restart-nginx": MaintenanceOperation("restart-nginx", "إعادة تشغيل Nginx", "maintenance-restart-nginx", ("admin",), True, 35, "nginx-config", "nginx-active", risk="medium"),
-    "restart-mariadb": MaintenanceOperation("restart-mariadb", "إعادة تشغيل MariaDB", "maintenance-restart-mariadb", ("admin",), True, 45, "mariadb-ping", "mariadb-ping", risk="high"),
-    "restart-fail2ban": MaintenanceOperation("restart-fail2ban", "إعادة تشغيل Fail2ban", "maintenance-restart-fail2ban", ("admin",), True, 35, "fail2ban-config", "fail2ban-active", risk="medium"),
-    "reload-nginx": MaintenanceOperation("reload-nginx", "إعادة تحميل إعدادات Nginx", "maintenance-reload-nginx", ("admin", "operator"), True, 30, "nginx-config", "nginx-active", risk="low"),
+    "restart-nginx": MaintenanceOperation("restart-nginx", "إعادة تشغيل Nginx", "service-restart", "nginx", ("admin",), True, 35, "nginx-config", "nginx-active", risk="medium"),
+    "restart-mariadb": MaintenanceOperation("restart-mariadb", "إعادة تشغيل MariaDB", "service-restart", "mariadb", ("admin",), True, 40, "mariadb-ping", "mariadb-ping", risk="high"),
+    "restart-fail2ban": MaintenanceOperation("restart-fail2ban", "إعادة تشغيل Fail2ban", "service-restart", "fail2ban", ("admin",), True, 35, "fail2ban-config", "fail2ban-active", risk="medium"),
+    "restart-docker": MaintenanceOperation("restart-docker", "إعادة تشغيل Docker", "service-restart", "docker", ("admin",), True, 40, "docker-service-known", "docker-active", risk="high"),
 }
 
 
 def operation_for(operation_id: str) -> MaintenanceOperation | None:
     return OPERATIONS.get(operation_id)
+
+
+def restart_operation_for_target(target: str) -> MaintenanceOperation | None:
+    """Resolve a browser service choice to a fixed policy entry; fail closed."""
+    for operation in OPERATIONS.values():
+        if operation.agent_action == "service-restart" and operation.target == target:
+            return operation
+    return None
