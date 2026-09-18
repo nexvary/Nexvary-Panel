@@ -13,25 +13,27 @@ from .maintenance_policy import docker_operation_for, restart_operation_for_targ
 from .security import clear_step_up, step_up_required
 
 
+def _maintenance_receipt(operation_id: str, target: str, phase: str, change_id: str) -> None:
+    """Write a bounded, correlation-friendly receipt without agent output/secrets."""
+    audit(f"maintenance-{phase}", f"change={change_id} operation={operation_id} target={target}"[:700])
+
+
 def register_ops_routes(app):
     @app.post("/services/restart")
     @role_required("admin")
     @step_up_required
     def restart_service():
-        # Resolve the browser value through the finite maintenance registry.  The
-        # browser never selects an executable, argv, systemd unit or agent action.
         requested = request.form.get("name", "").strip()
         operation = restart_operation_for_target(requested)
         if operation is None or "admin" not in operation.roles or not operation.step_up:
             audit("maintenance-policy-deny", requested[:80] or "empty")
             flash("الخدمة غير مسموح بإدارتها من اللوحة.", "error")
             return redirect(url_for("home") + "#services")
-        # A Step-Up grant is deliberately single-use for privileged mutation. This
-        # prevents a captured/reused elevated session from authorizing a second,
-        # different maintenance action during the five-minute freshness window.
+        change_id = secrets.token_hex(8)
+        _maintenance_receipt(operation.id, operation.target, "start", change_id)
         clear_step_up()
         result = agent_call({"action": operation.agent_action, "name": operation.target}, timeout=operation.timeout)
-        audit(operation.id, operation.target + (" ok" if result.get("ok") else " failed"))
+        _maintenance_receipt(operation.id, operation.target, "success" if result.get("ok") else "failure", change_id)
         notify("ok" if result.get("ok") else "critical", f"Service {operation.target} " + ("restarted" if result.get("ok") else "restart failed"),
                str(result.get("error", ""))[-300:], "service")
         flash("تمت إعادة تشغيل الخدمة." if result.get("ok") else "فشل تشغيل الخدمة: " + str(result.get("error", ""))[-150:],
@@ -74,9 +76,6 @@ def register_ops_routes(app):
     @role_required("admin", "operator")
     @step_up_required
     def docker_control():
-        # Container lifecycle changes are privileged mutations.  Both the lifecycle
-        # verb and timeout come from the finite Maintenance Center policy; the
-        # browser can identify a bounded container name, never an executable/argv.
         container = request.form.get("container", "").strip()
         desired = request.form.get("desired", "restart").strip()
         operation = docker_operation_for(desired)
@@ -86,11 +85,11 @@ def register_ops_routes(app):
             audit("maintenance-policy-deny", f"docker {container[:80]} {desired[:20]}")
             flash("طلب Docker غير صالح أو غير مسموح.", "error")
             return redirect(url_for("home") + "#docker")
-        # Consume elevation before crossing the privileged-agent boundary. Even a
-        # timeout/error therefore cannot leave reusable elevated authority behind.
+        change_id = secrets.token_hex(8)
+        _maintenance_receipt(operation.id, container, "start", change_id)
         clear_step_up()
         result = agent_call({"action": operation.agent_action, "container": container, "desired": operation.target}, timeout=operation.timeout)
-        audit(operation.id, f"{container} {operation.target} " + ("ok" if result.get("ok") else "failed"))
+        _maintenance_receipt(operation.id, container, "success" if result.get("ok") else "failure", change_id)
         if not result.get("ok"):
             notify("critical", f"Docker {operation.target} failed", container, "docker")
         flash("تم تنفيذ أمر Docker." if result.get("ok") else "فشل أمر Docker: " + str(result.get("error", ""))[-160:],
