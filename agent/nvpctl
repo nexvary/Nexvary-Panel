@@ -9,6 +9,16 @@ need_domain(){ domain_ok "$1" || { echo "invalid domain" >&2; exit 2; }; }
 unit_for(){ printf 'nvp-%s' "${1//./-}"; }
 site_service(){ systemctl list-unit-files "$(unit_for "$1").service" --no-legend 2>/dev/null | grep -q "$(unit_for "$1").service"; }
 port_free(){ ! ss -H -ltn "sport = :$1" 2>/dev/null | grep -q .; }
+service_precheck(){
+  case "$1" in
+    nginx) nginx -t >/dev/null 2>&1 ;;
+    mariadb) mariadb-admin ping --silent >/dev/null 2>&1 ;;
+    fail2ban) fail2ban-client ping >/dev/null 2>&1 ;;
+    docker) docker info >/dev/null 2>&1 ;;
+    *) return 2 ;;
+  esac
+}
+docker_running(){ [[ "$(docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null)" == "true" ]]; }
 
 case "${1:-}" in
   site-create)
@@ -118,7 +128,13 @@ SQL
     d="${2:-}"; need_domain "$d"; echo '--- ACCESS ---'; [[ -f "/var/log/nginx/$d.access.log" ]] && tail -n 60 "/var/log/nginx/$d.access.log" || echo '(empty)'; echo '--- ERROR ---'; [[ -f "/var/log/nginx/$d.error.log" ]] && tail -n 60 "/var/log/nginx/$d.error.log" || echo '(empty)'
     ;;
   service-restart)
-    name="${2:-}"; [[ "$name" =~ ^(nginx|mariadb|fail2ban|docker)$ ]] || exit 2; systemctl restart "$name"; systemctl is-active --quiet "$name"; echo "$name active"
+    name="${2:-}"; [[ "$name" =~ ^(nginx|mariadb|fail2ban|docker)$ ]] || exit 2
+    systemctl list-unit-files "$name.service" --no-legend 2>/dev/null | grep -q "^$name.service" || { echo "$name service is not installed" >&2; exit 3; }
+    service_precheck "$name" || { echo "$name pre-check failed; restart blocked" >&2; exit 4; }
+    systemctl restart "$name"
+    systemctl is-active --quiet "$name" || { echo "$name post-check failed: service inactive" >&2; exit 5; }
+    service_precheck "$name" || { echo "$name post-check failed: health probe failed" >&2; exit 5; }
+    echo "$name active and healthy"
     ;;
   doctor)
     python3 - <<'PY'
@@ -164,6 +180,26 @@ print(json.dumps({'summary':{'total':len(checks),'passed':sum(c['ok'] for c in c
 PY
     ;;
   docker-list) command -v docker >/dev/null || exit 0; docker ps -a --format '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}';;
-  docker-control) container="${2:-}"; desired="${3:-}"; [[ "$container" =~ $CONTAINER_RE && "$desired" =~ ^(start|stop|restart)$ ]] || exit 2; command -v docker >/dev/null || exit 3; docker inspect "$container" >/dev/null 2>&1 || exit 3; docker "$desired" "$container";;
+  docker-control)
+    container="${2:-}"; desired="${3:-}"; [[ "$container" =~ $CONTAINER_RE && "$desired" =~ ^(start|stop|restart)$ ]] || exit 2
+    command -v docker >/dev/null || { echo "docker unavailable" >&2; exit 3; }
+    docker info >/dev/null 2>&1 || { echo "docker daemon unavailable" >&2; exit 3; }
+    docker inspect "$container" >/dev/null 2>&1 || { echo "container not found" >&2; exit 3; }
+    was_running=false; docker_running "$container" && was_running=true
+    if ! docker "$desired" "$container" >/dev/null; then
+      echo "docker $desired failed before post-check" >&2; exit 4
+    fi
+    expected=true; [[ "$desired" == stop ]] && expected=false
+    is_running=false; docker_running "$container" && is_running=true
+    if [[ "$is_running" != "$expected" ]]; then
+      # start/stop have a well-defined inverse. Restore the captured pre-state on
+      # post-check failure; restart deliberately has no synthetic rollback.
+      if [[ "$desired" != restart ]]; then
+        if [[ "$was_running" == true ]]; then docker start "$container" >/dev/null 2>&1 || true; else docker stop "$container" >/dev/null 2>&1 || true; fi
+      fi
+      echo "docker $desired post-check failed; prior state restoration attempted where applicable" >&2; exit 5
+    fi
+    printf '%s %s; pre_running=%s; post_running=%s\n' "$container" "$desired" "$was_running" "$is_running"
+    ;;
   *) echo "unsupported action" >&2; exit 2;;
 esac
