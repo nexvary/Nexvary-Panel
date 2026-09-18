@@ -27,6 +27,9 @@ OPERATIONS: dict[str, MaintenanceOperation] = {
     "restart-mariadb": MaintenanceOperation("restart-mariadb", "إعادة تشغيل MariaDB", "service-restart", "mariadb", ("admin",), True, 30, "mariadb-ping", "mariadb-ping", risk="high"),
     "restart-fail2ban": MaintenanceOperation("restart-fail2ban", "إعادة تشغيل Fail2ban", "service-restart", "fail2ban", ("admin",), True, 30, "fail2ban-config", "fail2ban-active", risk="medium"),
     "restart-docker": MaintenanceOperation("restart-docker", "إعادة تشغيل Docker", "service-restart", "docker", ("admin",), True, 30, "docker-service-known", "docker-active", risk="high"),
+    "docker-start": MaintenanceOperation("docker-start", "تشغيل حاوية Docker", "docker-control", "start", ("admin", "operator"), True, 35, "container-name-and-action-allowlist", "container-running", rollback="stop-container", risk="high"),
+    "docker-stop": MaintenanceOperation("docker-stop", "إيقاف حاوية Docker", "docker-control", "stop", ("admin", "operator"), True, 35, "container-name-and-action-allowlist", "container-stopped", rollback="start-container", risk="high"),
+    "docker-restart": MaintenanceOperation("docker-restart", "إعادة تشغيل حاوية Docker", "docker-control", "restart", ("admin", "operator"), True, 35, "container-name-and-action-allowlist", "container-running", rollback="not-applicable", risk="high"),
 }
 
 
@@ -40,3 +43,9 @@ def restart_operation_for_target(target: str) -> MaintenanceOperation | None:
         if operation.agent_action == "service-restart" and operation.target == target:
             return operation
     return None
+
+
+def docker_operation_for(desired: str) -> MaintenanceOperation | None:
+    """Resolve a requested lifecycle state to a fixed Docker policy entry."""
+    operation = OPERATIONS.get(f"docker-{desired}")
+    return operation if operation and operation.agent_action == "docker-control" else None
