@@ -21,14 +21,19 @@ with tempfile.TemporaryDirectory(prefix="nvp-maintenance-center-") as tmp:
     from panel.privileged_policy import operation_policy
 
     # Keep the graphical Maintenance Center subordinate to the central privileged
-    # operation contract.  A route-local policy may tighten controls, never weaken
-    # Step-Up or silently extend a privileged operation's execution window.
+    # operation contract. A route-local policy may tighten controls, never weaken
+    # risk, Step-Up or silently extend a privileged operation's execution window.
+    risk_rank = {"low": 0, "medium": 1, "high": 2}
     for operation in OPERATIONS.values():
         privileged = operation_policy(operation.agent_action)
         assert operation.step_up or not privileged.get("step_up"), operation.id
         assert operation.timeout <= int(privileged["timeout"]), operation.id
+        assert operation.risk in risk_rank, operation.id
+        assert str(privileged.get("risk")) in risk_rank, operation.id
+        assert risk_rank[operation.risk] >= risk_rank[str(privileged["risk"])], operation.id
         assert operation.roles, operation.id
         assert operation.precheck and operation.postcheck, operation.id
+        assert operation.rollback is None or operation.rollback.strip(), operation.id
 
     calls: list[dict] = []
 
