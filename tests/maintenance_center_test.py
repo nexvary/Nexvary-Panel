@@ -17,6 +17,18 @@ with tempfile.TemporaryDirectory(prefix="nvp-maintenance-center-") as tmp:
 
     import panel.routes_ops as ops
     from panel import create_app
+    from panel.maintenance_policy import OPERATIONS
+    from panel.privileged_policy import operation_policy
+
+    # Keep the graphical Maintenance Center subordinate to the central privileged
+    # operation contract.  A route-local policy may tighten controls, never weaken
+    # Step-Up or silently extend a privileged operation's execution window.
+    for operation in OPERATIONS.values():
+        privileged = operation_policy(operation.agent_action)
+        assert operation.step_up or not privileged.get("step_up"), operation.id
+        assert operation.timeout <= int(privileged["timeout"]), operation.id
+        assert operation.roles, operation.id
+        assert operation.precheck and operation.postcheck, operation.id
 
     calls: list[dict] = []
 

@@ -21,11 +21,12 @@ class MaintenanceOperation:
 # Deliberately finite: the browser never supplies an executable, argv, shell fragment,
 # unit name, filesystem path or other root-controlled primitive.  The submitted
 # operation ID is resolved here to a fixed privileged-agent action and target.
+# Per-operation timeouts must never exceed the central privileged-policy ceiling.
 OPERATIONS: dict[str, MaintenanceOperation] = {
-    "restart-nginx": MaintenanceOperation("restart-nginx", "إعادة تشغيل Nginx", "service-restart", "nginx", ("admin",), True, 35, "nginx-config", "nginx-active", risk="medium"),
-    "restart-mariadb": MaintenanceOperation("restart-mariadb", "إعادة تشغيل MariaDB", "service-restart", "mariadb", ("admin",), True, 40, "mariadb-ping", "mariadb-ping", risk="high"),
-    "restart-fail2ban": MaintenanceOperation("restart-fail2ban", "إعادة تشغيل Fail2ban", "service-restart", "fail2ban", ("admin",), True, 35, "fail2ban-config", "fail2ban-active", risk="medium"),
-    "restart-docker": MaintenanceOperation("restart-docker", "إعادة تشغيل Docker", "service-restart", "docker", ("admin",), True, 40, "docker-service-known", "docker-active", risk="high"),
+    "restart-nginx": MaintenanceOperation("restart-nginx", "إعادة تشغيل Nginx", "service-restart", "nginx", ("admin",), True, 30, "nginx-config", "nginx-active", risk="medium"),
+    "restart-mariadb": MaintenanceOperation("restart-mariadb", "إعادة تشغيل MariaDB", "service-restart", "mariadb", ("admin",), True, 30, "mariadb-ping", "mariadb-ping", risk="high"),
+    "restart-fail2ban": MaintenanceOperation("restart-fail2ban", "إعادة تشغيل Fail2ban", "service-restart", "fail2ban", ("admin",), True, 30, "fail2ban-config", "fail2ban-active", risk="medium"),
+    "restart-docker": MaintenanceOperation("restart-docker", "إعادة تشغيل Docker", "service-restart", "docker", ("admin",), True, 30, "docker-service-known", "docker-active", risk="high"),
 }
 
 
