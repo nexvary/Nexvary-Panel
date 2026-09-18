@@ -20,9 +20,6 @@ with tempfile.TemporaryDirectory(prefix="nvp-maintenance-center-") as tmp:
     from panel.maintenance_policy import OPERATIONS
     from panel.privileged_policy import operation_policy
 
-    # Keep the graphical Maintenance Center subordinate to the central privileged
-    # operation contract. A route-local policy may tighten controls, never weaken
-    # risk, Step-Up or silently extend a privileged operation's execution window.
     risk_rank = {"low": 0, "medium": 1, "high": 2}
     for operation in OPERATIONS.values():
         privileged = operation_policy(operation.agent_action)
@@ -55,61 +52,52 @@ with tempfile.TemporaryDirectory(prefix="nvp-maintenance-center-") as tmp:
     with client.session_transaction() as session:
         session.update(auth=True, user="admin", role="admin", csrf=csrf)
 
-    blocked = client.post(
-        "/services/restart",
-        data={"csrf_token": csrf, "name": "nginx"},
-        follow_redirects=False,
-    )
-    assert blocked.status_code == 302, blocked.data
-    assert blocked.headers["Location"].endswith("#security"), blocked.headers["Location"]
+    blocked = client.post("/services/restart", data={"csrf_token": csrf, "name": "nginx"}, follow_redirects=False)
+    assert blocked.status_code == 302 and blocked.headers["Location"].endswith("#security")
     assert not calls, "privileged maintenance action reached agent without Step-Up"
 
-    docker_blocked = client.post(
-        "/docker/control",
-        data={"csrf_token": csrf, "container": "web-1", "desired": "restart"},
-        follow_redirects=False,
-    )
-    assert docker_blocked.status_code == 302, docker_blocked.data
-    assert docker_blocked.headers["Location"].endswith("#security"), docker_blocked.headers["Location"]
+    docker_blocked = client.post("/docker/control", data={"csrf_token": csrf, "container": "web-1", "desired": "restart"}, follow_redirects=False)
+    assert docker_blocked.status_code == 302 and docker_blocked.headers["Location"].endswith("#security")
     assert not calls, "Docker mutation reached privileged agent without Step-Up"
 
     with client.session_transaction() as session:
         session["step_up_user"] = "admin"
         session["step_up_until"] = now + 300
 
-    restarted = client.post(
-        "/services/restart",
-        data={"csrf_token": csrf, "name": "nginx"},
-        follow_redirects=False,
-    )
-    assert restarted.status_code == 302, restarted.data
-    assert restarted.headers["Location"].endswith("#services"), restarted.headers["Location"]
+    restarted = client.post("/services/restart", data={"csrf_token": csrf, "name": "nginx"}, follow_redirects=False)
+    assert restarted.status_code == 302 and restarted.headers["Location"].endswith("#services")
     assert calls == [{"action": "service-restart", "name": "nginx"}], calls
 
-    denied = client.post(
-        "/services/restart",
-        data={"csrf_token": csrf, "name": "ssh"},
-        follow_redirects=False,
-    )
-    assert denied.status_code == 302, denied.data
+    # Elevation is single-use: a second privileged mutation cannot reuse the same
+    # Step-Up window, even though its original five-minute TTL has not elapsed.
+    replay = client.post("/services/restart", data={"csrf_token": csrf, "name": "mariadb"}, follow_redirects=False)
+    assert replay.status_code == 302 and replay.headers["Location"].endswith("#security")
+    assert len(calls) == 1, "consumed Step-Up grant authorized a second privileged mutation"
+
+    with client.session_transaction() as session:
+        session["step_up_user"] = "admin"
+        session["step_up_until"] = now + 300
+
+    denied = client.post("/services/restart", data={"csrf_token": csrf, "name": "ssh"}, follow_redirects=False)
+    assert denied.status_code == 302
     assert len(calls) == 1, "non-allowlisted service reached privileged agent"
 
-    docker_ok = client.post(
-        "/docker/control",
-        data={"csrf_token": csrf, "container": "web-1", "desired": "restart"},
-        follow_redirects=False,
-    )
-    assert docker_ok.status_code == 302, docker_ok.data
-    assert docker_ok.headers["Location"].endswith("#docker"), docker_ok.headers["Location"]
+    # Policy denial does not consume elevation because no privileged boundary was crossed.
+    docker_ok = client.post("/docker/control", data={"csrf_token": csrf, "container": "web-1", "desired": "restart"}, follow_redirects=False)
+    assert docker_ok.status_code == 302 and docker_ok.headers["Location"].endswith("#docker")
     assert calls[-1] == {"action": "docker-control", "container": "web-1", "desired": "restart"}, calls[-1]
 
     before = len(calls)
-    docker_denied = client.post(
-        "/docker/control",
-        data={"csrf_token": csrf, "container": "web-1", "desired": "exec"},
-        follow_redirects=False,
-    )
-    assert docker_denied.status_code == 302, docker_denied.data
+    docker_replay = client.post("/docker/control", data={"csrf_token": csrf, "container": "web-1", "desired": "stop"}, follow_redirects=False)
+    assert docker_replay.status_code == 302 and docker_replay.headers["Location"].endswith("#security")
+    assert len(calls) == before, "consumed Docker Step-Up grant authorized another mutation"
+
+    with client.session_transaction() as session:
+        session["step_up_user"] = "admin"
+        session["step_up_until"] = now + 300
+
+    docker_denied = client.post("/docker/control", data={"csrf_token": csrf, "container": "web-1", "desired": "exec"}, follow_redirects=False)
+    assert docker_denied.status_code == 302
     assert len(calls) == before, "non-allowlisted Docker lifecycle verb reached privileged agent"
 
     services_html = (ROOT / "templates" / "sections" / "services.html").read_text(encoding="utf-8")
