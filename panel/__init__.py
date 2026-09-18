@@ -9,7 +9,11 @@ from flask import Flask
 
 from .config import VERSION
 from .core import csrf_guard, csrf_token, ensure_schema_columns
+from .maintenance_policy import OPERATIONS as MAINTENANCE_OPERATIONS
 from .module_registry import initialize_module_schemas, register_modules
+from .routes_mail_dav import register_mail_dav_routes
+from .routes_mail_global_filters import register_mail_global_filter_routes
+from .routes_mail_lists import register_mail_list_routes
 from .routes_migration_center import register_migration_center_routes
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,7 +32,33 @@ def create_app() -> Flask:
     ensure_schema_columns()
     initialize_module_schemas()
     app.before_request(csrf_guard)
-    app.jinja_env.globals.update(csrf_token=csrf_token, panel_version=VERSION)
+
+    @app.after_request
+    def security_headers(response):
+        # Browser hardening is deliberately centralized so every HTML/API response inherits
+        # the same baseline. CSP stays compatible with the existing self-hosted UI while
+        # denying framing, plugin objects and unexpected network destinations.
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; "
+            "form-action 'self'; img-src 'self' data:; font-src 'self' data:; "
+            "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'",
+        )
+        if app.config.get("SESSION_COOKIE_SECURE"):
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        return response
+
+    # Read-only policy metadata for the graphical Maintenance Center. Templates can
+    # explain the server-enforced boundary without accepting executable/argv data.
+    app.jinja_env.globals.update(
+        csrf_token=csrf_token,
+        panel_version=VERSION,
+        maintenance_operations=tuple(MAINTENANCE_OPERATIONS.values()),
+    )
 
     @app.template_filter("when")
     def when(ts: int | None) -> str:
@@ -44,5 +74,8 @@ def create_app() -> Flask:
         return f"{n:.1f} TB"
 
     register_modules(app)
+    register_mail_dav_routes(app)
+    register_mail_global_filter_routes(app)
+    register_mail_list_routes(app)
     register_migration_center_routes(app)
     return app

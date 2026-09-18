@@ -34,6 +34,23 @@ def ensure_mail_automation_schema() -> None:
           );
           CREATE INDEX IF NOT EXISTS idx_mail_filters_mailbox ON mail_filters(mailbox_id,enabled,priority,id);
 
+          CREATE TABLE IF NOT EXISTS mail_global_filters (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            owner TEXT NOT NULL,
+            priority INTEGER NOT NULL DEFAULT 100,
+            field TEXT NOT NULL,
+            header_name TEXT NOT NULL DEFAULT '',
+            match_type TEXT NOT NULL,
+            pattern TEXT NOT NULL,
+            action TEXT NOT NULL,
+            destination TEXT NOT NULL DEFAULT '',
+            enabled INTEGER NOT NULL DEFAULT 1,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_mail_global_filters_owner
+            ON mail_global_filters(owner,enabled,priority,id);
+
           CREATE TABLE IF NOT EXISTS mail_spam_policies (
             mailbox_id INTEGER PRIMARY KEY,
             enabled INTEGER NOT NULL DEFAULT 0,

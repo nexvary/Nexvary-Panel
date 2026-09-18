@@ -29,6 +29,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     assert len(catalog) == len(modules)
     by_id = {item["id"]: item for item in catalog}
     assert "nexvary-panel-mail" in by_id["mail"]["provider_services"]
+    assert "nexvary-panel-mail" in by_id["mail_security"]["provider_services"]
     assert "nexvary-panel-mail" in by_id["mail_automation"]["provider_services"]
     assert "nexvary-panel-mail" in by_id["mail_queue"]["provider_services"]
     assert "nexvary-panel-transfer" in by_id["transfers"]["provider_services"]
@@ -57,10 +58,12 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
     assert by_id["server_lifecycle"]["depends_on"] == ["advanced_ops"]
     assert by_id["server_lifecycle"]["endpoint_namespace"] == "server_lifecycle"
     assert {"whm.server_time", "whm.updates", "whm.networking", "whm.ip_functions", "whm.processes"}.issubset(set(by_id["server_lifecycle"]["feature_prefixes"]))
-    assert by_id["fleet"]["maturity"] == "foundation"
+    assert by_id["fleet"]["maturity"] == "provider"
     assert by_id["fleet"]["depends_on"] == ["advanced_ops"]
+    assert "nexvary-panel-provider" in by_id["fleet"]["provider_services"]
     assert by_id["mail_automation"]["depends_on"] == ["mail", "mail_security"]
     assert set(by_id["mail_automation"]["feature_prefixes"]) == {"email.autoresponders", "email.filters", "email.spam_filters"}
+    assert {"email.accounts", "email.default_address"}.issubset(set(by_id["mail_security"]["feature_prefixes"]))
     assert by_id["fleet"]["endpoint_namespace"] == "fleet"
     assert by_id["mail_queue"]["endpoint_namespace"] == "mail_queue"
     assert by_id["extensions"]["endpoint_namespace"] == "extensions"
@@ -92,6 +95,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         "/api/domain-health",
         "/api/accounts",
         "/api/mail",
+        "/api/mail/default-address",
         "/api/mail/automation/<int:mailbox_id>",
         "/api/mail/automation/<int:mailbox_id>/autoresponder",
         "/api/mail/automation/<int:mailbox_id>/filters",
@@ -107,6 +111,8 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         "/api/fleet",
         "/api/fleet/probe-all",
         "/api/fleet/plan",
+        "/api/fleet/apply",
+        "/api/fleet/jobs",
         "/api/wordpress/components/check",
         "/api/wordpress/components/update",
         "/api/wordpress/components/rollback",
@@ -126,9 +132,11 @@ with tempfile.TemporaryDirectory(prefix="nvp-modules-") as tmp:
         assert "mail_autoresponders" in tables
         assert "mail_filters" in tables
         assert "mail_spam_policies" in tables
+        assert "mail_default_addresses" in tables
         assert "wordpress_staging" in tables
         assert "server_maintenance_previews" in tables
         assert "fleet_nodes" in tables
         assert "fleet_probes" in tables
+        assert "fleet_jobs" in tables
 
 print("Nexvary Panel module registry architecture gate: PASS")

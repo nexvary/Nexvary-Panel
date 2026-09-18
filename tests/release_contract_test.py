@@ -38,10 +38,12 @@ with tempfile.TemporaryDirectory(prefix="nvp-release-contract-") as tmp:
         "domain_guardian",
         "mail",
         "mail_security",
+        "mail_import",
         "mail_automation",
         "mail_queue",
         "transfers",
         "database_lifecycle",
+        "fleet",
         "wordpress_lifecycle",
         "wordpress_staging",
         "wordpress_publish",
@@ -60,6 +62,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-release-contract-") as tmp:
         "email.accounts",
         "email.forwarders",
         "email.autoresponders",
+        "email.address_importer",
         "email.filters",
         "email.spam_filters",
         "email.delivery_trace",
@@ -70,6 +73,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-release-contract-") as tmp:
         "whm.mail_queue",
         "whm.multi_account",
         "whm.transfers",
+        "whm.fleet",
     }
     missing_features = critical_features - set(FEATURES)
     assert not missing_features, f"critical features missing: {sorted(missing_features)}"
@@ -104,10 +108,12 @@ with tempfile.TemporaryDirectory(prefix="nvp-release-contract-") as tmp:
         "deliverability",
         "mail",
         "mail_security",
+        "mail_import",
         "mail_automation",
         "mail_queue",
         "transfers",
         "database_lifecycle",
+        "fleet",
         "wordpress_lifecycle",
         "wordpress_staging",
         "wordpress_publish",
@@ -131,6 +137,8 @@ with tempfile.TemporaryDirectory(prefix="nvp-release-contract-") as tmp:
         "/api/autossl/preflight",
         "/api/domain-guardian",
         "/api/domain-guardian/prepare",
+        "/api/mail/import",
+        "/api/fleet",
         "/api/wordpress/smart-guard",
         "/api/wordpress/smart-guard/preview",
     }
@@ -151,6 +159,8 @@ with tempfile.TemporaryDirectory(prefix="nvp-release-contract-") as tmp:
         ("/api/advanced/dns/1/apply", {}),
         ("/api/autossl/example.com/issue", {"email": "security@example.com"}),
         ("/api/domain-guardian/prepare", {"domain": "example.com"}),
+        ("/api/mail/import", {"domain": "example.com", "entries": [{"kind": "forwarder", "localpart": "release", "destination": "release@external.example"}]}),
+        ("/api/fleet", {"name": "Release Node", "endpoint": "https://1.1.1.1:8443", "credential_ref": "release-node"}),
         ("/api/wordpress/smart-guard/1/verify", {}),
     ]
     for path, payload in guarded_requests:

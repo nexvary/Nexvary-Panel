@@ -9,19 +9,37 @@ from flask import flash, jsonify, redirect, request, session, url_for
 
 from .config import DOMAIN_RE, ROLES, USER_RE
 from .core import agent_call, audit, can_manage_domain, db, notify, password_hash, role_required
+from .maintenance_policy import docker_operation_for, restart_operation_for_target
+from .security import clear_step_up, step_up_required
+
+
+def _maintenance_receipt(operation_id: str, target: str, phase: str, change_id: str, elapsed_ms: int | None = None) -> None:
+    """Write a bounded, correlation-friendly receipt without agent output/secrets."""
+    detail = f"change={change_id} operation={operation_id} target={target}"
+    if elapsed_ms is not None:
+        detail += f" elapsed_ms={max(0, min(int(elapsed_ms), 86_400_000))}"
+    audit(f"maintenance-{phase}", detail[:700])
 
 
 def register_ops_routes(app):
     @app.post("/services/restart")
     @role_required("admin")
+    @step_up_required
     def restart_service():
-        name = request.form.get("name", "")
-        if name not in {"nginx", "mariadb", "fail2ban", "docker"}:
+        requested = request.form.get("name", "").strip()
+        operation = restart_operation_for_target(requested)
+        if operation is None or "admin" not in operation.roles or not operation.step_up:
+            audit("maintenance-policy-deny", requested[:80] or "empty")
             flash("الخدمة غير مسموح بإدارتها من اللوحة.", "error")
             return redirect(url_for("home") + "#services")
-        result = agent_call({"action": "service-restart", "name": name}, timeout=35)
-        audit("service-restart", name + (" ok" if result.get("ok") else " failed"))
-        notify("ok" if result.get("ok") else "critical", f"Service {name} " + ("restarted" if result.get("ok") else "restart failed"),
+        change_id = secrets.token_hex(8)
+        _maintenance_receipt(operation.id, operation.target, "start", change_id)
+        clear_step_up()
+        started = time.monotonic()
+        result = agent_call({"action": operation.agent_action, "name": operation.target}, timeout=operation.timeout)
+        elapsed_ms = round((time.monotonic() - started) * 1000)
+        _maintenance_receipt(operation.id, operation.target, "success" if result.get("ok") else "failure", change_id, elapsed_ms)
+        notify("ok" if result.get("ok") else "critical", f"Service {operation.target} " + ("restarted" if result.get("ok") else "restart failed"),
                str(result.get("error", ""))[-300:], "service")
         flash("تمت إعادة تشغيل الخدمة." if result.get("ok") else "فشل تشغيل الخدمة: " + str(result.get("error", ""))[-150:],
               "ok" if result.get("ok") else "error")
@@ -61,16 +79,26 @@ def register_ops_routes(app):
 
     @app.post("/docker/control")
     @role_required("admin", "operator")
+    @step_up_required
     def docker_control():
         container = request.form.get("container", "").strip()
-        desired = request.form.get("desired", "restart")
-        if not re.match(r"^[A-Za-z0-9_.-]{1,128}$", container) or desired not in {"start", "stop", "restart"}:
-            flash("طلب Docker غير صالح.", "error")
+        desired = request.form.get("desired", "restart").strip()
+        operation = docker_operation_for(desired)
+        role = str(session.get("role", ""))
+        if (not re.match(r"^[A-Za-z0-9_.-]{1,128}$", container) or operation is None
+                or role not in operation.roles or not operation.step_up):
+            audit("maintenance-policy-deny", f"docker {container[:80]} {desired[:20]}")
+            flash("طلب Docker غير صالح أو غير مسموح.", "error")
             return redirect(url_for("home") + "#docker")
-        result = agent_call({"action": "docker-control", "container": container, "desired": desired}, timeout=35)
-        audit("docker-control", f"{container} {desired}")
+        change_id = secrets.token_hex(8)
+        _maintenance_receipt(operation.id, container, "start", change_id)
+        clear_step_up()
+        started = time.monotonic()
+        result = agent_call({"action": operation.agent_action, "container": container, "desired": operation.target}, timeout=operation.timeout)
+        elapsed_ms = round((time.monotonic() - started) * 1000)
+        _maintenance_receipt(operation.id, container, "success" if result.get("ok") else "failure", change_id, elapsed_ms)
         if not result.get("ok"):
-            notify("critical", f"Docker {desired} failed", container, "docker")
+            notify("critical", f"Docker {operation.target} failed", container, "docker")
         flash("تم تنفيذ أمر Docker." if result.get("ok") else "فشل أمر Docker: " + str(result.get("error", ""))[-160:],
               "ok" if result.get("ok") else "error")
         return redirect(url_for("home") + "#docker")

@@ -1,0 +1,27 @@
+[Unit]
+Description=Nexvary Panel Radicale CalDAV/CardDAV Service
+After=network.target
+ConditionPathExists=/etc/nexvary-panel-radicale/config
+
+[Service]
+Type=simple
+User=radicale
+Group=radicale
+ExecStart=/usr/bin/radicale --config /etc/nexvary-panel-radicale/config
+ExecStartPost=/bin/bash -c 'for i in {1..30}; do (echo > /dev/tcp/127.0.0.1/5232) >/dev/null 2>&1 && exit 0; sleep 0.2; done; exit 1'
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/nexvary-panel-dav
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

@@ -1,3 +1,4 @@
+@import url('/static/approved-andalusian-dashboard.css');
 /* Nexvary Panel — workspace visibility invariant
    Loaded after visual theme layers so decoration can never expose inactive workspaces. */
 #workspaceStage > .workspace-page:not(.active-view){

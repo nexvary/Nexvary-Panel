@@ -1,0 +1,79 @@
+/* Nexvary Panel 0.9 — login visual closure */
+:root{
+  --login-navy:#0c1319;
+  --login-gunmetal:#2e3945;
+  --login-platinum:#d9d7d4;
+  --login-gold:#d0ac55;
+  --login-blue:#6a88a0;
+  --login-green:#37d995;
+}
+html,body.login-page{background:#070d12!important;color:var(--login-platinum)!important}
+body.login-page{
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 50% -12%,rgba(106,136,160,.17),transparent 36%),
+    radial-gradient(circle at 12% 88%,rgba(208,172,85,.055),transparent 26%),
+    linear-gradient(160deg,#0b1219 0%,#070d12 55%,#05090d 100%)!important;
+}
+.login-page .ambient{opacity:.18!important;filter:blur(80px)!important}
+.login-page .ambient-a{background:rgba(106,136,160,.20)!important}
+.login-page .ambient-b{background:rgba(208,172,85,.08)!important}
+.login-page .noise{opacity:.016!important}
+.login-page .login-card{
+  position:relative;
+  overflow:hidden;
+  border:1px solid rgba(208,172,85,.62)!important;
+  background:
+    linear-gradient(120deg,rgba(208,172,85,.035),transparent 22% 78%,rgba(106,136,160,.035)),
+    linear-gradient(155deg,rgba(20,31,41,.985),rgba(8,15,22,.995))!important;
+  box-shadow:0 28px 70px rgba(0,0,0,.44),inset 0 0 0 1px rgba(255,255,255,.025)!important;
+}
+.login-page .login-card:before{
+  content:"";
+  position:absolute;
+  inset:6px;
+  pointer-events:none;
+  border:1px solid rgba(208,172,85,.08);
+  border-radius:inherit;
+}
+.login-page .login-brand{
+  border:1px solid rgba(208,172,85,.60)!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.28)!important;
+}
+.login-page .eyebrow{color:#b7a264!important;text-shadow:none!important}
+.login-page .eyebrow span{background:var(--login-gold)!important;box-shadow:none!important}
+.login-page h1{color:#f0ede8!important;text-shadow:none!important}
+.login-page> .login-card>p,.login-page .login-card>p{color:#929faa!important}
+.login-page .login-security{
+  border-color:rgba(158,155,152,.28)!important;
+  background:linear-gradient(145deg,rgba(27,39,50,.92),rgba(10,18,25,.96))!important;
+  box-shadow:inset 0 0 12px rgba(0,0,0,.18)!important;
+}
+.login-page .login-security>span{color:#91adc2!important;background:rgba(106,136,160,.10)!important;border-color:rgba(106,136,160,.34)!important;box-shadow:none!important}
+.login-page .login-security b{color:#e3e2df!important}
+.login-page .login-security small{color:#788997!important}
+.login-page .login-security i{background:var(--login-green)!important;box-shadow:0 0 8px rgba(55,217,149,.36)!important}
+.login-page form label{color:#babfc3!important}
+.login-page .royal-input{
+  background:#0a141c!important;
+  border:1px solid rgba(158,155,152,.34)!important;
+  color:#ececea!important;
+  box-shadow:inset 0 0 12px rgba(0,0,0,.24)!important;
+}
+.login-page .royal-input:focus{
+  border-color:rgba(106,136,160,.82)!important;
+  box-shadow:0 0 0 3px rgba(106,136,160,.10)!important;
+  outline:none!important;
+}
+.login-page .login-submit{
+  background:linear-gradient(145deg,#58758c,#395468)!important;
+  border:1px solid rgba(208,172,85,.68)!important;
+  color:#fff!important;
+  box-shadow:0 12px 26px rgba(0,0,0,.24)!important;
+}
+.login-page .login-submit:hover{background:linear-gradient(145deg,#66859d,#426176)!important;transform:translateY(-1px)}
+.login-page .login-foot{color:#778693!important;letter-spacing:.14em!important}
+.login-page :focus-visible{outline:2px solid rgba(106,136,160,.82)!important;outline-offset:2px!important}
+@media(max-width:560px){
+  .login-page .login-card{margin:18px!important;box-shadow:0 20px 50px rgba(0,0,0,.40)!important}
+}

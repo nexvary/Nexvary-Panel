@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 python -m compileall -q app.py panel agent tests
-bash -n installer/install.sh installer/install-0.8.sh installer/upgrade.sh installer/upgrade-0.8.sh installer/nvp-migration-stage installer/configure-mail.sh installer/configure-sftp.sh agent/nvpctl tests/ci/*.sh
+bash -n installer/install.sh installer/install-0.8.sh installer/upgrade.sh installer/upgrade-0.8.sh installer/nvp-migration-stage installer/configure-mail.sh installer/configure-dav.sh installer/configure-sftp.sh agent/nvpctl tests/ci/*.sh
 python tests/smoke_test.py
+python tests/security_headers_test.py
 python tests/vault_test.py
 python tests/integrations_test.py
 python tests/provider_backup_test.py
@@ -24,6 +25,12 @@ python tests/database_lifecycle_test.py
 python tests/postgres_access_agent_test.py
 python tests/postgres_access_test.py
 python tests/mail_policy_test.py
+python tests/mail_default_address_test.py
+python tests/mail_routing_test.py
+python tests/mail_mailing_lists_test.py
+python tests/mail_global_filters_test.py
+python tests/mail_dav_test.py
+python tests/mail_address_import_test.py
 python tests/mail_password_rotation_test.py
 python tests/mail_automation_test.py
 python tests/mail_sieve_test.py
@@ -52,7 +59,12 @@ python tests/deliverability_test.py
 python tests/domain_health_test.py
 python tests/domain_guardian_test.py
 python tests/doctor_remediation_test.py
+python tests/maintenance_center_test.py
+python tests/maintenance_lifecycle_contract_test.py
 python tests/change_safety_test.py
+python tests/privileged_agent_contract_test.py
+python tests/privileged_policy_test.py
+python tests/server_client_policy_test.py
 python tests/wordpress_agent_test.py
 python tests/wordpress_lifecycle_test.py
 python tests/wordpress_components_test.py

@@ -26,6 +26,27 @@ def _default_state(conn, domain: str, owner: str) -> dict:
     return dict(row)
 
 
+def _routing_state(conn, domain: str, owner: str) -> dict:
+    row = conn.execute(
+        "SELECT domain,mode,owner,updated_at FROM mail_routing_policies WHERE domain=?",
+        (domain,),
+    ).fetchone()
+    if not row:
+        return {"domain": domain, "mode": "local", "owner": owner, "updated_at": 0}
+    return dict(row)
+
+
+def _routing_conflicts(conn, domain: str) -> dict[str, int | bool]:
+    mailboxes = int(conn.execute("SELECT COUNT(*) FROM mailboxes WHERE domain=?", (domain,)).fetchone()[0])
+    forwarders = int(conn.execute("SELECT COUNT(*) FROM mail_forwarders WHERE domain=?", (domain,)).fetchone()[0])
+    catchall = conn.execute(
+        "SELECT mode FROM mail_default_addresses WHERE domain=?",
+        (domain,),
+    ).fetchone()
+    catchall_forward = bool(catchall and str(catchall["mode"]) == "forward")
+    return {"mailboxes": mailboxes, "forwarders": forwarders, "catchall_forward": catchall_forward}
+
+
 def register_mail_security_routes(app):
     ensure_mail_default_schema()
 
@@ -138,3 +159,74 @@ def register_mail_security_routes(app):
 
         audit("mail-default-address", f"domain={domain} owner={owner} mode={mode}")
         return jsonify(ok=True, default_address=state)
+
+    @app.get("/api/mail/routing")
+    @role_required("admin", "operator")
+    def mail_routing_get():
+        domain = str(request.args.get("domain", "")).strip().lower().rstrip(".")
+        if not DOMAIN_RE.fullmatch(domain):
+            return jsonify(ok=False, error="invalid mail domain"), 400
+        with db() as conn:
+            allowed, owner = _domain_allowed(conn, domain)
+            if not allowed or not owner:
+                return jsonify(ok=False, error="mail domain is outside your hosting scope"), 403
+            feature = _owner_feature_allowed(conn, owner, "email.routing")
+            state = _routing_state(conn, domain, owner)
+            conflicts = _routing_conflicts(conn, domain)
+        return jsonify(ok=True, feature_allowed=feature, routing=state, local_resources=conflicts)
+
+    @app.put("/api/mail/routing")
+    @role_required("admin", "operator")
+    @step_up_required
+    def mail_routing_save():
+        data = request.get_json(silent=True) or {}
+        if not isinstance(data, dict):
+            return jsonify(ok=False, error="invalid request"), 400
+        domain = str(data.get("domain", "")).strip().lower().rstrip(".")
+        mode = str(data.get("mode", "local")).strip().lower()
+        if not DOMAIN_RE.fullmatch(domain) or mode not in {"local", "remote"}:
+            return jsonify(ok=False, error="invalid mail routing policy"), 400
+
+        with db() as conn:
+            allowed, owner = _domain_allowed(conn, domain)
+            if not allowed or not owner:
+                return jsonify(ok=False, error="mail domain is outside your hosting scope"), 403
+            if not _owner_feature_allowed(conn, owner, "email.routing"):
+                return jsonify(ok=False, error="email.routing is disabled by target hosting policy"), 403
+            previous = _routing_state(conn, domain, owner)
+            conflicts = _routing_conflicts(conn, domain)
+            if mode == "remote" and (
+                int(conflicts["mailboxes"]) > 0
+                or int(conflicts["forwarders"]) > 0
+                or bool(conflicts["catchall_forward"])
+            ):
+                return jsonify(
+                    ok=False,
+                    error="remove local mailboxes, forwarders and catch-all forwarding before switching to remote routing",
+                    local_resources=conflicts,
+                ), 409
+
+        result = mail_call({"action": "routing-sync", "domain": domain, "mode": mode}, timeout=35)
+        if not result.get("ok"):
+            return jsonify(ok=False, error=str(result.get("error", "mail provider failed"))[:160]), 503
+
+        now = int(time.time())
+        try:
+            with db() as conn:
+                conn.execute(
+                    """INSERT INTO mail_routing_policies(domain,mode,owner,updated_at)
+                       VALUES(?,?,?,?)
+                       ON CONFLICT(domain) DO UPDATE SET mode=excluded.mode,owner=excluded.owner,
+                         updated_at=excluded.updated_at""",
+                    (domain, mode, owner, now),
+                )
+                state = _routing_state(conn, domain, owner)
+        except sqlite3.Error:
+            mail_call(
+                {"action": "routing-sync", "domain": domain, "mode": str(previous["mode"])},
+                timeout=35,
+            )
+            return jsonify(ok=False, error="mail-routing metadata failed; provider state restored"), 500
+
+        audit("mail-routing", f"domain={domain} owner={owner} mode={mode}")
+        return jsonify(ok=True, routing=state)

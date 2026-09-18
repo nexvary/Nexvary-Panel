@@ -14,6 +14,12 @@ install -d -m 0700 -o nexvary-panel -g nexvary-panel /var/lib/nexvary-panel/migr
 install -m 0755 -o root -g root installer/nvp-migration-stage /usr/local/sbin/nvp-migration-stage
 systemctl restart nexvary-panel-provider nexvary-panel-ops nexvary-panel
 
+# If this server already has the Nexvary local mail stack, upgrade it in-place
+# with the Platform 0.9 CalDAV/CardDAV provider rather than requiring a reinstall.
+if systemctl is-active --quiet nexvary-panel-mail || systemctl is-enabled --quiet nexvary-panel-mail 2>/dev/null; then
+  bash installer/configure-dav.sh
+fi
+
 for _ in {1..30}; do
   [[ -S /run/nexvary-panel/provider.sock && -S /run/nexvary-panel/ops.sock ]] && break
   sleep 1

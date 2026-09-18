@@ -77,7 +77,7 @@
       <a href="#docker" data-title="Docker Center" data-subtitle="حالة الحاويات والتحكم التشغيلي المقيد">{{icon('docker')}}<span>Docker Center</span><em></em></a>
 
       <span class="nav-label nav-gap">مراقبة وإدارة السيرفر</span>
-      <a href="#services" data-title="مراقبة السيرفر" data-subtitle="صحة الخدمات وNEXVARY Doctor والتشخيص">{{icon('activity')}}<span>مراقبة السيرفر</span><em></em></a>
+      <a href="#services" data-title="قسم الصيانة" data-subtitle="Maintenance Center رسومي للفحص والإصلاح المقيد بدون Root Shell حر">{{icon('activity')}}<span>قسم الصيانة</span><em></em></a>
       <a href="#dns" data-title="إدارة DNS" data-subtitle="جرد DNS وMail posture للمواقع المسجلة">{{icon('network')}}<span>إدارة DNS</span><em></em></a>
       {% if role == 'admin' %}<a href="#parity" data-title="Parity Center" data-subtitle="قياس داخلي لتغطية القدرات ونضجها والفجوات المتبقية">{{icon('layers')}}<span>Parity Center</span><em></em></a>{% endif %}
       <a href="#notifications" data-title="التنبيهات" data-subtitle="تنبيهات الصحة والأمان والاستعادة والنشر">{{icon('bell')}}<span>التنبيهات</span>{% if notifications_unread %}<strong class="nav-badge" aria-label="{{notifications_unread}} تنبيه غير مقروء">{{notifications_unread if notifications_unread < 100 else '99+'}}</strong>{% endif %}<em></em></a>
@@ -88,6 +88,8 @@
       <a href="#notifications" data-title="التنبيهات" data-subtitle="تنبيهات الحسابات والعمليات الخاصة بالموزع">{{icon('bell')}}<span>التنبيهات</span>{% if notifications_unread %}<strong class="nav-badge">{{notifications_unread if notifications_unread < 100 else '99+'}}</strong>{% endif %}<em></em></a>
       <a href="#audit" data-title="السجلات والأنشطة" data-subtitle="عملياتك الإدارية فقط">{{icon('audit')}}<span>السجلات والأنشطة</span><em></em></a>
       {% endif %}
+      <span class="nav-label nav-gap">NEXVARY</span>
+      <a href="#system-about" data-title="حول النظام" data-subtitle="وظائف Nexvary Panel ومعماريته ومزاياه الرئيسية">{{icon('layers')}}<span>حول النظام</span><em></em></a>\n      <a href="#about" data-title="عنا" data-subtitle="عن Nexvary Panel وروابط NEXVARY الرسمية">{{icon('globe')}}<span>عنا</span><em></em></a>
     </nav>
     <div class="sidebar-bottom">
       <div class="account-chip"><span class="avatar">{{username[:1]|upper}}</span><div><b>{{username}}</b><small>{{role|upper}} ACCOUNT</small></div><span class="account-state"></span></div>
@@ -134,6 +136,7 @@
       {% include "sections/security.html" %}
       {% include "sections/notifications.html" %}
       {% include "sections/audit.html" %}
+      {% include "sections/system_about.html" %}\n      {% include "sections/about.html" %}
     </div>
     <dialog id="healthDialog" class="health-dialog royal-frame"><div class="panel-head"><div><span class="kicker">SITE HEALTH INSPECTOR</span><h3 id="healthTitle">Health</h3></div><button type="button" id="closeHealth" class="tiny ghost">إغلاق</button></div><div id="healthReport" class="health-report"><div class="health-loading">اختر Health من بطاقة موقع لبدء الفحص.</div></div></dialog>
     <dialog id="logDialog" class="log-dialog royal-frame"><div class="panel-head"><div><span class="kicker">SITE LOGS</span><h3 id="logTitle">Logs</h3></div><button type="button" id="closeLogs" class="tiny ghost">إغلاق</button></div><pre id="logContent">Loading…</pre></dialog>

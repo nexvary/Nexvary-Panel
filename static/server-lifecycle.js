@@ -1,144 +1,24 @@
 (()=>{
-  const root=document.getElementById('advancedops');
-  const card=document.getElementById('advServerLifecycleCard');
-  if(!root||!card)return;
-  const csrf=document.querySelector('meta[name="csrf-token"]')?.content||'';
-  const $=sel=>card.querySelector(sel);
-  const text=(sel,value)=>{const node=$(sel);if(node)node.textContent=String(value??'—');};
-  const safe=v=>String(v??'');
-  const api=async(url,options={})=>{
-    const opts={credentials:'same-origin',...options,headers:{Accept:'application/json',...(options.headers||{})}};
-    if(opts.method&&opts.method!=='GET')opts.headers['X-CSRF-Token']=csrf;
-    const response=await fetch(url,opts);
-    let data={};
-    try{data=await response.json();}catch{data={ok:false,error:`HTTP ${response.status}`};}
-    if(!response.ok||data.ok===false){const error=new Error(data.error||`HTTP ${response.status}`);error.status=response.status;throw error;}
-    return data;
-  };
-  const status=(message,type='')=>{const node=$('#serverLifecycleMeta');if(!node)return;node.textContent=message;node.className=`adv-result ${type}`.trim();};
-  const formatDuration=seconds=>{
-    let value=Math.max(0,Number(seconds||0));
-    const days=Math.floor(value/86400);value%=86400;
-    const hours=Math.floor(value/3600);value%=3600;
-    const mins=Math.floor(value/60);
-    return `${days}d ${hours}h ${mins}m`;
-  };
-  const stamp=epoch=>epoch?new Date(Number(epoch)*1000).toLocaleString():'—';
-  const makeRow=(left,right)=>{
-    const row=document.createElement('div');row.className='adv-row';
-    const a=document.createElement('span');a.textContent=left;
-    const b=document.createElement('b');b.textContent=right;
-    row.append(a,b);return row;
-  };
-
-  function renderOverview(data){
-    text('#serverLifecycleHost',data.hostname||'—');
-    text('#serverLifecycleOs',data.os||'—');
-    text('#serverLifecycleReboot',data.reboot_required?'REQUIRED':'CLEAR');
-    const input=$('#serverLifecycleHostnameInput');
-    if(input&&!input.value)input.value=data.hostname||'';
-    const t=data.time||{};
-    status(`SERVER ONLINE · kernel ${safe(data.kernel)||'—'} · uptime ${formatDuration(data.uptime_seconds)} · timezone ${safe(t.timezone)||'—'} · NTP ${t.ntp?'ON':'OFF'} · synced ${t.synchronized?'YES':'NO'}`,'ok');
-  }
-  function renderNetwork(data){
-    const target=$('#serverLifecycleNetwork');if(!target)return;target.replaceChildren();
-    const addresses=Array.isArray(data.addresses)?data.addresses:[];
-    const routes=Array.isArray(data.default_routes)?data.default_routes:[];
-    const nameservers=Array.isArray(data.nameservers)?data.nameservers:[];
-    if(!addresses.length&&!routes.length&&!nameservers.length){target.append(makeRow('Network','No inventory'));return;}
-    for(const row of addresses.slice(0,10))target.append(makeRow(`${safe(row.interface)} · ${safe(row.family)}`,`${safe(row.address)}/${Number(row.prefixlen||0)}`));
-    for(const row of routes.slice(0,4))target.append(makeRow('Default route',`${safe(row.gateway)||'direct'} · ${safe(row.dev)}`));
-    for(const resolver of nameservers.slice(0,8))target.append(makeRow('Resolver',safe(resolver)));
-  }
-  function renderProcesses(data){
-    const target=$('#serverLifecycleProcesses');if(!target)return;target.replaceChildren();
-    const rows=Array.isArray(data.processes)?data.processes:[];
-    if(!rows.length){target.append(makeRow('Processes','No inventory'));return;}
-    for(const row of rows.slice(0,12))target.append(makeRow(`#${Number(row.pid||0)} ${safe(row.command)} · ${safe(row.user)}`,`${Number(row.cpu||0).toFixed(1)}% CPU · ${Number(row.memory||0).toFixed(1)}% RAM`));
-  }
-  function renderUpdates(data){
-    text('#serverLifecycleUpdates',Number(data.count||0));
-    const note=Number(data.count||0)===0?'لا توجد تحديثات في المحاكاة الحالية.':`${Number(data.count||0)} package(s) في apt simulation. Apply غير متاح من Platform 0.7.`;
-    status(note,data.count?'warning':'ok');
-  }
-  function renderMaintenance(data){
-    const target=$('#serverLifecycleMaintenance');if(!target)return;target.replaceChildren();
-    const rows=Array.isArray(data.previews)?data.previews:[];
-    if(!rows.length){target.append(makeRow('Maintenance','لا توجد Previews.'));return;}
-    for(const item of rows.slice(0,20)){
-      const row=document.createElement('div');row.className='adv-row server-maintenance-row';
-      const copy=document.createElement('span');
-      const snapshot=item.snapshot&&typeof item.snapshot==='object'?item.snapshot:{};
-      let extra='';
-      if(item.kind==='system-updates')extra=`${Number(snapshot.count||0)} updates`;
-      else if(item.kind==='hostname')extra=`${safe(snapshot.current_hostname)} → ${safe(snapshot.desired_hostname)}`;
-      else extra=`reboot_required=${snapshot.reboot_required?'yes':'no'}`;
-      const when=item.status==='applied'?`applied ${stamp(item.applied_at)}`:`expires ${stamp(item.expires_at)}`;
-      copy.textContent=`#${Number(item.id)} · ${safe(item.kind)} · ${safe(item.status)} · ${extra} · ${when}`;
-      row.append(copy);
-      if(item.status==='preview'&&item.kind==='hostname'){
-        const apply=document.createElement('button');apply.type='button';apply.className='tiny danger';apply.textContent='Apply Hostname';apply.dataset.applyMaintenance=String(item.id);row.append(apply);
-      }
-      if(item.status==='preview'){
-        const cancel=document.createElement('button');cancel.type='button';cancel.className='tiny ghost';cancel.textContent='إلغاء Preview';cancel.dataset.cancelMaintenance=String(item.id);row.append(cancel);
-      }
-      target.append(row);
-    }
-  }
-
-  async function loadAll(){
-    const settled=await Promise.allSettled([
-      api('/api/server-lifecycle/overview'),
-      api('/api/server-lifecycle/network'),
-      api('/api/server-lifecycle/processes'),
-      api('/api/server-lifecycle/updates'),
-      api('/api/server-lifecycle/maintenance'),
-    ]);
-    const [overview,network,processes,updates,maintenance]=settled;
-    if(overview.status==='fulfilled')renderOverview(overview.value);else status(`SERVER PROVIDER OFFLINE · ${overview.reason?.message||'unavailable'}`,'error');
-    if(network.status==='fulfilled')renderNetwork(network.value);
-    if(processes.status==='fulfilled')renderProcesses(processes.value);
-    if(updates.status==='fulfilled')renderUpdates(updates.value);else text('#serverLifecycleUpdates','OFFLINE');
-    if(maintenance.status==='fulfilled')renderMaintenance(maintenance.value);
-  }
-
-  async function mutation(url,body){
-    try{
-      return await api(url,{method:'POST',headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
-    }catch(error){
-      status(error.status===428?'Step-Up مطلوب قبل عملية الصيانة.':error.message,'error');
-      throw error;
-    }
-  }
-
-  $('#serverLifecycleRefresh')?.addEventListener('click',()=>loadAll());
-  $('#serverLifecycleNtp')?.addEventListener('click',async()=>{
-    try{const data=await mutation('/api/server-lifecycle/time/enable-ntp',{});status(`NTP enabled · synchronized ${data.time?.synchronized?'YES':'PENDING'}`,'ok');await loadAll();}catch{}
-  });
-  $('#serverLifecycleHostnamePreview')?.addEventListener('click',async()=>{
-    try{
-      const hostname=($('#serverLifecycleHostnameInput')?.value||'').trim().toLowerCase().replace(/\.$/,'');
-      if(!hostname)throw new Error('أدخل Server FQDN أولًا.');
-      const data=await mutation('/api/server-lifecycle/hostname/preview',{hostname});
-      status(`Hostname preview #${data.preview.id}: ${safe(data.preview.snapshot?.current_hostname)} → ${safe(data.preview.snapshot?.desired_hostname)}. راجع ثم Apply.`,'warning');
-      await loadAll();
-    }catch{}
-  });
-  $('#serverLifecycleUpdatePreview')?.addEventListener('click',async()=>{
-    try{const data=await mutation('/api/server-lifecycle/maintenance/preview',{kind:'system-updates'});status(`Update preview #${data.preview.id} created · fingerprint ${safe(data.preview.fingerprint).slice(0,16)}…`,'ok');await loadAll();}catch{}
-  });
-  $('#serverLifecycleRebootPreview')?.addEventListener('click',async()=>{
-    try{const data=await mutation('/api/server-lifecycle/maintenance/preview',{kind:'reboot'});status(`Reboot impact preview #${data.preview.id} created. No reboot executed.`,'warning');await loadAll();}catch{}
-  });
-  $('#serverLifecycleMaintenance')?.addEventListener('click',async event=>{
-    const apply=event.target.closest('[data-apply-maintenance]');
-    if(apply){
-      try{const data=await mutation(`/api/server-lifecycle/maintenance/${encodeURIComponent(apply.dataset.applyMaintenance)}/apply`,{});status(`Hostname applied: ${safe(data.previous_hostname)} → ${safe(data.hostname)}`,'ok');const input=$('#serverLifecycleHostnameInput');if(input)input.value=data.hostname||'';await loadAll();}catch{}
-      return;
-    }
-    const cancel=event.target.closest('[data-cancel-maintenance]');if(!cancel)return;
-    try{await mutation(`/api/server-lifecycle/maintenance/${encodeURIComponent(cancel.dataset.cancelMaintenance)}/cancel`,{});status('Maintenance preview cancelled.','ok');await loadAll();}catch{}
-  });
-  root.querySelector('[data-adv-tab="server"]')?.addEventListener('click',()=>loadAll());
-  loadAll();
+  const root=document.getElementById('advancedops'),card=document.getElementById('advServerLifecycleCard');if(!root||!card)return;
+  const csrf=document.querySelector('meta[name="csrf-token"]')?.content||'', $=s=>card.querySelector(s), safe=v=>String(v??'');
+  const text=(s,v)=>{const n=$(s);if(n)n.textContent=String(v??'—');};
+  const api=async(url,options={})=>{const o={credentials:'same-origin',...options,headers:{Accept:'application/json',...(options.headers||{})}};if(o.method&&o.method!=='GET')o.headers['X-CSRF-Token']=csrf;const r=await fetch(url,o);let d={};try{d=await r.json();}catch{d={ok:false,error:`HTTP ${r.status}`};}if(!r.ok||d.ok===false){const e=new Error(d.error||`HTTP ${r.status}`);e.status=r.status;throw e;}return d;};
+  const status=(m,t='')=>{const n=$('#serverLifecycleMeta');if(n){n.textContent=m;n.className=`adv-result ${t}`.trim();}};
+  const duration=s=>{let v=Math.max(0,Number(s||0)),d=Math.floor(v/86400);v%=86400;const h=Math.floor(v/3600);v%=3600;return `${d}d ${h}h ${Math.floor(v/60)}m`;};
+  const stamp=e=>e?new Date(Number(e)*1000).toLocaleString():'—';
+  const row=(a,b)=>{const r=document.createElement('div');r.className='adv-row';const x=document.createElement('span'),y=document.createElement('b');x.textContent=a;y.textContent=b;r.append(x,y);return r;};
+  function overview(d){text('#serverLifecycleHost',d.hostname);text('#serverLifecycleOs',d.os);text('#serverLifecycleReboot',d.reboot_required?'REQUIRED':'CLEAR');const i=$('#serverLifecycleHostnameInput');if(i&&!i.value)i.value=d.hostname||'';const t=d.time||{};status(`SERVER ONLINE · kernel ${safe(d.kernel)||'—'} · uptime ${duration(d.uptime_seconds)} · timezone ${safe(t.timezone)||'—'} · NTP ${t.ntp?'ON':'OFF'} · synced ${t.synchronized?'YES':'NO'}`,'ok');}
+  function network(d){const n=$('#serverLifecycleNetwork');if(!n)return;n.replaceChildren();const a=Array.isArray(d.addresses)?d.addresses:[],r=Array.isArray(d.default_routes)?d.default_routes:[],ns=Array.isArray(d.nameservers)?d.nameservers:[];if(!a.length&&!r.length&&!ns.length)n.append(row('Network','No inventory'));for(const x of a.slice(0,10))n.append(row(`${safe(x.interface)} · ${safe(x.family)}`,`${safe(x.address)}/${Number(x.prefixlen||0)}`));for(const x of r.slice(0,4))n.append(row('Default route',`${safe(x.gateway)||'direct'} · ${safe(x.dev)}`));for(const x of ns.slice(0,8))n.append(row('Resolver',safe(x)));}
+  function processes(d){const n=$('#serverLifecycleProcesses');if(!n)return;n.replaceChildren();const a=Array.isArray(d.processes)?d.processes:[];if(!a.length)n.append(row('Processes','No inventory'));for(const x of a.slice(0,12))n.append(row(`#${Number(x.pid||0)} ${safe(x.command)} · ${safe(x.user)}`,`${Number(x.cpu||0).toFixed(1)}% CPU · ${Number(x.memory||0).toFixed(1)}% RAM`));}
+  function updates(d){text('#serverLifecycleUpdates',Number(d.count||0));status(Number(d.count||0)?`${Number(d.count)} package(s) في الخطة الحالية. أنشئ Preview ثم راجع الخطة قبل Apply.`:'لا توجد تحديثات في المحاكاة الحالية.',d.count?'warning':'ok');}
+  function maintenance(d){const n=$('#serverLifecycleMaintenance');if(!n)return;n.replaceChildren();const a=Array.isArray(d.previews)?d.previews:[];if(!a.length){n.append(row('Maintenance','لا توجد Previews.'));return;}for(const x of a.slice(0,20)){const r=document.createElement('div');r.className='adv-row server-maintenance-row';const c=document.createElement('span'),s=x.snapshot&&typeof x.snapshot==='object'?x.snapshot:{};const extra=x.kind==='system-updates'?`${Number(s.count||0)} updates`:x.kind==='hostname'?`${safe(s.current_hostname)} → ${safe(s.desired_hostname)}`:`reboot_required=${s.reboot_required?'yes':'no'}`;c.textContent=`#${Number(x.id)} · ${safe(x.kind)} · ${safe(x.status)} · ${extra} · ${x.status==='applied'?`applied ${stamp(x.applied_at)}`:`expires ${stamp(x.expires_at)}`}`;r.append(c);if(x.status==='preview'&&(x.kind==='hostname'||x.kind==='system-updates')){const b=document.createElement('button');b.type='button';b.className='tiny danger';b.textContent=x.kind==='system-updates'?'Apply Reviewed Updates':'Apply Hostname';b.dataset.applyMaintenance=String(x.id);b.dataset.kind=x.kind;r.append(b);}if(x.status==='preview'){const b=document.createElement('button');b.type='button';b.className='tiny ghost';b.textContent='إلغاء Preview';b.dataset.cancelMaintenance=String(x.id);r.append(b);}n.append(r);}}
+  async function load(){const a=await Promise.allSettled([api('/api/server-lifecycle/overview'),api('/api/server-lifecycle/network'),api('/api/server-lifecycle/processes'),api('/api/server-lifecycle/updates'),api('/api/server-lifecycle/maintenance')]);if(a[0].status==='fulfilled')overview(a[0].value);else status(`SERVER PROVIDER OFFLINE · ${a[0].reason?.message||'unavailable'}`,'error');if(a[1].status==='fulfilled')network(a[1].value);if(a[2].status==='fulfilled')processes(a[2].value);if(a[3].status==='fulfilled')updates(a[3].value);else text('#serverLifecycleUpdates','OFFLINE');if(a[4].status==='fulfilled')maintenance(a[4].value);}
+  async function mutation(url,body){try{return await api(url,{method:'POST',headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});}catch(e){status(e.status===428?'Step-Up مطلوب قبل عملية الصيانة.':e.message,'error');throw e;}}
+  $('#serverLifecycleRefresh')?.addEventListener('click',load);
+  $('#serverLifecycleNtp')?.addEventListener('click',async()=>{try{const d=await mutation('/api/server-lifecycle/time/enable-ntp',{});status(`NTP enabled · synchronized ${d.time?.synchronized?'YES':'PENDING'}`,'ok');await load();}catch{}});
+  $('#serverLifecycleHostnamePreview')?.addEventListener('click',async()=>{try{const hostname=($('#serverLifecycleHostnameInput')?.value||'').trim().toLowerCase().replace(/\.$/,'');if(!hostname)throw new Error('أدخل Server FQDN أولًا.');const d=await mutation('/api/server-lifecycle/hostname/preview',{hostname});status(`Hostname preview #${d.preview.id}: ${safe(d.preview.snapshot?.current_hostname)} → ${safe(d.preview.snapshot?.desired_hostname)}. راجع ثم Apply.`,'warning');await load();}catch{}});
+  $('#serverLifecycleUpdatePreview')?.addEventListener('click',async()=>{try{const d=await mutation('/api/server-lifecycle/maintenance/preview',{kind:'system-updates'});status(`Update preview #${d.preview.id} created · ${Number(d.preview.snapshot?.count||0)} packages · fingerprint ${safe(d.preview.fingerprint).slice(0,16)}…`,'warning');await load();}catch{}});
+  $('#serverLifecycleRebootPreview')?.addEventListener('click',async()=>{try{const d=await mutation('/api/server-lifecycle/maintenance/preview',{kind:'reboot'});status(`Reboot impact preview #${d.preview.id} created. No reboot can be executed from this UI.`,'warning');await load();}catch{}});
+  $('#serverLifecycleMaintenance')?.addEventListener('click',async e=>{const a=e.target.closest('[data-apply-maintenance]');if(a){try{a.disabled=true;const d=await mutation(`/api/server-lifecycle/maintenance/${encodeURIComponent(a.dataset.applyMaintenance)}/apply`,{});status(a.dataset.kind==='system-updates'?`Updates applied · ${Number(d.applied_count||0)} package(s) · remaining ${Number(d.remaining_count||0)} · reboot ${d.reboot_required?'REQUIRED':'CLEAR'}`:`Hostname applied: ${safe(d.previous_hostname)} → ${safe(d.hostname)}`,'ok');if(d.hostname){const i=$('#serverLifecycleHostnameInput');if(i)i.value=d.hostname;}await load();}catch{}finally{a.disabled=false;}return;}const c=e.target.closest('[data-cancel-maintenance]');if(!c)return;try{await mutation(`/api/server-lifecycle/maintenance/${encodeURIComponent(c.dataset.cancelMaintenance)}/cancel`,{});status('Maintenance preview cancelled.','ok');await load();}catch{}});
+  root.querySelector('[data-adv-tab="server"]')?.addEventListener('click',load);load();
 })();

@@ -19,10 +19,12 @@ run_ui_gate() {
 for test_file in \
   tests/final_design_review_ui_gate.mjs \
   tests/ui_gate.mjs \
+  tests/heavy_navigation_ui_gate.mjs \
   tests/backups_ui_gate.mjs \
   tests/vault_ui_gate.mjs \
   tests/integrations_ui_gate.mjs \
   tests/approved_theme_ui_gate.mjs \
+  tests/andalusian_visual_gate.mjs \
   tests/internal_workspace_ui_gate.mjs \
   tests/hosting_ui_gate.mjs \
   tests/schedules_ui_gate.mjs \
@@ -30,6 +32,12 @@ for test_file in \
   tests/database_access_ui_gate.mjs \
   tests/database_lifecycle_ui_gate.mjs \
   tests/mail_ui_gate.mjs \
+  tests/mail_import_ui_gate.mjs \
+  tests/mail_default_ui_gate.mjs \
+  tests/mail_routing_ui_gate.mjs \
+  tests/mail_mailing_lists_ui_gate.mjs \
+  tests/mail_global_filters_ui_gate.mjs \
+  tests/mail_dav_ui_gate.mjs \
   tests/transfer_ui_gate.mjs \
   tests/advanced_ops_ui_gate.mjs \
   tests/dynamic_dns_ui_gate.mjs \
@@ -37,6 +45,7 @@ for test_file in \
   tests/domain_health_ui_gate.mjs \
   tests/domain_guardian_ui_gate.mjs \
   tests/doctor_remediation_ui_gate.mjs \
+  tests/maintenance_center_ui_gate.mjs \
   tests/change_safety_ui_gate.mjs \
   tests/wordpress_lifecycle_ui_gate.mjs \
   tests/wordpress_selective_ui_gate.mjs \

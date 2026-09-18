@@ -1,0 +1,244 @@
+/* Nexvary Panel 0.9 — Royal Enterprise visual closure
+   Final restrained layer loaded after legacy theme files.
+   Deep Navy / Gunmetal / Platinum / Royal Gold + Electric Blue selection.
+*/
+:root{
+  --nvp-navy:#0c1319;
+  --nvp-navy-deep:#070d12;
+  --nvp-gunmetal:#2e3945;
+  --nvp-gunmetal-dark:#18222c;
+  --nvp-silver:#9e9b98;
+  --nvp-platinum:#d9d7d4;
+  --nvp-gold:#d0ac55;
+  --nvp-gold-hot:#e1c16c;
+  --nvp-electric-blue:#6a88a0;
+  --nvp-electric-blue-bright:#82a7c4;
+  --nvp-green:#37d995;
+  --nvp-crimson:#df526d;
+  --nvp-surface:#101820;
+  --nvp-surface-2:#131e28;
+  --nvp-border:rgba(158,155,152,.34);
+  --nvp-border-gold:rgba(208,172,85,.58);
+  --nvp-text:#d9d7d4;
+  --nvp-muted:#8997a5;
+}
+
+html,body{background:#070d12!important;color:var(--nvp-text)}
+body{
+  background:
+    radial-gradient(circle at 78% -18%,rgba(106,136,160,.10),transparent 36%),
+    linear-gradient(180deg,#091016 0%,#070d12 52%,#050a0f 100%)!important;
+}
+.ambient{opacity:.24!important;filter:blur(70px)!important}
+.ambient-a{background:rgba(106,136,160,.22)!important}
+.ambient-b{background:rgba(208,172,85,.08)!important}
+.noise{opacity:.018!important}
+
+/* Sidebar — quiet navigation, strong active state. */
+body #sidebar{
+  background:
+    radial-gradient(circle at 50% -6%,rgba(106,136,160,.11),transparent 30%),
+    linear-gradient(180deg,#0b1219 0%,#091018 52%,#070c12 100%)!important;
+  border-right:1px solid rgba(208,172,85,.48)!important;
+  box-shadow:12px 0 36px rgba(0,0,0,.30),inset -1px 0 rgba(255,255,255,.025)!important;
+}
+body #sidebar .brand{border-bottom-color:rgba(208,172,85,.30)!important}
+body #sidebar .brand-copy b{color:#f0ede7!important;letter-spacing:.18em}
+body #sidebar .brand-copy small{color:#8795a2!important}
+body #sidebar .brand-live,
+body #sidebar .account-state,
+body #sidebar .live-dot{box-shadow:0 0 9px rgba(55,217,149,.38)!important}
+body #sidebar .node-card,
+body #sidebar .account-chip{
+  background:linear-gradient(145deg,rgba(19,30,40,.94),rgba(8,15,22,.98))!important;
+  border:1px solid rgba(158,155,152,.25)!important;
+  box-shadow:inset 0 0 18px rgba(0,0,0,.20)!important;
+}
+body #sidebar .nav-label{color:#c9a852!important;text-shadow:none!important;letter-spacing:.13em!important}
+body #sidebar #nav a{
+  color:#cbd3dd!important;
+  text-shadow:none!important;
+  border:1px solid transparent!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  transition:background .15s ease,border-color .15s ease,color .15s ease,transform .15s ease!important;
+}
+body #sidebar #nav a:hover{
+  color:#eef1f2!important;
+  background:linear-gradient(90deg,rgba(46,57,69,.48),rgba(18,28,37,.34))!important;
+  border-color:rgba(158,155,152,.20)!important;
+  box-shadow:none!important;
+  transform:translateX(-1px)
+}
+body #sidebar #nav a.active{
+  color:#f4e0b3!important;
+  background:linear-gradient(90deg,rgba(30,43,55,.98),rgba(14,23,31,.96))!important;
+  border:1px solid rgba(208,172,85,.72)!important;
+  box-shadow:inset 3px 0 0 var(--nvp-electric-blue-bright),0 8px 18px rgba(0,0,0,.18)!important;
+}
+body #sidebar #nav a .ui-icon{filter:none!important;opacity:.94}
+body #sidebar #nav a.active .ui-icon{filter:drop-shadow(0 0 4px rgba(106,136,160,.35))!important}
+body #sidebar .logout-btn{border-color:rgba(223,82,109,.38)!important;color:#ef9eae!important;background:rgba(55,14,24,.20)!important}
+
+/* Top command bar — navy metal, no purple wash. */
+body .workspace-topbar{
+  background:
+    linear-gradient(90deg,rgba(208,172,85,.035),transparent 22% 78%,rgba(208,172,85,.035)),
+    linear-gradient(180deg,#131e28 0%,#0b141c 100%)!important;
+  border:1px solid rgba(208,172,85,.54)!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.22),inset 0 0 0 1px rgba(255,255,255,.025)!important;
+}
+body .workspace-topbar:before{border-color:rgba(208,172,85,.10)!important;background:none!important}
+body .workspace-breadcrumb span,
+body .workspace-breadcrumb b{color:#c4a453!important;text-shadow:none!important}
+body .workspace-topbar h1{color:#f0ede8!important;text-shadow:none!important}
+body .workspace-topbar p{color:#8e9aa7!important}
+body .basmala-seal{
+  color:#e4ca83!important;
+  border-top-color:rgba(208,172,85,.68)!important;
+  border-bottom-color:rgba(208,172,85,.68)!important;
+  background:radial-gradient(circle at 50% 50%,rgba(106,136,160,.08),rgba(7,13,18,.08) 72%)!important;
+  box-shadow:none!important;
+}
+body .basmala-seal small{color:#dfbf69!important;text-shadow:0 0 8px rgba(208,172,85,.20)!important}
+body .basmala-seal strong{color:#efe4c6!important;text-shadow:none!important}
+body .basmala-seal i{color:#95a7b5!important;text-shadow:none!important}
+body .basmala-wing:before,body .basmala-wing:after{background:linear-gradient(90deg,transparent,#9f8240 30%,#d9bd73 50%,#9f8240 70%,transparent)!important;box-shadow:none!important}
+body .command-search,
+body .top-tools .status{
+  background:linear-gradient(180deg,rgba(18,29,39,.96),rgba(9,16,23,.98))!important;
+  border-color:rgba(158,155,152,.28)!important;
+  box-shadow:inset 0 0 12px rgba(0,0,0,.24)!important;
+}
+body .command-search:focus-within{border-color:rgba(106,136,160,.72)!important;box-shadow:0 0 0 2px rgba(106,136,160,.08)!important}
+body .tool-button.royal-action{background:linear-gradient(145deg,#547189,#385366)!important;border-color:rgba(208,172,85,.62)!important;color:#fff!important;box-shadow:0 8px 18px rgba(0,0,0,.16)!important}
+
+/* Main canvas and workspace heroes. */
+body .workspace-main{background:linear-gradient(180deg,rgba(8,14,20,.86),rgba(5,10,15,.96))!important}
+body #workspaceStage>.workspace-page:not(#dashboard){
+  background:radial-gradient(circle at 84% 2%,rgba(106,136,160,.055),transparent 24%),linear-gradient(180deg,rgba(12,19,25,.26),rgba(5,10,15,.08))!important;
+}
+body #workspaceStage>.workspace-page:not(#dashboard)>.workspace-hero{
+  border-color:rgba(208,172,85,.66)!important;
+  background:
+    radial-gradient(circle at 82% 35%,rgba(var(--rw-accent-rgb),.12),transparent 26%),
+    linear-gradient(112deg,#0a1219 0%,#101c26 52%,#0b151e 78%,#080e14 100%)!important;
+  box-shadow:0 14px 30px rgba(0,0,0,.22),inset 0 0 0 1px rgba(255,255,255,.025)!important;
+}
+body #workspaceStage>.workspace-page:not(#dashboard) .workspace-hero .hero-icon{
+  border-color:rgba(208,172,85,.58)!important;
+  background:linear-gradient(145deg,rgba(35,49,62,.96),rgba(11,20,28,.98))!important;
+  box-shadow:inset 0 0 14px rgba(var(--rw-accent-rgb),.06)!important;
+}
+body #workspaceStage>.workspace-page:not(#dashboard) .hero-copy .kicker{color:#c6a44f!important;text-shadow:none!important}
+body #workspaceStage>.workspace-page:not(#dashboard) .hero-copy h2{color:#f1f0ed!important;text-shadow:none!important}
+body #workspaceStage>.workspace-page:not(#dashboard) .hero-copy p{color:#9aa7b3!important}
+body #workspaceStage>.workspace-page:not(#dashboard) .hero-stats>div{
+  background:linear-gradient(145deg,rgba(27,39,50,.96),rgba(10,18,25,.98))!important;
+  border-color:rgba(158,155,152,.26)!important;
+  box-shadow:inset 0 0 12px rgba(0,0,0,.18)!important;
+}
+
+/* Cards, forms, toolbars and tables — one enterprise material system. */
+body #workspaceStage>.workspace-page:not(#dashboard) .panel,
+body #workspaceStage>.workspace-page:not(#dashboard) .creation-panel,
+body #workspaceStage>.workspace-page:not(#dashboard) .content-toolbar,
+body #workspaceStage>.workspace-page:not(#dashboard) .application-card,
+body #workspaceStage>.workspace-page:not(#dashboard) .posture-card,
+body #workspaceStage>.workspace-page:not(#dashboard) .backup-card,
+body #workspaceStage>.workspace-page:not(#dashboard) .dns-toolbar,
+body #workspaceStage>.workspace-page:not(#dashboard) .dns-summary-card,
+body #workspaceStage>.workspace-page:not(#dashboard) .dns-record-card,
+body #workspaceStage>.workspace-page:not(#dashboard) .dns-mail-panel,
+body #workspaceStage>.workspace-page:not(#dashboard) .fusion-summary-card,
+body #workspaceStage>.workspace-page:not(#dashboard) .fusion-toolbar,
+body #workspaceStage>.workspace-page:not(#dashboard) .fusion-provider-card,
+body #workspaceStage>.workspace-page:not(#dashboard) .fusion-capability-panel,
+body #workspaceStage>.workspace-page:not(#dashboard) .fusion-capability-card,
+body #workspaceStage>.workspace-page:not(#dashboard) .fusion-policy,
+body #workspaceStage>.workspace-page:not(#dashboard) .vault-card,
+body #workspaceStage>.workspace-page:not(#dashboard) .integration-card,
+body #workspaceStage>.workspace-page:not(#dashboard) .security-intelligence,
+body #workspaceStage>.workspace-page:not(#dashboard) [class*="-card"]{
+  background:linear-gradient(145deg,rgba(20,31,41,.97),rgba(8,15,22,.99))!important;
+  border-color:rgba(158,155,152,.28)!important;
+  box-shadow:0 8px 20px rgba(0,0,0,.16),inset 0 0 0 1px rgba(255,255,255,.018)!important;
+}
+body #workspaceStage>.workspace-page:not(#dashboard) .content-toolbar,
+body #workspaceStage>.workspace-page:not(#dashboard) .dns-toolbar,
+body #workspaceStage>.workspace-page:not(#dashboard) .fusion-toolbar,
+body #workspaceStage>.workspace-page:not(#dashboard) .file-toolbar{
+  background:linear-gradient(90deg,rgba(25,37,48,.96),rgba(10,18,25,.98))!important;
+  border-color:rgba(208,172,85,.34)!important;
+  box-shadow:inset 0 0 12px rgba(0,0,0,.16)!important;
+}
+body #workspaceStage>.workspace-page:not(#dashboard) input,
+body #workspaceStage>.workspace-page:not(#dashboard) select,
+body #workspaceStage>.workspace-page:not(#dashboard) textarea{
+  background:#0c151d!important;
+  border-color:rgba(158,155,152,.34)!important;
+  color:#e3e4e2!important;
+  box-shadow:inset 0 0 10px rgba(0,0,0,.23)!important;
+}
+body #workspaceStage>.workspace-page:not(#dashboard) input:focus,
+body #workspaceStage>.workspace-page:not(#dashboard) select:focus,
+body #workspaceStage>.workspace-page:not(#dashboard) textarea:focus{
+  border-color:rgba(106,136,160,.78)!important;
+  box-shadow:0 0 0 2px rgba(106,136,160,.10)!important;
+}
+body #workspaceStage>.workspace-page:not(#dashboard) table{border-color:rgba(158,155,152,.20)!important}
+body #workspaceStage>.workspace-page:not(#dashboard) th{color:#cdb773!important;background:rgba(22,32,42,.96)!important;border-bottom-color:rgba(208,172,85,.30)!important}
+body #workspaceStage>.workspace-page:not(#dashboard) td{color:#cbd2d8!important;border-bottom-color:rgba(158,155,152,.13)!important}
+body #workspaceStage>.workspace-page:not(#dashboard) tr:hover td{background:rgba(106,136,160,.045)!important}
+
+/* Dashboard — preserve information density, replace violet wash with navy metal. */
+body #dashboard.reference-dashboard{background:linear-gradient(180deg,rgba(12,19,25,.24),rgba(5,10,15,.10))!important}
+body #dashboard .ref-hero{
+  border-color:rgba(208,172,85,.70)!important;
+  background:
+    radial-gradient(circle at 58% 45%,rgba(37,117,183,.20),transparent 23%),
+    radial-gradient(circle at 73% 52%,rgba(106,136,160,.12),transparent 31%),
+    linear-gradient(110deg,#081018 0%,#0e1d29 47%,#0b1721 74%,#070e14 100%)!important;
+  box-shadow:0 12px 28px rgba(0,0,0,.20),inset 0 0 0 1px rgba(255,255,255,.02)!important;
+}
+body #dashboard .ref-brand-copy h2{color:#eef0ef!important;text-shadow:none!important}
+body #dashboard .ref-motto strong{color:#ddb95f!important;text-shadow:none!important}
+body #dashboard .ref-stat,
+body #dashboard .ref-panel{
+  background:linear-gradient(145deg,rgba(19,30,40,.97),rgba(8,15,22,.99))!important;
+  border-color:rgba(158,155,152,.30)!important;
+  box-shadow:0 8px 18px rgba(0,0,0,.14),inset 0 0 0 1px rgba(255,255,255,.015)!important;
+}
+body #dashboard .ref-stat-copy label,
+body #dashboard .ref-panel-title h3{color:#d9d7d4!important}
+body #dashboard .ref-stat-copy strong{color:#f2f1ee!important}
+body #dashboard .ref-resource,
+body #dashboard .ref-quick-grid button{
+  background:linear-gradient(145deg,#111c25,#0a1219)!important;
+  border-color:rgba(158,155,152,.22)!important;
+  box-shadow:none!important;
+}
+body #dashboard .ref-quick-grid button:hover{border-color:rgba(208,172,85,.56)!important;background:linear-gradient(145deg,#172630,#0b151d)!important}
+body #dashboard .ref-chart .line{stroke:#7599b5!important;filter:drop-shadow(0 0 4px rgba(106,136,160,.28))!important}
+body #dashboard .ref-chart .dot{fill:#d5bd77!important;filter:none!important}
+
+/* Semantic status colors only. */
+body .online,body .healthy,body .success,body .pass{--semantic-color:var(--nvp-green)}
+body .danger,body .critical,body .offline,body .risk{--semantic-color:var(--nvp-crimson)}
+body .status i,body .live-dot,body .account-state{filter:saturate(.84)}
+
+/* Reduce decorative glow globally while preserving clear focus and status cues. */
+body .royal-frame,
+body .frame-gold,
+body .frame-silver,
+body .frame-electric-black{filter:none!important}
+body button,body a,body input,body select,body textarea{outline-offset:2px}
+body :focus-visible{outline:2px solid rgba(106,136,160,.78)!important;outline-offset:2px!important}
+
+@media(max-width:780px){
+  body #sidebar{box-shadow:14px 0 34px rgba(0,0,0,.38)!important}
+  body .workspace-topbar{background:linear-gradient(180deg,#111d27,#0a1219)!important}
+  body .basmala-seal{background:transparent!important}
+  body #workspaceStage>.workspace-page:not(#dashboard)>.workspace-hero{background:linear-gradient(145deg,#0d1821,#091119)!important}
+  body #dashboard .ref-hero{background:linear-gradient(145deg,#0d1a24,#081119)!important}
+}
