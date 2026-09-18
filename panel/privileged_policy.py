@@ -11,6 +11,7 @@ PRIVILEGED_OPERATIONS: dict[str, dict[str, object]] = {
     "server-time-enable-ntp": {"capability": "maintenance.time", "step_up": True, "timeout": 25, "risk": "medium", "pre_check": "known-operation", "post_check": "ntp-enabled", "rollback": "manual", "audit": "attempt-and-result"},
     "server-hostname-set": {"capability": "maintenance.hostname", "step_up": True, "timeout": 45, "risk": "high", "pre_check": "fresh-hostname-preview", "post_check": "hostname-verified", "rollback": "restore-previous-hostname", "audit": "attempt-and-result"},
     "service-restart": {"capability": "maintenance.service", "step_up": True, "timeout": 30, "risk": "medium", "pre_check": "service-allowlist", "post_check": "service-active", "rollback": "not-applicable", "audit": "attempt-and-result"},
+    "docker-control": {"capability": "maintenance.container", "step_up": True, "timeout": 40, "risk": "high", "pre_check": "container-name-and-action-allowlist", "post_check": "container-state", "rollback": "operation-specific", "audit": "attempt-and-result"},
 }
 
 
