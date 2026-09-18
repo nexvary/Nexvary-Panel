@@ -36,6 +36,8 @@ with tempfile.TemporaryDirectory(prefix="nvp-maintenance-center-") as tmp:
         calls.append(dict(payload))
         if payload.get("action") == "service-restart" and payload.get("name") in {"nginx", "mariadb", "fail2ban", "docker"}:
             return {"ok": True, "output": "active"}
+        if payload.get("action") == "docker-control" and payload.get("desired") in {"start", "stop", "restart"}:
+            return {"ok": True, "output": "container state changed"}
         return {"ok": False, "error": "unexpected action"}
 
     ops.agent_call = fake_agent
@@ -86,6 +88,24 @@ with tempfile.TemporaryDirectory(prefix="nvp-maintenance-center-") as tmp:
     )
     assert denied.status_code == 302, denied.data
     assert len(calls) == 1, "non-allowlisted service reached privileged agent"
+
+    docker_ok = client.post(
+        "/docker/control",
+        data={"csrf_token": csrf, "container": "web-1", "desired": "restart"},
+        follow_redirects=False,
+    )
+    assert docker_ok.status_code == 302, docker_ok.data
+    assert docker_ok.headers["Location"].endswith("#docker"), docker_ok.headers["Location"]
+    assert calls[-1] == {"action": "docker-control", "container": "web-1", "desired": "restart"}, calls[-1]
+
+    before = len(calls)
+    docker_denied = client.post(
+        "/docker/control",
+        data={"csrf_token": csrf, "container": "web-1", "desired": "exec"},
+        follow_redirects=False,
+    )
+    assert docker_denied.status_code == 302, docker_denied.data
+    assert len(calls) == before, "non-allowlisted Docker lifecycle verb reached privileged agent"
 
     services_html = (ROOT / "templates" / "sections" / "services.html").read_text(encoding="utf-8")
     index_html = (ROOT / "templates" / "index.html").read_text(encoding="utf-8")
