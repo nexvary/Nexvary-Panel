@@ -1,0 +1,56 @@
+name: Nexvary Panel DEB Package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'VERSION'
+      - 'packaging/**'
+      - 'installer/**'
+      - 'panel/**'
+      - 'agent/**'
+      - 'templates/**'
+      - 'static/**'
+      - 'app.py'
+      - 'requirements.txt'
+      - '.github/workflows/deb-package.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-install:
+    name: Build and install amd64 DEB on Ubuntu 24.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build DEB
+        run: |
+          chmod +x packaging/build-deb.sh
+          bash packaging/build-deb.sh
+      - name: Inspect package
+        run: |
+          DEB="$(find dist -maxdepth 1 -name 'nexvary-panel_*.deb' -print -quit)"
+          test -n "$DEB"
+          dpkg-deb --info "$DEB"
+          dpkg-deb --contents "$DEB" >/dev/null
+      - name: Install DEB
+        run: |
+          DEB="$(find dist -maxdepth 1 -name 'nexvary-panel_*.deb' -print -quit)"
+          sudo apt-get update
+          sudo apt-get install -y "./$DEB"
+      - name: Verify installed panel
+        run: |
+          bash tests/ci/verify-install.sh
+          bash tests/ci/verify-site-controls-install.sh
+          systemctl is-active --quiet nexvary-panel
+          curl -kfsS https://127.0.0.1:8443/login >/dev/null
+      - name: Upload installable DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexvary-panel-0.9.0-amd64-deb
+          path: dist/nexvary-panel_0.9.0_amd64.deb
+          if-no-files-found: error
+          retention-days: 30
