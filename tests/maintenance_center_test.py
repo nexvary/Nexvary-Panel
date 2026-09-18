@@ -45,6 +45,15 @@ with tempfile.TemporaryDirectory(prefix="nvp-maintenance-center-") as tmp:
     assert blocked.headers["Location"].endswith("#security"), blocked.headers["Location"]
     assert not calls, "privileged maintenance action reached agent without Step-Up"
 
+    docker_blocked = client.post(
+        "/docker/control",
+        data={"csrf_token": csrf, "container": "web-1", "desired": "restart"},
+        follow_redirects=False,
+    )
+    assert docker_blocked.status_code == 302, docker_blocked.data
+    assert docker_blocked.headers["Location"].endswith("#security"), docker_blocked.headers["Location"]
+    assert not calls, "Docker mutation reached privileged agent without Step-Up"
+
     with client.session_transaction() as session:
         session["step_up_user"] = "admin"
         session["step_up_until"] = now + 300
