@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import re
 import sys
 import tempfile
 import time
@@ -17,6 +18,7 @@ with tempfile.TemporaryDirectory(prefix="nvp-maintenance-center-") as tmp:
 
     import panel.routes_ops as ops
     from panel import create_app
+    from panel.core import db
     from panel.maintenance_policy import OPERATIONS
     from panel.privileged_policy import operation_policy
 
@@ -68,8 +70,14 @@ with tempfile.TemporaryDirectory(prefix="nvp-maintenance-center-") as tmp:
     assert restarted.status_code == 302 and restarted.headers["Location"].endswith("#services")
     assert calls == [{"action": "service-restart", "name": "nginx"}], calls
 
-    # Elevation is single-use: a second privileged mutation cannot reuse the same
-    # Step-Up window, even though its original five-minute TTL has not elapsed.
+    with db() as conn:
+        receipts = conn.execute("SELECT action,detail FROM audit WHERE action LIKE 'maintenance-%' ORDER BY id").fetchall()
+    assert len(receipts) == 2, receipts
+    assert [r["action"] for r in receipts] == ["maintenance-start", "maintenance-success"], receipts
+    receipt_ids = [re.search(r"change=([0-9a-f]{16})", r["detail"] or "") for r in receipts]
+    assert all(receipt_ids) and receipt_ids[0].group(1) == receipt_ids[1].group(1), receipts
+    assert all("operation=restart-nginx" in r["detail"] and "target=nginx" in r["detail"] for r in receipts)
+
     replay = client.post("/services/restart", data={"csrf_token": csrf, "name": "mariadb"}, follow_redirects=False)
     assert replay.status_code == 302 and replay.headers["Location"].endswith("#security")
     assert len(calls) == 1, "consumed Step-Up grant authorized a second privileged mutation"
@@ -82,10 +90,16 @@ with tempfile.TemporaryDirectory(prefix="nvp-maintenance-center-") as tmp:
     assert denied.status_code == 302
     assert len(calls) == 1, "non-allowlisted service reached privileged agent"
 
-    # Policy denial does not consume elevation because no privileged boundary was crossed.
     docker_ok = client.post("/docker/control", data={"csrf_token": csrf, "container": "web-1", "desired": "restart"}, follow_redirects=False)
     assert docker_ok.status_code == 302 and docker_ok.headers["Location"].endswith("#docker")
     assert calls[-1] == {"action": "docker-control", "container": "web-1", "desired": "restart"}, calls[-1]
+
+    with db() as conn:
+        docker_receipts = conn.execute("SELECT action,detail FROM audit WHERE detail LIKE '%operation=docker-restart%' ORDER BY id").fetchall()
+    assert [r["action"] for r in docker_receipts] == ["maintenance-start", "maintenance-success"], docker_receipts
+    docker_ids = [re.search(r"change=([0-9a-f]{16})", r["detail"] or "") for r in docker_receipts]
+    assert all(docker_ids) and docker_ids[0].group(1) == docker_ids[1].group(1), docker_receipts
+    assert all("target=web-1" in r["detail"] for r in docker_receipts)
 
     before = len(calls)
     docker_replay = client.post("/docker/control", data={"csrf_token": csrf, "container": "web-1", "desired": "stop"}, follow_redirects=False)
