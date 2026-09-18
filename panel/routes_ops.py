@@ -68,14 +68,19 @@ def register_ops_routes(app):
 
     @app.post("/docker/control")
     @role_required("admin", "operator")
+    @step_up_required
     def docker_control():
+        # Container lifecycle changes are privileged mutations.  Keep the action
+        # vocabulary finite and require a fresh Step-Up before crossing the agent
+        # boundary; the browser can name a container, never an executable/argv.
         container = request.form.get("container", "").strip()
         desired = request.form.get("desired", "restart")
         if not re.match(r"^[A-Za-z0-9_.-]{1,128}$", container) or desired not in {"start", "stop", "restart"}:
+            audit("maintenance-policy-deny", f"docker {container[:80]} {desired[:20]}")
             flash("طلب Docker غير صالح.", "error")
             return redirect(url_for("home") + "#docker")
         result = agent_call({"action": "docker-control", "container": container, "desired": desired}, timeout=35)
-        audit("docker-control", f"{container} {desired}")
+        audit("docker-control", f"{container} {desired} " + ("ok" if result.get("ok") else "failed"))
         if not result.get("ok"):
             notify("critical", f"Docker {desired} failed", container, "docker")
         flash("تم تنفيذ أمر Docker." if result.get("ok") else "فشل أمر Docker: " + str(result.get("error", ""))[-160:],
