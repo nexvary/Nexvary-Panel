@@ -10,7 +10,7 @@ from flask import flash, jsonify, redirect, request, session, url_for
 from .config import DOMAIN_RE, ROLES, USER_RE
 from .core import agent_call, audit, can_manage_domain, db, notify, password_hash, role_required
 from .maintenance_policy import docker_operation_for, restart_operation_for_target
-from .security import step_up_required
+from .security import clear_step_up, step_up_required
 
 
 def register_ops_routes(app):
@@ -26,6 +26,10 @@ def register_ops_routes(app):
             audit("maintenance-policy-deny", requested[:80] or "empty")
             flash("الخدمة غير مسموح بإدارتها من اللوحة.", "error")
             return redirect(url_for("home") + "#services")
+        # A Step-Up grant is deliberately single-use for privileged mutation. This
+        # prevents a captured/reused elevated session from authorizing a second,
+        # different maintenance action during the five-minute freshness window.
+        clear_step_up()
         result = agent_call({"action": operation.agent_action, "name": operation.target}, timeout=operation.timeout)
         audit(operation.id, operation.target + (" ok" if result.get("ok") else " failed"))
         notify("ok" if result.get("ok") else "critical", f"Service {operation.target} " + ("restarted" if result.get("ok") else "restart failed"),
@@ -82,6 +86,9 @@ def register_ops_routes(app):
             audit("maintenance-policy-deny", f"docker {container[:80]} {desired[:20]}")
             flash("طلب Docker غير صالح أو غير مسموح.", "error")
             return redirect(url_for("home") + "#docker")
+        # Consume elevation before crossing the privileged-agent boundary. Even a
+        # timeout/error therefore cannot leave reusable elevated authority behind.
+        clear_step_up()
         result = agent_call({"action": operation.agent_action, "container": container, "desired": operation.target}, timeout=operation.timeout)
         audit(operation.id, f"{container} {operation.target} " + ("ok" if result.get("ok") else "failed"))
         if not result.get("ok"):
