@@ -9,6 +9,7 @@ from flask import Flask
 
 from .config import VERSION
 from .core import csrf_guard, csrf_token, ensure_schema_columns
+from .maintenance_policy import OPERATIONS as MAINTENANCE_OPERATIONS
 from .module_registry import initialize_module_schemas, register_modules
 from .routes_mail_dav import register_mail_dav_routes
 from .routes_mail_global_filters import register_mail_global_filter_routes
@@ -51,7 +52,13 @@ def create_app() -> Flask:
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         return response
 
-    app.jinja_env.globals.update(csrf_token=csrf_token, panel_version=VERSION)
+    # Read-only policy metadata for the graphical Maintenance Center. Templates can
+    # explain the server-enforced boundary without accepting executable/argv data.
+    app.jinja_env.globals.update(
+        csrf_token=csrf_token,
+        panel_version=VERSION,
+        maintenance_operations=tuple(MAINTENANCE_OPERATIONS.values()),
+    )
 
     @app.template_filter("when")
     def when(ts: int | None) -> str:
