@@ -77,6 +77,9 @@ with tempfile.TemporaryDirectory(prefix="nvp-maintenance-center-") as tmp:
     receipt_ids = [re.search(r"change=([0-9a-f]{16})", r["detail"] or "") for r in receipts]
     assert all(receipt_ids) and receipt_ids[0].group(1) == receipt_ids[1].group(1), receipts
     assert all("operation=restart-nginx" in r["detail"] and "target=nginx" in r["detail"] for r in receipts)
+    assert "elapsed_ms=" not in receipts[0]["detail"]
+    elapsed = re.search(r"elapsed_ms=(\d+)", receipts[1]["detail"] or "")
+    assert elapsed and 0 <= int(elapsed.group(1)) <= 86_400_000, receipts
 
     replay = client.post("/services/restart", data={"csrf_token": csrf, "name": "mariadb"}, follow_redirects=False)
     assert replay.status_code == 302 and replay.headers["Location"].endswith("#security")
@@ -100,6 +103,8 @@ with tempfile.TemporaryDirectory(prefix="nvp-maintenance-center-") as tmp:
     docker_ids = [re.search(r"change=([0-9a-f]{16})", r["detail"] or "") for r in docker_receipts]
     assert all(docker_ids) and docker_ids[0].group(1) == docker_ids[1].group(1), docker_receipts
     assert all("target=web-1" in r["detail"] for r in docker_receipts)
+    docker_elapsed = re.search(r"elapsed_ms=(\d+)", docker_receipts[1]["detail"] or "")
+    assert docker_elapsed and 0 <= int(docker_elapsed.group(1)) <= 86_400_000, docker_receipts
 
     before = len(calls)
     docker_replay = client.post("/docker/control", data={"csrf_token": csrf, "container": "web-1", "desired": "stop"}, follow_redirects=False)
