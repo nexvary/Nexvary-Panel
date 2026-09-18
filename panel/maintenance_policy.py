@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .privileged_policy import operation_policy
+
 
 @dataclass(frozen=True, slots=True)
 class MaintenanceOperation:
@@ -31,6 +33,27 @@ OPERATIONS: dict[str, MaintenanceOperation] = {
     "docker-stop": MaintenanceOperation("docker-stop", "إيقاف حاوية Docker", "docker-control", "stop", ("admin", "operator"), True, 35, "container-name-and-action-allowlist", "container-stopped", rollback="start-container", risk="high"),
     "docker-restart": MaintenanceOperation("docker-restart", "إعادة تشغيل حاوية Docker", "docker-control", "restart", ("admin", "operator"), True, 35, "container-name-and-action-allowlist", "container-running", rollback="not-applicable", risk="high"),
 }
+
+
+def _validate_registry() -> None:
+    """Fail closed at startup if UI policy drifts below the privileged boundary."""
+    allowed_roles = {"admin", "operator"}
+    allowed_risks = {"low", "medium", "high"}
+    for key, operation in OPERATIONS.items():
+        if key != operation.id or not operation.roles or not set(operation.roles) <= allowed_roles:
+            raise RuntimeError(f"invalid-maintenance-operation:{key}")
+        if operation.timeout <= 0 or operation.risk not in allowed_risks:
+            raise RuntimeError(f"invalid-maintenance-safety-metadata:{key}")
+        privileged = operation_policy(operation.agent_action)
+        if operation.timeout > int(privileged["timeout"]):
+            raise RuntimeError(f"maintenance-timeout-exceeds-privileged-ceiling:{key}")
+        if bool(privileged.get("step_up")) and not operation.step_up:
+            raise RuntimeError(f"maintenance-step-up-weakened:{key}")
+        if not operation.precheck or not operation.postcheck:
+            raise RuntimeError(f"maintenance-lifecycle-check-missing:{key}")
+
+
+_validate_registry()
 
 
 def operation_for(operation_id: str) -> MaintenanceOperation | None:
