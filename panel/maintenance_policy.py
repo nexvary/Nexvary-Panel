@@ -38,19 +38,24 @@ OPERATIONS: dict[str, MaintenanceOperation] = {
 def _validate_registry() -> None:
     """Fail closed at startup if UI policy drifts below the privileged boundary."""
     allowed_roles = {"admin", "operator"}
-    allowed_risks = {"low", "medium", "high"}
+    risk_rank = {"low": 0, "medium": 1, "high": 2}
     for key, operation in OPERATIONS.items():
         if key != operation.id or not operation.roles or not set(operation.roles) <= allowed_roles:
             raise RuntimeError(f"invalid-maintenance-operation:{key}")
-        if operation.timeout <= 0 or operation.risk not in allowed_risks:
+        if operation.timeout <= 0 or operation.risk not in risk_rank:
             raise RuntimeError(f"invalid-maintenance-safety-metadata:{key}")
         privileged = operation_policy(operation.agent_action)
+        privileged_risk = str(privileged.get("risk", "high"))
+        if privileged_risk not in risk_rank or risk_rank[operation.risk] < risk_rank[privileged_risk]:
+            raise RuntimeError(f"maintenance-risk-weakened:{key}")
         if operation.timeout > int(privileged["timeout"]):
             raise RuntimeError(f"maintenance-timeout-exceeds-privileged-ceiling:{key}")
         if bool(privileged.get("step_up")) and not operation.step_up:
             raise RuntimeError(f"maintenance-step-up-weakened:{key}")
         if not operation.precheck or not operation.postcheck:
             raise RuntimeError(f"maintenance-lifecycle-check-missing:{key}")
+        if operation.rollback is not None and not operation.rollback.strip():
+            raise RuntimeError(f"maintenance-rollback-metadata-invalid:{key}")
 
 
 _validate_registry()
