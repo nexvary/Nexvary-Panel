@@ -9,7 +9,7 @@ from flask import flash, jsonify, redirect, request, session, url_for
 
 from .config import DOMAIN_RE, ROLES, USER_RE
 from .core import agent_call, audit, can_manage_domain, db, notify, password_hash, role_required
-from .maintenance_policy import restart_operation_for_target
+from .maintenance_policy import docker_operation_for, restart_operation_for_target
 from .security import step_up_required
 
 
@@ -70,19 +70,22 @@ def register_ops_routes(app):
     @role_required("admin", "operator")
     @step_up_required
     def docker_control():
-        # Container lifecycle changes are privileged mutations.  Keep the action
-        # vocabulary finite and require a fresh Step-Up before crossing the agent
-        # boundary; the browser can name a container, never an executable/argv.
+        # Container lifecycle changes are privileged mutations.  Both the lifecycle
+        # verb and timeout come from the finite Maintenance Center policy; the
+        # browser can identify a bounded container name, never an executable/argv.
         container = request.form.get("container", "").strip()
-        desired = request.form.get("desired", "restart")
-        if not re.match(r"^[A-Za-z0-9_.-]{1,128}$", container) or desired not in {"start", "stop", "restart"}:
+        desired = request.form.get("desired", "restart").strip()
+        operation = docker_operation_for(desired)
+        role = str(session.get("role", ""))
+        if (not re.match(r"^[A-Za-z0-9_.-]{1,128}$", container) or operation is None
+                or role not in operation.roles or not operation.step_up):
             audit("maintenance-policy-deny", f"docker {container[:80]} {desired[:20]}")
-            flash("طلب Docker غير صالح.", "error")
+            flash("طلب Docker غير صالح أو غير مسموح.", "error")
             return redirect(url_for("home") + "#docker")
-        result = agent_call({"action": "docker-control", "container": container, "desired": desired}, timeout=35)
-        audit("docker-control", f"{container} {desired} " + ("ok" if result.get("ok") else "failed"))
+        result = agent_call({"action": operation.agent_action, "container": container, "desired": operation.target}, timeout=operation.timeout)
+        audit(operation.id, f"{container} {operation.target} " + ("ok" if result.get("ok") else "failed"))
         if not result.get("ok"):
-            notify("critical", f"Docker {desired} failed", container, "docker")
+            notify("critical", f"Docker {operation.target} failed", container, "docker")
         flash("تم تنفيذ أمر Docker." if result.get("ok") else "فشل أمر Docker: " + str(result.get("error", ""))[-160:],
               "ok" if result.get("ok") else "error")
         return redirect(url_for("home") + "#docker")
