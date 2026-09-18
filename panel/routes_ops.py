@@ -13,9 +13,12 @@ from .maintenance_policy import docker_operation_for, restart_operation_for_targ
 from .security import clear_step_up, step_up_required
 
 
-def _maintenance_receipt(operation_id: str, target: str, phase: str, change_id: str) -> None:
+def _maintenance_receipt(operation_id: str, target: str, phase: str, change_id: str, elapsed_ms: int | None = None) -> None:
     """Write a bounded, correlation-friendly receipt without agent output/secrets."""
-    audit(f"maintenance-{phase}", f"change={change_id} operation={operation_id} target={target}"[:700])
+    detail = f"change={change_id} operation={operation_id} target={target}"
+    if elapsed_ms is not None:
+        detail += f" elapsed_ms={max(0, min(int(elapsed_ms), 86_400_000))}"
+    audit(f"maintenance-{phase}", detail[:700])
 
 
 def register_ops_routes(app):
@@ -32,8 +35,10 @@ def register_ops_routes(app):
         change_id = secrets.token_hex(8)
         _maintenance_receipt(operation.id, operation.target, "start", change_id)
         clear_step_up()
+        started = time.monotonic()
         result = agent_call({"action": operation.agent_action, "name": operation.target}, timeout=operation.timeout)
-        _maintenance_receipt(operation.id, operation.target, "success" if result.get("ok") else "failure", change_id)
+        elapsed_ms = round((time.monotonic() - started) * 1000)
+        _maintenance_receipt(operation.id, operation.target, "success" if result.get("ok") else "failure", change_id, elapsed_ms)
         notify("ok" if result.get("ok") else "critical", f"Service {operation.target} " + ("restarted" if result.get("ok") else "restart failed"),
                str(result.get("error", ""))[-300:], "service")
         flash("تمت إعادة تشغيل الخدمة." if result.get("ok") else "فشل تشغيل الخدمة: " + str(result.get("error", ""))[-150:],
@@ -88,8 +93,10 @@ def register_ops_routes(app):
         change_id = secrets.token_hex(8)
         _maintenance_receipt(operation.id, container, "start", change_id)
         clear_step_up()
+        started = time.monotonic()
         result = agent_call({"action": operation.agent_action, "container": container, "desired": operation.target}, timeout=operation.timeout)
-        _maintenance_receipt(operation.id, container, "success" if result.get("ok") else "failure", change_id)
+        elapsed_ms = round((time.monotonic() - started) * 1000)
+        _maintenance_receipt(operation.id, container, "success" if result.get("ok") else "failure", change_id, elapsed_ms)
         if not result.get("ok"):
             notify("critical", f"Docker {operation.target} failed", container, "docker")
         flash("تم تنفيذ أمر Docker." if result.get("ok") else "فشل أمر Docker: " + str(result.get("error", ""))[-160:],
