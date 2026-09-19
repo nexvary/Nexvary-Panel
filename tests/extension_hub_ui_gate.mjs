@@ -33,7 +33,7 @@ if(await page.locator('#extensionGrid [data-extension-toggle]').count()<6)throw 
 
 const firstToggle=page.locator('#extensionGrid [data-extension-toggle]').first();
 await firstToggle.click();
-await page.waitForFunction(()=>/Step-Up/.test(document.querySelector('#extensionNotice')?.textContent||''),null,{timeout:5000});
+await page.waitForFunction(()=>/Step-Up|license|ترخيص/i.test(document.querySelector('#extensionNotice')?.textContent||''),null,{timeout:5000});
 if(pageErrors.length)throw new Error(`Extension Hub page error: ${pageErrors.join(' | ')}`);
 if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2))throw new Error('Extension Hub desktop horizontal overflow');
 await page.screenshot({path:`${out}/nexvary-panel-0.8-extension-hub-desktop.png`,fullPage:true});

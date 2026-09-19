@@ -6,9 +6,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 try:
-    VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip() or "0.8.0"
+    VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip() or "0.9.1"
 except OSError:
-    VERSION = "0.8.0"
+    VERSION = "0.9.1"
 APP_DIR = Path(os.environ.get("NVP_DATA_DIR", "/var/lib/nexvary-panel"))
 # Backward/feature-module compatibility alias. New modules may refer to DATA_DIR,
 # while the established control-plane configuration uses APP_DIR.

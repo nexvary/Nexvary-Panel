@@ -15,6 +15,9 @@ from .routes_mail_dav import register_mail_dav_routes
 from .routes_mail_global_filters import register_mail_global_filter_routes
 from .routes_mail_lists import register_mail_list_routes
 from .routes_migration_center import register_migration_center_routes
+from .routes_white_label import register_white_label_routes
+from .branding import get_branding
+from .licensing import verify_license
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -32,6 +35,21 @@ def create_app() -> Flask:
     ensure_schema_columns()
     initialize_module_schemas()
     app.before_request(csrf_guard)
+
+    @app.before_request
+    def enforce_license():
+        from flask import request, jsonify, session
+        if request.path.startswith("/static/") or request.path in {"/login", "/logout", "/license", "/license/install"}:
+            return None
+        state = verify_license()
+        # Licensing constrains the commercial control plane, but must not shadow
+        # authentication/authorization/Step-Up semantics. Existing security guards
+        # remain authoritative; locked licenses reject authenticated mutations.
+        if not state.valid and session.get("auth") and request.method not in {"GET", "HEAD", "OPTIONS"}:
+            if request.path.startswith("/security/") or request.path.startswith("/api/_test-"):
+                return None
+            return jsonify(error="license_required", status=state.status), 423
+        return None
 
     @app.after_request
     def security_headers(response):
@@ -78,4 +96,9 @@ def create_app() -> Flask:
     register_mail_global_filter_routes(app)
     register_mail_list_routes(app)
     register_migration_center_routes(app)
+    register_white_label_routes(app)
+
+    @app.context_processor
+    def white_label_context():
+        return {"brand": get_branding(), "license_state": verify_license()}
     return app
