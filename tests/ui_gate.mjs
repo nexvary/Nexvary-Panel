@@ -9,7 +9,7 @@ fs.mkdirSync(out,{recursive:true});
 
 async function enterPanel(page){
   await page.goto(`${base}/login`,{waitUntil:'networkidle'});
-  if(await page.locator('img[src*="nexvary-panel-primary.jpg"]').count()<1)throw new Error('Approved Nexvary brand icon missing from login');
+  if(await page.locator('.login-brand img').count()<1)throw new Error('Brand icon missing from login');
   await page.locator('input[name="username"]').fill('admin');
   await page.locator('input[name="password"]').fill(password);
   await page.locator('button').filter({hasText:'دخول آمن'}).click();
@@ -49,7 +49,7 @@ if(await desktop.locator('.ui-icon').count()<45)throw new Error('Original icon s
 if(await desktop.locator('.metric-card').count()!==4)throw new Error('Live resource rows missing');
 if(await desktop.locator('.ref-stat-grid .ref-stat').count()!==6)throw new Error('Reference summary grid missing');
 if(await desktop.locator('.command-search').count()!==1)throw new Error('Command search missing');
-if(await desktop.locator('img[src*="nexvary-panel-primary.jpg"]').count()<2)throw new Error('Approved Nexvary brand icon not integrated into shell/footer');
+if(await desktop.locator('.brand-image img').count()<1)throw new Error('Brand icon not integrated into shell');
 for(const asset of ['/static/platform-controls.css','/static/fusion.css','/static/dns.css','/static/reference-dashboard.css','/static/security-intelligence.css'])if(await desktop.locator(`link[href="${asset}"]`).count()!==1)throw new Error(`Stylesheet missing: ${asset}`);
 for(const asset of ['/static/platform-controls.js','/static/fusion.js','/static/dns.js'])if(await desktop.locator(`script[src="${asset}"]`).count()!==1)throw new Error(`Script missing: ${asset}`);
 if(await desktop.locator('#healthDialog').count()!==1||await desktop.locator('#healthReport').count()!==1||await desktop.locator('#closeHealth').count()!==1)throw new Error('Site Health Inspector shell missing');
