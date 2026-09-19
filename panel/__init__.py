@@ -42,7 +42,7 @@ def create_app() -> Flask:
         if request.path.startswith("/static/") or request.path in {"/login", "/logout", "/license", "/license/install"}:
             return None
         state = verify_license()
-        if not state.valid and (request.method not in {"GET", "HEAD", "OPTIONS"} or request.path.startswith("/api/")):
+        if not state.valid and request.method not in {"GET", "HEAD", "OPTIONS"}:
             return jsonify(error="license_required", status=state.status), 423
         return None
 
