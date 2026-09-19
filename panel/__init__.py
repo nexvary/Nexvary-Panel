@@ -15,6 +15,9 @@ from .routes_mail_dav import register_mail_dav_routes
 from .routes_mail_global_filters import register_mail_global_filter_routes
 from .routes_mail_lists import register_mail_list_routes
 from .routes_migration_center import register_migration_center_routes
+from .routes_white_label import register_white_label_routes
+from .branding import get_branding
+from .licensing import verify_license
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -78,4 +81,9 @@ def create_app() -> Flask:
     register_mail_global_filter_routes(app)
     register_mail_list_routes(app)
     register_migration_center_routes(app)
+    register_white_label_routes(app)
+
+    @app.context_processor
+    def white_label_context():
+        return {"brand": get_branding(), "license_state": verify_license()}
     return app
