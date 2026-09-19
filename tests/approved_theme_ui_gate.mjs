@@ -58,7 +58,7 @@ if(!activeStyle.border.includes('208')&&!activeStyle.border.includes('172'))thro
 if(!activeStyle.shadow||activeStyle.shadow==='none')throw new Error('Active navigation depth cue missing');
 
 const expectedOrder=['dashboard','hosting','accounts','mail','transfers','advancedops','sites','webtools','sitecontrols','schedules','databases','files','security','backups'];
-const firstLinks=await page.locator('#nav a').evaluateAll((nodes,count)=>nodes.slice(0,count).map(n=>n.getAttribute('href')?.replace('#','')),expectedOrder.length);
+const firstLinks=await page.locator('#nav a[href^="#"]').evaluateAll((nodes,count)=>nodes.slice(0,count).map(n=>n.getAttribute('href')?.replace('#','')),expectedOrder.length);
 if(JSON.stringify(firstLinks)!==JSON.stringify(expectedOrder))throw new Error(`Sidebar primary order mismatch: ${firstLinks.join(',')}`);
 const iconColors=await page.evaluate(()=>Array.from(document.querySelectorAll('#nav a .ui-icon')).map(el=>getComputedStyle(el).color));
 if(new Set(iconColors).size<8)throw new Error(`Sidebar icon palette too limited: ${new Set(iconColors).size}`);
