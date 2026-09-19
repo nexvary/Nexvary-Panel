@@ -7,8 +7,8 @@
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#12072c">
   <meta name="csrf-token" content="{{csrf_token()}}">
-  <title>Nexvary Panel</title>
-  <link rel="icon" type="image/jpeg" href="/static/brand/nexvary-panel-primary.jpg">
+  <title>{{brand.product_name}}</title>
+  <link rel="icon" type="image/jpeg" href="{{brand.favicon_url}}">
   <link rel="stylesheet" href="/static/app.css">
   <link rel="stylesheet" href="/static/electric.css">
   <link rel="stylesheet" href="/static/royal-electric.css">
@@ -35,14 +35,15 @@
   <link rel="stylesheet" href="/static/database-access.css">
   <link rel="stylesheet" href="/static/workspace-visibility.css">
   <link rel="stylesheet" href="/static/security-intelligence.css">
+{% if brand.hero_url %}<style>.command-hero,.reference-hero{background-image:linear-gradient(90deg,rgba(12,19,25,.84),rgba(12,19,25,.55)),url('{{brand.hero_url}}')!important;background-size:cover!important;background-position:center!important}</style>{% endif %}
 </head>
 <body>
 <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div><div class="noise"></div>
 <div class="shell workspace-shell">
   <aside id="sidebar">
     <div class="brand">
-      <span class="brand-mark brand-image"><img src="/static/brand/nexvary-panel-primary.jpg" alt="Nexvary"></span>
-      <div class="brand-copy"><b>NEXVARY</b><small>PANEL · {{panel_version}}</small></div>
+      <span class="brand-mark brand-image"><img src="{{brand.logo_url}}" alt="{{brand.company_name}}"></span>
+      <div class="brand-copy"><b>{{brand.company_name}}</b><small>{{brand.product_name}} · {{panel_version}}</small></div>
       <span class="brand-live">LIVE</span>
     </div>
     <div class="node-card">
@@ -52,6 +53,7 @@
     </div>
     <nav id="nav" aria-label="لوحة التحكم">
       <span class="nav-label">لوحة التحكم</span>
+      {% if role == 'admin' %}<a href="/license" data-title="License Center" data-subtitle="الترخيص والهوية">{{icon('shield')}}<span>License Center</span><em></em></a>{% if license_state.feature('white_label') %}<a href="/branding" data-title="Branding Center" data-subtitle="هوية White-Label">{{icon('layers')}}<span>Branding Center</span><em></em></a>{% endif %}{% endif %}
       <a class="active" href="#dashboard" data-title="الرئيسية" data-subtitle="نظرة تشغيلية موحدة على الخادم والموارد والحماية">{{icon('dashboard')}}<span>الرئيسية</span><em></em></a>
       <a href="#hosting" data-title="Hosting Suite" data-subtitle="مركز وظائف الاستضافة والحزم والحدود والصلاحيات">{{icon('layers')}}<span>Hosting Suite</span><em></em></a>
       {% if role in ['admin','reseller'] %}<a href="#accounts" data-title="الحسابات والموزعون" data-subtitle="Hosting Accounts والحزم وحدود Reseller ضمن Scope آمن">{{icon('users')}}<span>الحسابات والموزعون</span><em></em></a>{% endif %}
