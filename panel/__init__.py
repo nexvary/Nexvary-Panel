@@ -38,11 +38,16 @@ def create_app() -> Flask:
 
     @app.before_request
     def enforce_license():
-        from flask import request, jsonify
+        from flask import request, jsonify, session
         if request.path.startswith("/static/") or request.path in {"/login", "/logout", "/license", "/license/install"}:
             return None
         state = verify_license()
-        if not state.valid and request.method not in {"GET", "HEAD", "OPTIONS"} and not request.path.startswith("/api/_test-"):
+        # Licensing constrains the commercial control plane, but must not shadow
+        # authentication/authorization/Step-Up semantics. Existing security guards
+        # remain authoritative; locked licenses reject authenticated mutations.
+        if not state.valid and session.get("auth") and request.method not in {"GET", "HEAD", "OPTIONS"}:
+            if request.path.startswith("/security/") or request.path.startswith("/api/_test-"):
+                return None
             return jsonify(error="license_required", status=state.status), 423
         return None
 
