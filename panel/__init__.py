@@ -36,6 +36,16 @@ def create_app() -> Flask:
     initialize_module_schemas()
     app.before_request(csrf_guard)
 
+    @app.before_request
+    def enforce_license():
+        from flask import request, jsonify
+        if request.path.startswith("/static/") or request.path in {"/login", "/logout", "/license", "/license/install"}:
+            return None
+        state = verify_license()
+        if not state.valid and (request.method not in {"GET", "HEAD", "OPTIONS"} or request.path.startswith("/api/")):
+            return jsonify(error="license_required", status=state.status), 423
+        return None
+
     @app.after_request
     def security_headers(response):
         # Browser hardening is deliberately centralized so every HTML/API response inherits
